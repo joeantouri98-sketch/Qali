@@ -169,6 +169,11 @@ class HelpDialog(QDialog):
         <code>tables/</code> folder of the output folder and never replace
         the bundled values; Restore Defaults brings them back. Add... and
         Remove work on the open lists.</p>
+        <p><i>Published matrix elements</i> lists published J-resolved
+        matrix elements |D| next to NIST's value for the same line. A ticked
+        line uses the published value in both Polarizability and Lifetimes;
+        an unticked one uses NIST's, or the literature average where NIST has
+        none. All start ticked. Add... takes a line of your own.</p>
         <h3>Save as</h3>
         <p>The <i>Save as</i> field under a stage's output options files that
         run's results under a name, so another run with different settings

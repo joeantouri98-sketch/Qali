@@ -10,49 +10,49 @@
   "C6_expt_au": 3897.0,
   "magic_wavelengths": [
     {
-      "wl_nm": 508.0977,
-      "alpha_au": -213.431,
-      "delta_alpha_slope_au_per_nm": 256.5268,
+      "wl_nm": 508.0985,
+      "alpha_au": -213.4323,
+      "delta_alpha_slope_au_per_nm": 258.1401,
       "nearby_resonance_nm": 508.565,
       "nearby_resonance_label": "9s",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 531.7778,
-      "alpha_au": -254.1564,
-      "delta_alpha_slope_au_per_nm": 225.8745,
+      "wl_nm": 531.777,
+      "alpha_au": -254.1549,
+      "delta_alpha_slope_au_per_nm": 226.2747,
       "nearby_resonance_nm": 532.476,
       "nearby_resonance_label": "8s",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 577.3384,
-      "alpha_au": -361.8744,
-      "delta_alpha_slope_au_per_nm": 251.7473,
+      "wl_nm": 577.3382,
+      "alpha_au": -361.8738,
+      "delta_alpha_slope_au_per_nm": 252.1317,
       "nearby_resonance_nm": 578.4,
       "nearby_resonance_label": "7s",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 690.1558,
-      "alpha_au": -1186.0167,
-      "delta_alpha_slope_au_per_nm": 1070.734,
+      "wl_nm": 690.1552,
+      "alpha_au": -1186.0065,
+      "delta_alpha_slope_au_per_nm": 1070.7579,
       "nearby_resonance_nm": 691.299,
       "nearby_resonance_label": "6s",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 768.4109,
-      "alpha_au": 20991.7254,
-      "delta_alpha_slope_au_per_nm": -50077.6997,
+      "wl_nm": 768.4108,
+      "alpha_au": 20992.5238,
+      "delta_alpha_slope_au_per_nm": -50077.6841,
       "nearby_resonance_nm": 770.108,
       "nearby_resonance_label": "4p1/2",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 1227.68,
-      "alpha_au": 471.8163,
-      "delta_alpha_slope_au_per_nm": 430.9377,
+      "wl_nm": 1227.6369,
+      "alpha_au": 471.8373,
+      "delta_alpha_slope_au_per_nm": 429.2198,
       "nearby_resonance_nm": 1243.57,
       "nearby_resonance_label": "5s",
       "robustness": "very sensitive"
@@ -67,6 +67,41 @@
   "I_ref_kWcm2": 10.0,
   "point_result": null,
   "extrapolation": null,
+  "published_lines": {
+    "published": [
+      "4p1/2-10s",
+      "4p1/2-3d3/2",
+      "4p1/2-4d3/2",
+      "4p1/2-5d3/2",
+      "4p1/2-5s",
+      "4p1/2-6d3/2",
+      "4p1/2-6s",
+      "4p1/2-7d3/2",
+      "4p1/2-7s",
+      "4p1/2-8d3/2",
+      "4p1/2-8s",
+      "4p1/2-9s",
+      "4p3/2-10s",
+      "4p3/2-3d3/2",
+      "4p3/2-3d5/2",
+      "4p3/2-4d3/2",
+      "4p3/2-4d5/2",
+      "4p3/2-5d3/2",
+      "4p3/2-5d5/2",
+      "4p3/2-5s",
+      "4p3/2-6d3/2",
+      "4p3/2-6d5/2",
+      "4p3/2-6s",
+      "4p3/2-7d3/2",
+      "4p3/2-7d5/2",
+      "4p3/2-7s",
+      "4p3/2-8d3/2",
+      "4p3/2-8d5/2",
+      "4p3/2-8s",
+      "4p3/2-9s"
+    ],
+    "unticked": []
+  },
   "transitions_gs": [
     {
       "delta_E_au": 0.05916485530895617,
@@ -1476,111 +1511,111 @@
     },
     {
       "delta_E_au": 0.03663914770777238,
-      "fosc": 0.1843,
+      "fosc": 0.18441686828946782,
       "sign": 1,
       "other_label": "5s",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 1243.5682,
-      "sigma_f": 0.001843
+      "sigma_f": 0.01844168682894678
     },
     {
       "delta_E_au": 0.03896486531098088,
-      "fosc": 0.8269,
+      "fosc": 0.8247565796204619,
       "sign": 1,
       "other_label": "3d3/2",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 1169.3427,
-      "sigma_f": 0.008269
+      "sigma_f": 0.0824756579620462
     },
     {
       "delta_E_au": 0.06567030374145197,
-      "fosc": 0.00027,
+      "fosc": 0.00027581664384542626,
       "sign": 1,
       "other_label": "4d3/2",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 693.8186,
-      "sigma_f": 6.75e-05
+      "sigma_f": 2.7581664384542626e-05
     },
     {
       "delta_E_au": 0.06590979907407071,
-      "fosc": 0.01791,
+      "fosc": 0.0179275771509394,
       "sign": 1,
       "other_label": "6s",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 691.2975,
-      "sigma_f": 0.0001791
+      "sigma_f": 0.00179275771509394
     },
     {
       "delta_E_au": 0.0783715309731575,
-      "fosc": 0.0029,
+      "fosc": 0.0028998053959188295,
       "sign": 1,
       "other_label": "5d3/2",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 581.3754,
-      "sigma_f": 8.699999999999999e-05
+      "sigma_f": 0.00028998053959188296
     },
     {
       "delta_E_au": 0.07877478128539095,
-      "fosc": 0.005949,
+      "fosc": 0.0059607459709048695,
       "sign": 1,
       "other_label": "7s",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 578.3993,
-      "sigma_f": 5.949e-05
+      "sigma_f": 0.000596074597090487
     },
     {
       "delta_E_au": 0.08525350303834804,
-      "fosc": 0.0033,
+      "fosc": 0.003296512777798809,
       "sign": 1,
       "other_label": "6d3/2",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 534.4447,
-      "sigma_f": 9.9e-05
+      "sigma_f": 0.00032965127777988094
     },
     {
       "delta_E_au": 0.08556884897193734,
-      "fosc": 0.002812,
+      "fosc": 0.0028237243713388244,
       "sign": 1,
       "other_label": "8s",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 532.4751,
-      "sigma_f": 2.812e-05
+      "sigma_f": 0.00028237243713388245
     },
     {
       "delta_E_au": 0.08936457621149421,
-      "fosc": 0.00265,
+      "fosc": 0.0026422933298866783,
       "sign": 1,
       "other_label": "7d3/2",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 509.8584,
-      "sigma_f": 7.95e-05
+      "sigma_f": 0.00026422933298866783
     },
     {
       "delta_E_au": 0.08959198101711717,
-      "fosc": 0.00158,
+      "fosc": 0.0015857178850693246,
       "sign": 1,
       "other_label": "9s",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 508.5643,
-      "sigma_f": 1.58e-05
+      "sigma_f": 0.00015857178850693247
     },
     {
       "delta_E_au": 0.09200630123609117,
-      "fosc": 0.00198,
+      "fosc": 0.0020517350738586764,
       "sign": 1,
       "other_label": "8d3/2",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 495.2191,
-      "sigma_f": 0.0001386
+      "sigma_f": 0.00020517350738586765
     },
     {
       "delta_E_au": 0.09217031346096112,
-      "fosc": 0.000986,
+      "fosc": 0.0009892551751839037,
       "sign": 1,
       "other_label": "10s",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 494.3379,
-      "sigma_f": 9.859999999999999e-06
+      "sigma_f": 9.892551751839037e-05
     },
     {
       "delta_E_au": 0.09380099113386146,

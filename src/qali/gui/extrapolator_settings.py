@@ -5,10 +5,10 @@ Used as the "Extrapolator" tab of Edit > Preferences, and standalone when no Pre
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import json
+import re
 from copy import deepcopy
+from pathlib import Path
 
 from PySide6.QtCore import QThread, Qt, Signal
 from PySide6.QtWidgets import (
@@ -30,6 +30,8 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -55,6 +57,7 @@ class _Spin(QDoubleSpinBox):
     def flat(self):
         """For use inside a table cell: no frame of its own, so the cell does not hold a box inside a box."""
         self.setFrame(False)
+        self.setStyleSheet("QAbstractSpinBox { border: none; border-radius: 0; background: transparent; padding: 0; }")
         self.lineEdit().setStyleSheet("border: none; background: transparent; padding: 0 4px;")
         return self
 
@@ -105,11 +108,36 @@ class _RebuildWorker(QThread):
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
 
+def reset_button(slot) -> QToolButton:
+    """The small reset icon of a setting; shown only while the setting differs from its default."""
+    button = QToolButton()
+    button.setObjectName("resetButton")
+    button.setText("\u21ba")
+    button.setToolTip("Reset")
+    button.setAccessibleName("Reset to default")
+    button.clicked.connect(slot)
+    button.setVisible(False)
+    return button
+
+
+def _plain(html: str) -> str:
+    return re.sub(r"<[^>]+>", "", html)
+
+
+def set_match(label: QLabel, on: bool) -> None:
+    """Mark *label* as a search hit (styled by the theme)."""
+    if label.property("match") != on:
+        label.setProperty("match", on)
+        label.style().unpolish(label)
+        label.style().polish(label)
+
+
 class ExtrapolatorSettingsPage(QWidget):
     """Edit the fit settings and model parameters; ``apply()`` writes ``fit_settings.json`` and ``model_settings.json``
     (only values that differ from the shipped ones)."""
 
     ROW_H = 34
+    changed = Signal()
 
     def __init__(self, root: Path, species: str | None = None, parent=None):
         super().__init__(parent)
@@ -124,24 +152,41 @@ class ExtrapolatorSettingsPage(QWidget):
         self._notes: dict[str, dict[str, str]] = self._load_notes()
         self._filling = False
         self._worker: _RebuildWorker | None = None
-        inner = QWidget()
-        outer = QVBoxLayout(inner)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(inner)
+        # what the files held when the page opened, so Cancel can undo an Apply
+        self._at_open = {p: (p.read_text(encoding="utf-8") if p.is_file() else None)
+                         for p in (self.path, self.model_path, self.notes_path)}
+        self.applied = False
         page = QVBoxLayout(self)
         page.setContentsMargins(0, 0, 0, 0)
-        page.addWidget(scroll)
+        self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
+        page.addWidget(self.tabs)
 
-        box = QWidget()
+        def tab(title: str) -> QVBoxLayout:
+            inner = QWidget()
+            lay = QVBoxLayout(inner)
+            lay.setContentsMargins(4, 12, 12, 8)
+            lay.setSpacing(10)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setWidget(inner)
+            self.tabs.addTab(scroll, title)
+            return lay
+
+        outer = tab("Fit")
+        box = QFrame()
+        box.setObjectName("prefsCard")
         box.setToolTip("Take effect at once; no table rebuild needed.")
         boxlay = QVBoxLayout(box)
-        boxlay.setContentsMargins(0, 0, 0, 0)
-        self._section_header(boxlay, "Fit settings")
+        boxlay.setContentsMargins(16, 12, 16, 12)
         grid = QGridLayout()
+        grid.setHorizontalSpacing(16)
+        grid.setVerticalSpacing(8)
+        grid.setColumnStretch(0, 1)
         boxlay.addLayout(grid)
         self.spins: dict[str, QDoubleSpinBox] = {}
         self.labels: dict[str, QLabel] = {}
+        self.resets: dict[str, QToolButton] = {}
         saved = fs.load(self.path)
         for row, spec in enumerate(fs.FIELDS):
             label = QLabel(spec["label"])
@@ -153,24 +198,29 @@ class ExtrapolatorSettingsPage(QWidget):
             spin.setValue(saved.get(spec["key"], self._defaults[spec["key"]]))
             spin.setToolTip(spec["tip"])
             spin.valueChanged.connect(self._mark)
-            reset = QPushButton("Default")
-            reset.setToolTip(f"Back to the packaged value ({self._defaults[spec['key']]:g}).")
-            reset.clicked.connect(lambda _c=False, k=spec["key"]: self._reset(k))
-            grid.addWidget(label, row, 0)
+            spin.setFixedWidth(140)
+            reset = reset_button(lambda _c=False, k=spec["key"]: self._reset(k))
+            reset.setToolTip(f"Reset to {self._defaults[spec['key']]:g}")
+            keep = reset.sizePolicy()
+            keep.setRetainSizeWhenHidden(True)
+            reset.setSizePolicy(keep)
+            label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+            grid.addWidget(label, row, 0, Qt.AlignLeft)
             grid.addWidget(spin, row, 1)
             grid.addWidget(reset, row, 2)
+            grid.setColumnMinimumWidth(2, 28)
             self.spins[spec["key"]], self.labels[spec["key"]] = spin, label
+            self.resets[spec["key"]] = reset
         outer.addWidget(box)
         self.preset_combo = self._preset_row(outer, self._load_preset, self._save_preset, self._delete_preset,
                                              "the fit settings above")
         self._refresh_presets()
+        outer.addStretch(1)
 
-        mbox = QWidget()
-        mlay = QVBoxLayout(mbox)
-        mlay.setContentsMargins(0, 0, 0, 0)
-        self._section_header(mlay, "Model parameters")
+        mlay = tab("Model")
         srow = QHBoxLayout()
-        srow.addWidget(QLabel("Species"))
+        self.species_label = QLabel("Species")
+        srow.addWidget(self.species_label)
         self.species_combo = _Combo()
         names = supported_species()
         self.species_combo.addItems(names)
@@ -178,11 +228,14 @@ class ExtrapolatorSettingsPage(QWidget):
             self.species_combo.setCurrentText(species)
         self.species_combo.currentTextChanged.connect(self._fill_model)
         srow.addWidget(self.species_combo)
-        reset_species = QPushButton("Default")
+        reset_species = QPushButton("Reset species")
         reset_species.setToolTip("Back to the shipped parameters of this species.")
         reset_species.clicked.connect(self._reset_species)
         srow.addWidget(reset_species)
         srow.addStretch(1)
+        self.rebuild_btn = QPushButton("Rebuild tables")
+        self.rebuild_btn.clicked.connect(self._rebuild)
+        srow.addWidget(self.rebuild_btn)
         mlay.addLayout(srow)
         self.model_table = QTableWidget(0, 4)
         self.model_table.setHorizontalHeaderLabels(["Parameter", "Value", "Default", "Note"])
@@ -207,16 +260,9 @@ class ExtrapolatorSettingsPage(QWidget):
         self._build_user_box(mlay)
         self.model_state = QLabel()
         self.model_state.setVisible(False)          # kept for the Rebuild button's state; not shown
-        rrow = QHBoxLayout()
-        self.rebuild_btn = QPushButton("Rebuild tables")
-        self.rebuild_btn.clicked.connect(self._rebuild)
-        rrow.addWidget(self.rebuild_btn)
-        rrow.addStretch(1)
-        mlay.addLayout(rrow)
-        outer.addWidget(mbox)
-        outer.addStretch(1)
-        self.model_preset_combo = self._preset_row(outer, self._load_model_preset, self._save_model_preset,
+        self.model_preset_combo = self._preset_row(mlay, self._load_model_preset, self._save_model_preset,
                                                    self._delete_model_preset, "the model parameters (all species)")
+        mlay.addStretch(1)
         self._refresh_model_presets()
         self.form_combo: QComboBox | None = None
         self.model_spins: dict[str, QDoubleSpinBox] = {}
@@ -224,25 +270,12 @@ class ExtrapolatorSettingsPage(QWidget):
         self._fill_model()
         self._mark()
 
-    @staticmethod
-    def _section_header(layout, text: str) -> None:
-        title = QLabel(text)
-        font = title.font()
-        font.setPointSizeF(font.pointSizeF() + 3)
-        font.setBold(True)
-        title.setFont(font)
-        layout.addWidget(title)
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Plain)
-        layout.addWidget(line)
-
     def _preset_row(self, layout, load, save, delete, what: str) -> QComboBox:
         row = QHBoxLayout()
         row.addWidget(QLabel("Presets"))
         combo = _Combo()
-        combo.setMinimumWidth(160)
-        row.addWidget(combo, stretch=1)
+        combo.setMinimumWidth(220)
+        row.addWidget(combo)
         for text, slot, tip in (("Load", load, "Put the preset's values into the fields (OK keeps them)."),
                                 ("Save as...", save, f"Save {what} as a named preset."),
                                 ("Delete", delete, "Remove the selected preset file.")):
@@ -250,6 +283,7 @@ class ExtrapolatorSettingsPage(QWidget):
             btn.setToolTip(tip)
             btn.clicked.connect(slot)
             row.addWidget(btn)
+        row.addStretch(1)
         layout.addLayout(row)
         return combo
 
@@ -263,12 +297,14 @@ class ExtrapolatorSettingsPage(QWidget):
             spin.setValue(fit.get(key, self._defaults[key]))
 
     def _mark(self, *_):
-        """Bold label = the value differs from the packaged default."""
+        """Bold label and a reset icon = the value differs from the packaged default."""
         for key, spin in self.spins.items():
             changed = abs(spin.value() - self._defaults[key]) > 1e-12
             font = self.labels[key].font()
             font.setBold(changed)
             self.labels[key].setFont(font)
+            self.resets[key].setVisible(changed)
+        self.changed.emit()
 
     def _reset(self, key: str) -> None:
         self.spins[key].setValue(self._defaults[key])
@@ -286,7 +322,54 @@ class ExtrapolatorSettingsPage(QWidget):
         problems = ms.validate(self._model_edits)[1]
         ms.save(self.model_path, self.model_values())
         self._save_notes()
+        self.applied = True
         return problems
+
+    def undo_apply(self) -> None:
+        """Put the settings files back as they were when the page opened (Cancel after Apply)."""
+        for path, text in self._at_open.items():
+            try:
+                if text is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(text, encoding="utf-8")
+            except OSError:
+                pass
+        self.applied = False
+
+    # ---- Preferences hooks ----------------------------------------------------------------------------
+    def changed_count(self) -> int:
+        """How many settings differ from the shipped ones: fit values, and model values over all species."""
+        fit = sum(abs(s.value() - self._defaults[k]) > 1e-12 for k, s in self.spins.items())
+        return fit + sum(len(v) for v in self.model_values().values())
+
+    def _search_labels(self) -> list[tuple[int, QLabel]]:
+        """(tab, label) of every named setting on the page."""
+        rows = [(0, label) for label in self.labels.values()]
+        rows += [(1, label) for label in self.model_labels.values()] + [(1, self.species_label)]
+        return rows
+
+    def search_texts(self) -> list[str]:
+        return ([_plain(label.text()) for _tab, label in self._search_labels()]
+                + ["Presets", "np cutoff rule", "Rebuild tables", "User-defined g(r)"])
+
+    def highlight(self, needle: str) -> int:
+        """Mark the settings whose name holds *needle* and show the first tab with one; returns the hits."""
+        needle = needle.strip().lower()
+        first = None
+        hits = 0
+        for tab_index, label in self._search_labels():
+            on = bool(needle) and needle in _plain(label.text()).lower()
+            set_match(label, on)
+            if on:
+                hits += 1
+                first = tab_index if first is None else first
+        hits += sum(needle in t.lower() for t in ("presets", "np cutoff rule", "rebuild tables",
+                                                    "user-defined g(r)")) if needle else 0
+        if first is not None:
+            self.tabs.setCurrentIndex(first)
+        return hits
 
     # ---- user notes (free text in the empty Note cells) ----------------------------------------------------
     def _load_notes(self) -> dict:
@@ -463,6 +546,8 @@ class ExtrapolatorSettingsPage(QWidget):
             self._validate_user()
         self._store_current()
         self._update_state()
+        if not self._filling:
+            self.changed.emit()
 
     def _reset_species(self) -> None:
         self._model_edits.pop(self.species_combo.currentText(), None)

@@ -155,6 +155,10 @@
   "I_ref_kWcm2": 10.0,
   "point_result": null,
   "extrapolation": null,
+  "published_lines": {
+    "published": [],
+    "unticked": []
+  },
   "transitions_gs": [
     {
       "delta_E_au": 0.06790605885697718,

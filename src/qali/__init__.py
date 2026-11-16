@@ -8,9 +8,5 @@ import os as _os
 # a test suite, a second run. Set before numpy is imported; stage subprocesses inherit it.
 for _var in ("OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "OMP_NUM_THREADS"):
 	_os.environ.setdefault(_var, "1")
-from importlib.metadata import PackageNotFoundError, version
-
-try:
-	__version__ = version("qali")
-except PackageNotFoundError:
-	__version__ = "0+unknown"
+# Read from the package itself, not installed metadata: a frozen build or a stale install has none.
+from ._version import __version__ as __version__

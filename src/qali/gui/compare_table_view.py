@@ -18,6 +18,36 @@ from PySide6.QtWidgets import (
 from qali.core import comparison_rows as cr
 from qali.core.fileio import atomic_write_text, write_json
 
+from . import units
+
+
+def _shown(key: str, value):
+    """(value, header unit) of a column as Preferences > Units and numbers shows it; None: as stored.
+
+    Only the energy and wavelength columns follow the preference; the CSV export keeps the stored units.
+    """
+    if not isinstance(value, (int, float)):
+        return None
+    u = units.current()
+    if key == "IE_eV":
+        return units.convert(value, "energy", u)
+    if key == "soc" and u.energy != "eV":                  # stored in meV; meV stays when the choice is eV
+        return units.convert(value / 1e3, "energy", u)
+    if key in ("D1_wl", "D2_wl") and u.wavelength == "air":
+        return units.convert(value, "wavelength", u)
+    return None
+
+
+def _header(key: str, text: str) -> str:
+    u = units.current()
+    if key == "IE_eV":
+        return f"IE ({units.ENERGY_UNITS[u.energy]})"
+    if key == "soc" and u.energy != "eV":
+        return f"SOC ({units.ENERGY_UNITS[u.energy]})"
+    if key in ("D1_wl", "D2_wl") and u.wavelength == "air":
+        return "λ air (nm)"
+    return text
+
 
 class _Cell(QTableWidgetItem):
     """A cell that sorts by its value (numbers as numbers, blanks last)."""
@@ -164,10 +194,13 @@ class CompareTableView(QWidget):
         col, order = header.sortIndicatorSection(), header.sortIndicatorOrder()
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(rows))
+        self.table.setHorizontalHeaderLabels([_header(k, h) for k, h, _c, _d in cr.COLUMNS])
         for i, row in enumerate(rows):
             for j, (key, _h, _c, digits) in enumerate(cr.COLUMNS):
                 value = row.get(key)
-                item = _Cell(cr.cell_text(key, value, digits), value, row)
+                shown = _shown(key, value)
+                text = cr.cell_text(key, value, digits) if shown is None else units.number(shown[0])
+                item = _Cell(text, value if shown is None else shown[0], row)
                 if key == "element":
                     item.setToolTip(f"Source: {row.get('source', '')}")
                 if j:
@@ -180,6 +213,11 @@ class CompareTableView(QWidget):
         self._paint()
         if not rows and not self.note.text():
             self.note.setText("No elements in the table yet. Add some above.")
+
+    def refresh_units(self) -> None:
+        """Redraw after Preferences changed the units or number format."""
+        if self._records:
+            self._fill()
 
     def _paint(self, *_):
         """Each column section gets its own faint tint."""

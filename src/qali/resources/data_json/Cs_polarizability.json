@@ -10,105 +10,105 @@
   "C6_expt_au": 6851.0,
   "magic_wavelengths": [
     {
-      "wl_nm": 514.5437,
-      "alpha_au": -185.6068,
-      "delta_alpha_slope_au_per_nm": 209.8909,
+      "wl_nm": 514.5877,
+      "alpha_au": -185.6663,
+      "delta_alpha_slope_au_per_nm": 223.3812,
       "nearby_resonance_nm": 513.885,
       "nearby_resonance_label": "16s",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 518.6797,
-      "alpha_au": -191.2497,
-      "delta_alpha_slope_au_per_nm": 164.9265,
+      "wl_nm": 518.7369,
+      "alpha_au": -191.3283,
+      "delta_alpha_slope_au_per_nm": 175.7962,
       "nearby_resonance_nm": 517.793,
       "nearby_resonance_label": "15s",
       "robustness": "sensitive"
     },
     {
-      "wl_nm": 524.2666,
-      "alpha_au": -199.0212,
-      "delta_alpha_slope_au_per_nm": 127.311,
+      "wl_nm": 524.3431,
+      "alpha_au": -199.1289,
+      "delta_alpha_slope_au_per_nm": 135.9511,
       "nearby_resonance_nm": 523.03,
       "nearby_resonance_label": "14s",
       "robustness": "sensitive"
     },
     {
-      "wl_nm": 532.0977,
-      "alpha_au": -210.2567,
-      "delta_alpha_slope_au_per_nm": 96.4906,
+      "wl_nm": 532.2033,
+      "alpha_au": -210.4112,
+      "delta_alpha_slope_au_per_nm": 103.2693,
       "nearby_resonance_nm": 530.293,
       "nearby_resonance_label": "13s",
       "robustness": "sensitive"
     },
     {
-      "wl_nm": 543.619,
-      "alpha_au": -227.6503,
-      "delta_alpha_slope_au_per_nm": 71.9141,
+      "wl_nm": 543.7705,
+      "alpha_au": -227.8867,
+      "delta_alpha_slope_au_per_nm": 77.1856,
       "nearby_resonance_nm": 540.817,
       "nearby_resonance_label": "12s",
       "robustness": "sensitive"
     },
     {
-      "wl_nm": 556.3974,
-      "alpha_au": -248.364,
-      "delta_alpha_slope_au_per_nm": 237.4116,
+      "wl_nm": 556.445,
+      "alpha_au": -248.4443,
+      "delta_alpha_slope_au_per_nm": 276.8531,
       "nearby_resonance_nm": 556.996,
       "nearby_resonance_label": "11s",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 561.7456,
-      "alpha_au": -257.5384,
-      "delta_alpha_slope_au_per_nm": 53.2069,
-      "nearby_resonance_nm": 556.996,
-      "nearby_resonance_label": "11s",
+      "wl_nm": 561.9743,
+      "alpha_au": -257.9379,
+      "delta_alpha_slope_au_per_nm": 57.327,
+      "nearby_resonance_nm": 566.559,
+      "nearby_resonance_label": "9d3/2",
       "robustness": "sensitive"
     },
     {
-      "wl_nm": 583.1351,
-      "alpha_au": -297.7184,
-      "delta_alpha_slope_au_per_nm": 204.0577,
+      "wl_nm": 583.2015,
+      "alpha_au": -297.8526,
+      "delta_alpha_slope_au_per_nm": 235.4542,
       "nearby_resonance_nm": 584.045,
       "nearby_resonance_label": "10s",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 593.3023,
-      "alpha_au": -319.071,
-      "delta_alpha_slope_au_per_nm": 40.5857,
+      "wl_nm": 593.6727,
+      "alpha_au": -319.8799,
+      "delta_alpha_slope_au_per_nm": 43.9989,
       "nearby_resonance_nm": 601.215,
       "nearby_resonance_label": "8d3/2",
       "robustness": "robust"
     },
     {
-      "wl_nm": 634.2045,
-      "alpha_au": -424.5426,
-      "delta_alpha_slope_au_per_nm": 217.1102,
+      "wl_nm": 634.303,
+      "alpha_au": -424.843,
+      "delta_alpha_slope_au_per_nm": 249.4129,
       "nearby_resonance_nm": 635.631,
       "nearby_resonance_label": "9s",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 659.0323,
-      "alpha_au": -509.6749,
-      "delta_alpha_slope_au_per_nm": 38.6321,
+      "wl_nm": 660.0416,
+      "alpha_au": -513.5854,
+      "delta_alpha_slope_au_per_nm": 43.1284,
       "nearby_resonance_nm": 672.515,
       "nearby_resonance_label": "7d3/2",
       "robustness": "robust"
     },
     {
-      "wl_nm": 759.3866,
-      "alpha_au": -1284.9985,
-      "delta_alpha_slope_au_per_nm": 737.3004,
+      "wl_nm": 759.4284,
+      "alpha_au": -1285.6465,
+      "delta_alpha_slope_au_per_nm": 774.9054,
       "nearby_resonance_nm": 761.1,
       "nearby_resonance_label": "8s",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 1526.449,
-      "alpha_au": 582.4557,
-      "delta_alpha_slope_au_per_nm": 4.9187,
+      "wl_nm": 1518.2252,
+      "alpha_au": 585.4068,
+      "delta_alpha_slope_au_per_nm": 5.0846,
       "nearby_resonance_nm": 1359.202,
       "nearby_resonance_label": "7s",
       "robustness": "robust"
@@ -123,6 +123,24 @@
   "I_ref_kWcm2": 10.0,
   "point_result": null,
   "extrapolation": null,
+  "published_lines": {
+    "published": [
+      "6p1/2-5d3/2",
+      "6p1/2-6d3/2",
+      "6p1/2-7d3/2",
+      "6p1/2-7s",
+      "6p3/2-10d5/2",
+      "6p3/2-11d5/2",
+      "6p3/2-5d3/2",
+      "6p3/2-5d5/2",
+      "6p3/2-6d3/2",
+      "6p3/2-6d5/2",
+      "6p3/2-7d3/2",
+      "6p3/2-7d5/2",
+      "6p3/2-7s"
+    ],
+    "unticked": []
+  },
   "transitions_gs": [
     {
       "delta_E_au": 0.050931941316820606,
@@ -1595,30 +1613,30 @@
     },
     {
       "delta_E_au": 0.015131533405825945,
-      "fosc": 0.268,
+      "fosc": 0.2542601996625619,
       "sign": 1,
       "other_label": "5d3/2",
-      "source": "NIST",
+      "source": "literature",
       "wl_nm": 3011.1475,
-      "sigma_f": 0.00536
+      "sigma_f": 0.025426019966256194
     },
     {
       "delta_E_au": 0.03352214369947767,
-      "fosc": 0.21158,
+      "fosc": 0.20088256352390993,
       "sign": 1,
       "other_label": "7s",
       "source": "literature",
       "wl_nm": 1359.1995,
-      "sigma_f": 0.021158
+      "sigma_f": 0.020088256352390994
     },
     {
       "delta_E_au": 0.05199029506292003,
-      "fosc": 0.3347199999999999,
+      "fosc": 0.310085716843774,
       "sign": 1,
       "other_label": "6d3/2",
       "source": "literature",
       "wl_nm": 876.3805,
-      "sigma_f": 0.033471999999999995
+      "sigma_f": 0.0310085716843774
     },
     {
       "delta_E_au": 0.05986516031465243,
@@ -1631,12 +1649,12 @@
     },
     {
       "delta_E_au": 0.06775071961913795,
-      "fosc": 0.09915899999999994,
+      "fosc": 0.09490746639980906,
       "sign": 1,
       "other_label": "7d3/2",
       "source": "literature",
       "wl_nm": 672.5136,
-      "sigma_f": 0.009915899999999995
+      "sigma_f": 0.009490746639980906
     },
     {
       "delta_E_au": 0.071682051857523,

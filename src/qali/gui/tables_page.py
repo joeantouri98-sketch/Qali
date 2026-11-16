@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import csv
 import math
+from copy import deepcopy
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -38,6 +39,26 @@ from PySide6.QtWidgets import (
 )
 
 from qali.core import species_data, user_tables
+
+PUBLISHED_NOTICE_KEY = "tables/hide_published_lines_notice"
+
+
+def _fallback_text(el: str, line: str, D_alt: float | None, src_alt: str | None) -> str:
+    """What an unticked line of *el* uses, for a hover."""
+    from qali.physics.polarizability_core import PUBLISHED_LINES
+
+    if not D_alt:
+        return "Unticked, the line has no value from another source."
+    if src_alt in ("NIST", "precision"):
+        return f"Unticked, it uses NIST's value, |D| = {D_alt:.4g}."
+    what = "the literature multiplet average" if src_alt == "literature" else f"the {src_alt} value"
+    same = abs(D_alt - PUBLISHED_LINES.get(el, {}).get(line, 0.0)) < 1e-3
+    return f"Unticked, it uses {what}, |D| = {D_alt:.4g}" + (", the same as the published value." if same else ".")
+
+
+def _line_name(key: str) -> str:
+    """``"Cs / 6p1/2-5d3/2"`` -> ``"Cs 6p1/2-5d3/2"``."""
+    return key.replace(" / ", " ", 1)
 from qali.core.paths import OVERRIDABLE_TREES, resource_root
 
 from .dataset_editor import DatasetEditorDialog
@@ -100,13 +121,22 @@ class AddRowDialog(QDialog):
             form.addRow(area)
         else:
             self.value.setPlaceholderText(info.unit or "number")
-            form.addRow("Value" + (f" ({info.unit})" if info.unit else ""), self.value)
+            label = "|D|" if user_tables.ADDABLE[table_id].kind == "line" else "Value"
+            form.addRow(label + (f" ({info.unit})" if info.unit else ""), self.value)
+        self.sigma: QLineEdit | None = None
+        if user_tables.ADDABLE[table_id].kind == "line":
+            self.sigma = QLineEdit()
+            self.sigma.setPlaceholderText("optional; 10 % of |D| if left empty")
+            form.addRow(f"Uncertainty ({info.unit})", self.sigma)
         self.source = QLineEdit()
         self.source.setPlaceholderText("optional, e.g. paper or measurement")
         form.addRow("Source", self.source)
         self.use = QCheckBox("Use instead of the computed value")
         if table_id in user_tables.FLAGGABLE:
             form.addRow(self.use)
+        if table_id == "published.lines":
+            self.use.setText("Use in Polarizability and Lifetimes")
+            self.use.setChecked(True)
         self.error = QLabel("")
         self.error.setWordWrap(True)
         self.error.setStyleSheet("color: #d9534f;")
@@ -120,6 +150,11 @@ class AddRowDialog(QDialog):
     def accept(self) -> None:
         try:
             key, _path = user_tables.make_key(self.table_id, [b.text() for b in self.boxes])
+            if user_tables.ADDABLE[self.table_id].kind == "line":     # the same line written the other way round
+                el, line = key.split(" / ", 1)
+                flipped = f"{el} / " + "-".join(reversed(line.split("-", 1)))
+                if flipped.lower() in {k.lower() for k in self.existing}:
+                    key = next(k for k in self.existing if k.lower() == flipped.lower())
             if key.lower() in {k.lower() for k in self.existing}:
                 have = self.existing[next(k for k in self.existing if k.lower() == key.lower())]
                 raise ValueError(f"{key} is already in this table" + (f" ({_fmt(have)})" if have is not None else "") + ". Edit its rows instead.")
@@ -127,6 +162,14 @@ class AddRowDialog(QDialog):
                 value = user_tables.check_record(self.table_id, key, {n: b.text() for n, b in self.fields.items()})
             else:
                 value = user_tables.check_value(self.table_id, self.value.text())
+            self.sigma_value = None
+            if self.sigma is not None and self.sigma.text().strip():
+                try:
+                    self.sigma_value = float(self.sigma.text().replace(",", "."))
+                except ValueError:
+                    raise ValueError("Uncertainty must be a number.") from None
+                if not math.isfinite(self.sigma_value) or self.sigma_value < 0:
+                    raise ValueError("Uncertainty must be zero or more.")
         except ValueError as exc:
             self.error.setText(str(exc))
             return
@@ -135,6 +178,8 @@ class AddRowDialog(QDialog):
 
 
 class TablesPage(QWidget):
+    changed = Signal()
+
     def __init__(self, root: Path, parent=None, element: str | None = None, species: str | None = None):
         super().__init__(parent)
         self.root = Path(root)
@@ -143,15 +188,21 @@ class TablesPage(QWidget):
         self._overrides: dict[str, dict] = {t: dict(r) for t, r in user_tables.load_overrides().items()}
         self._additions: dict[str, dict] = {t: {k: dict(r) for k, r in rows.items()} for t, rows in user_tables.load_additions().items()}
         self._flags: dict[str, dict[str, bool]] = {t: dict(r) for t, r in user_tables.load_flags().items()}
+        self._at_open = deepcopy((self._overrides, self._additions, self._flags))    # for Cancel after Apply
+        self.applied = False
         self._table_id: str | None = None
         self._file: tuple[str, ...] | None = None
         self._building = False
+        self._bulk: list[str] | None = None          # rows ticked by Override all / none, for one note
+        self._notice: QMessageBox | None = None
+        self._notice_check: QCheckBox | None = None
 
         outer = QHBoxLayout(self)
         split = QSplitter(Qt.Horizontal)
         outer.addWidget(split)
 
         left = QWidget()
+        left.setMinimumWidth(340)
         lv = QVBoxLayout(left)
         lv.setContentsMargins(0, 0, 0, 0)
         self.search = QLineEdit()
@@ -170,14 +221,28 @@ class TablesPage(QWidget):
         self.intro.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.intro.setTextFormat(Qt.RichText)
         self.intro.setWordWrap(True)
+        self.intro.setContentsMargins(16, 4, 8, 8)
         self.stack.addWidget(self.intro)                                              # 0
         split.addWidget(self.stack)
-        split.setSizes([280, 760])
+        split.setStretchFactor(1, 1)
+        split.setSizes([360, 660])
         self._build_table_view()                                                       # 1
         self._build_file_view()                                                        # 2
         self._fill_tree()
+        self._update_intro()
+
+    def _update_intro(self) -> None:
+        """The page shown before anything is picked: this element's data, or what has been edited."""
         if self.element:
             self.intro.setText(self.summary())
+            return
+        edited = [user_tables.BY_ID[t].title for t in (info.table_id for info in user_tables.TABLES)
+                  if self._is_edited(t)]
+        if edited:
+            self.intro.setText("<b>Edited tables</b><br>" + "<br>".join(f"&middot; {t}" for t in edited)
+                               + "<br><br>Pick a table or a file.")
+        else:
+            self.intro.setText("Nothing edited yet.<br><br>Pick a table or a file.")
 
     # --- tree --------------------------------------------------------------------------
     def _fill_tree(self) -> None:
@@ -319,12 +384,21 @@ class TablesPage(QWidget):
                 added_rows += [(k, v, rec.get("source", "")) for k, (_p, v) in user_tables.flatten({akey: rec["record"]}).items()]
             else:
                 added_rows.append((akey, rec["value"], rec.get("source", "")))
+        published = table_id == "published.lines"
+        self._extra_lines: dict[str, tuple[str, ...]] = {}       # added lines, looked up with the packaged ones
+        for akey in added if published else ():
+            el, _sep, line = akey.partition(" / ")
+            self._extra_lines[el] = (*self._extra_lines.get(el, ()), line)
+        self.grid.setHorizontalHeaderLabels(["Name", *(("NIST", "Published") if published else ("Packaged", "Value")),
+                                             "Unit", "Override"])
         self.grid.setRowCount(len(rows) + len(added_rows))
         for r, (key, packaged, _now) in enumerate(rows):
             name, pk = QTableWidgetItem(key), QTableWidgetItem(_fmt(packaged))
             for it in (name, pk):
                 it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             self._put_row(r, key, name, pk, _fmt(mine.get(key, packaged)), key in mine)
+            if published:
+                self._published_cells(r, key, packaged if key in mine else None)
         for r, (key, value, source) in enumerate(added_rows, start=len(rows)):
             name, pk = QTableWidgetItem(key), QTableWidgetItem("added")
             for it in (name, pk):
@@ -332,6 +406,8 @@ class TablesPage(QWidget):
             if source:
                 name.setToolTip(source)
             self._put_row(r, key, name, pk, _fmt(value), True)
+            if published:
+                self._published_cells(r, key, None, added=added.get(key))
         self.grid.resizeColumnToContents(1)
         self.grid.resizeColumnToContents(2)
         self._building = False
@@ -343,6 +419,31 @@ class TablesPage(QWidget):
         self.remove_btn.setVisible(table_id in user_tables.ADDABLE)
         self._update_buttons()
         self.stack.setCurrentIndex(1)
+
+    def _published_cells(self, r: int, key: str, packaged: float | None, added: dict | None = None) -> None:
+        """Row *r* of "Published matrix elements": NIST's |D| in column 1, the value's source as the hover of column 2."""
+        from qali.physics import polarizability_core as P
+
+        el, _sep, line = key.partition(" / ")
+        lines = getattr(self, "_extra_lines", {}).get(el, ())
+        D_alt, src_alt = P.published_line_alternatives(el, lines if line in lines else (*lines, line)).get(line, (None, None))
+        nist = self.grid.item(r, 1)
+        if src_alt in ("NIST", "precision") and D_alt:
+            nist.setText(_fmt(round(D_alt, 4)))
+            nist.setToolTip("NIST's f-value as |D|. Used when this row is unticked.")
+        else:
+            nist.setText("\u2014")
+            nist.setToolTip("No NIST value for this line.\n" + _fallback_text(el, line, D_alt, src_alt))
+        if added is not None:
+            ref = str(added.get("source") or "added by you")
+            sigma = added.get("sigma")
+            tip = f"{ref}\n\u00b1 {_fmt(sigma)} a.u." if sigma is not None else f"{ref}\n\u00b1 10 % (no uncertainty given)"
+        else:
+            ref, sigma = P.published_line_sources(el).get(line, ("", None))
+            tip = (ref or "No source recorded") + (f"\n\u00b1 {_fmt(sigma)} a.u." if sigma else "")
+            if packaged is not None:
+                tip += f"\nPackaged value: {_fmt(packaged)}"
+        self.grid.item(r, 2).setToolTip(tip)
 
     def _put_row(self, r: int, key: str, name, pk, value_text: str, marked: bool) -> None:
         self.grid.setItem(r, 0, name)
@@ -364,7 +465,7 @@ class TablesPage(QWidget):
         self._style(r, marked)
 
     def _is_edited(self, table_id: str) -> bool:
-        default = {k: True for k in user_tables.DEFAULT_FLAGS.get(table_id, ())}
+        default = {k: True for k in user_tables.default_flags(table_id)}
         return bool(self._overrides.get(table_id) or self._additions.get(table_id)
                     or self._flags.get(table_id, {}) != default)
 
@@ -385,12 +486,76 @@ class TablesPage(QWidget):
         if not self._building and self._table_id is not None:
             self._set_flag(key, on)
             self._mark_tree_item()
+            if self._bulk is None:
+                self._explain_tick([key], on)
+            else:
+                self._bulk.append(key)
 
     def _tick_all(self, on: bool) -> None:
-        for r in range(self.grid.rowCount()):
-            box = self.override_box(r)
-            if box is not None and not self.grid.isRowHidden(r):
-                box.setChecked(on)
+        self._bulk = []
+        try:
+            for r in range(self.grid.rowCount()):
+                box = self.override_box(r)
+                if box is not None and not self.grid.isRowHidden(r):
+                    box.setChecked(on)
+            changed = self._bulk
+        finally:
+            self._bulk = None
+        if changed:
+            self._explain_tick(changed, on)
+
+    def _explain_tick(self, keys: list[str], on: bool) -> None:
+        """A short note on what ticking or unticking a row of "Published matrix elements" does."""
+        if self._table_id != "published.lines" or not keys:
+            return
+        from .main_window import open_settings
+
+        settings = open_settings()
+        if settings.value(PUBLISHED_NOTICE_KEY, False, type=bool):
+            return
+        from qali.physics.polarizability_core import published_line_alternatives
+
+        srcs = []
+        for k in keys:
+            el, _sep, line = k.partition(" / ")
+            lines = getattr(self, "_extra_lines", {}).get(el, ())
+            srcs.append(published_line_alternatives(el, lines if line in lines else (*lines, line)).get(line, (None, None))[1])
+        n_nist = sum(s in ("NIST", "precision") for s in srcs)
+        stages = "in Polarizability and Lifetimes"
+        if len(keys) == 1:
+            what = _line_name(keys[0])
+            if on:
+                text = f"{what} now uses the published matrix element {stages}."
+            elif n_nist:
+                text = f"{what} now uses NIST's value {stages}, in place of the published one."
+            elif srcs[0] == "literature":
+                text = f"NIST has no value for {what}: unticked, it uses the literature multiplet average {stages}."
+            else:
+                text = f"{what} is no longer used: {stages} take this line from their other sources, if any."
+        elif on:
+            text = f"These {len(keys)} lines now use the published matrix elements {stages}."
+        else:
+            text = (f"These {len(keys)} lines now use NIST's value {stages} where NIST has one ({n_nist} of them), "
+                    "else the literature multiplet average.")
+        if not on and any(k.startswith("Cs / 6p") and "-5d" in k for k in keys):
+            text += ("\n\nFor Cs 6p-5d, NIST's value puts the 6p polarizabilities 5-8 % above the Stark-shift"
+                     " measurements and the 5d5/2 lifetime 5 % below the 2020 measurement.")
+        text += "\n\nApplies after OK or Apply, at the next run of either stage."
+        box = QMessageBox(QMessageBox.Information, "Published matrix elements", text, QMessageBox.Ok, self)
+        # Keep our own reference: PySide6 does not keep the check box alive once setCheckBox returns, and reading it
+        # back through box.checkBox() after OK then crashes.
+        self._notice_check = QCheckBox("Don't show this again", box)
+        box.setCheckBox(self._notice_check)
+        box.finished.connect(self._notice_closed)
+        self._notice = box                          # kept alive while open; open() does not block
+        box.open()
+
+    def _notice_closed(self, _result: int) -> None:
+        check = self._notice_check
+        if check is not None and check.isChecked():
+            from .main_window import open_settings
+
+            open_settings().setValue(PUBLISHED_NOTICE_KEY, True)
 
     def _owner(self, table_id: str | None, key: str | None) -> str | None:
         """The added entry a grid row belongs to (a whole element for a record table), or None."""
@@ -419,6 +584,8 @@ class TablesPage(QWidget):
         if dlg.exec() and dlg.result_row:
             key, value, source = dlg.result_row
             self._additions.setdefault(tid, {})[key] = {("record" if isinstance(value, dict) else "value"): value, "source": source}
+            if getattr(dlg, "sigma_value", None) is not None:
+                self._additions[tid][key]["sigma"] = dlg.sigma_value
             if dlg.use.isChecked() and tid in user_tables.FLAGGABLE:
                 self._table_id = tid
                 self._set_flag(key, True)
@@ -493,8 +660,8 @@ class TablesPage(QWidget):
         item = self.tree.currentItem()
         if item is not None and self._table_id:
             item.setText(0, user_tables.BY_ID[self._table_id].title + ("  ·  edited" if self._is_edited(self._table_id) else ""))
-            if self.element:
-                self.intro.setText(self.summary())
+        self._update_intro()
+        self.changed.emit()
 
     def _filter_rows(self, text: str) -> None:
         needle = text.strip().lower()
@@ -522,7 +689,7 @@ class TablesPage(QWidget):
         else:
             changed = (self._overrides.pop(tid, None) is not None) | (self._additions.pop(tid, None) is not None) \
                 | (self._flags.pop(tid, None) is not None)
-        for k in user_tables.DEFAULT_FLAGS.get(tid, ()):          # the rows that start ticked are ticked again
+        for k in user_tables.default_flags(tid):          # the rows that start ticked are ticked again
             if not self.element or user_tables.element_of(tid, k) == self.element:
                 self._flags.setdefault(tid, {})[k] = True
         changed = changed or self._flags.get(tid, {}) != flags_before
@@ -606,6 +773,7 @@ class TablesPage(QWidget):
         if item is not None:
             item.setText(0, "/".join(parts[1:]) + ("  ·  edited" if user_tables.file_override(parts) else ""))
         self._show_file(parts)
+        self.changed.emit()
 
     # --- Preferences hooks -----------------------------------------------------------------
     def apply(self) -> list[str]:
@@ -622,7 +790,43 @@ class TablesPage(QWidget):
                 user_tables.reload(table_id)
             except Exception:
                 pass
+        self.applied = True
         return []
+
+    def undo_apply(self) -> None:
+        """Save the tables back as they were when the page opened (Cancel after Apply)."""
+        self._overrides, self._additions, self._flags = deepcopy(self._at_open)
+        self.apply()
+        self.applied = False
+
+    def changed_count(self) -> int:
+        """Edited tables plus edited data files."""
+        tables = sum(self._is_edited(info.table_id) for info in user_tables.TABLES)
+        files = sum(user_tables.file_override(parts) is not None
+                    for paths in data_files().values() for parts in paths)
+        return tables + files
+
+    def search_texts(self) -> list[str]:
+        texts = [info.title for info in user_tables.TABLES] + sorted({info.group for info in user_tables.TABLES})
+        texts += ["/".join(parts[1:]) for paths in data_files().values() for parts in paths]
+        return texts
+
+    def highlight(self, needle: str) -> int:
+        """Filter the tree to what holds *needle*; returns the number of matching tables and files."""
+        self.search.setText(needle.strip())
+        needle = needle.strip().lower()
+        return sum(needle in t.lower() for t in self.search_texts()) if needle else 0
+
+    def reset_everything(self) -> None:
+        """Drop every table edit, added row and override tick (kept until Apply, like any edit)."""
+        self._overrides, self._additions = {}, {}
+        self._flags = {tid: {k: True for k in keys} for tid in user_tables.FLAGGABLE
+                       if (keys := user_tables.default_flags(tid))}
+        self._fill_tree()
+        self.stack.setCurrentIndex(0)
+        self._table_id = self._file = None
+        self._update_intro()
+        self.changed.emit()
 
     def reset_all(self) -> None:
         """Restore Defaults: the table on screen, or the edited copy of the file on screen."""

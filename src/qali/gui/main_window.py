@@ -108,6 +108,8 @@ from .extrapolation_dialog import active_config_path
 from . import wheel_guard
 from .save_as import OutputSnapshot, sanitize
 from .web_downloads import attach_web_downloads
+from . import units
+from .general_page import LAST_SPECIES_SETTING, orca_from_settings, reopen_enabled
 from .preferences_dialog import PreferencesDialog, load_overrides as load_colour_overrides
 from .extrapolation_dialog import open_for_species as open_extrapolation_dialog
 from .dataset_templates import CSV_DATASET_TEMPLATES, JSON_DATASET_TEMPLATES
@@ -146,7 +148,8 @@ from .stages import (
     stage_has_output,
 )
 from . import brand
-from .theme import DARK, SYSTEM, THEME_LABELS, THEME_NAMES, apply_theme, is_dark, mono_font
+from .appearance_extras import CONSOLE_ON_TOP_SETTING
+from .theme import DARK, SYSTEM, THEME_LABELS, THEME_NAMES, apply_theme, is_dark, load_fonts, mono_font
 
 try:
     from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -169,7 +172,6 @@ THEME_SETTING = "appearance/theme"
 CENTER_PANEL = 1  # the viewer: the one panel that never collapses
 SPLITTER_HANDLE_WIDTH = 7
 PANEL_REOPEN_SIZE = 280
-CONSOLE_ON_TOP_SETTING = "layout/console_panel_on_top"
 # Dragging the panel's tab bar past these fractions of the height moves it.
 MOVE_PANEL_UP_BELOW = 0.35
 MOVE_PANEL_DOWN_ABOVE = 0.65
@@ -258,9 +260,11 @@ class MainWindow(QMainWindow):
         self._seed_workers: set[_SeedWorker] = set()
 
         brand.load_colours(self.settings)
+        load_fonts(self.settings)
         self._build_ui()
         self._build_menu()
         load_colour_overrides(self.settings)
+        units.load(self.settings)
         saved_theme = self.settings.value(THEME_SETTING, DARK)
         wheel_guard.install(QApplication.instance())
         self._set_theme(saved_theme if saved_theme in THEME_NAMES else DARK, save=False)
@@ -317,6 +321,17 @@ class MainWindow(QMainWindow):
         self._seed_workers.discard(worker)
         worker.deleteLater()
         self._refresh_all()
+        self._reopen_last_species()
+
+    def _reopen_last_species(self) -> None:
+        """On the first refresh of a session: select the species used last, if Preferences asks for it."""
+        if getattr(self, "_reopened", False):
+            return
+        self._reopened = True
+        last = self.settings.value(LAST_SPECIES_SETTING, "")
+        if (reopen_enabled(self.settings) and isinstance(last, str) and last and not self.current_species
+                and self.species_list.findItems(last, Qt.MatchExactly)):
+            self._set_species(last)
 
     def _build_menu(self):
         file_menu = self.menuBar().addMenu("&File")
@@ -966,7 +981,29 @@ class MainWindow(QMainWindow):
         PreferencesDialog(self, self.theme_name, self.settings,
                           lambda: self._set_theme(self.theme_name, save=False),
                           root=self.root, species=species or self.current_species or None,
-                          start_tab=start_tab, set_theme=self._set_theme_from_prefs).exec()
+                          start_tab=start_tab, set_theme=self._set_theme_from_prefs,
+                          default_root=default_workspace().root, set_root=self._root_from_prefs,
+                          units_changed=self._units_changed,
+                          look_changed=self._look_changed).exec()
+
+    def _look_changed(self) -> None:
+        """Preferences changed the text sizes or the console position: show them."""
+        for widget in (self.json_view, self.console, self.cmd_preview):
+            widget.setFont(mono_font())
+        self._set_console_panel_on_top(self.settings.value(CONSOLE_ON_TOP_SETTING, False, type=bool), save=False)
+
+    def _units_changed(self) -> None:
+        """Preferences changed the units or number format: redraw what shows numbers."""
+        self._refresh_overview()
+        self.compare_view.refresh_units()
+
+    def _root_from_prefs(self, root: Path | None) -> None:
+        """Preferences > General changed the output folder (None: the default one); the setting is saved there."""
+        if project_root_from_env():
+            return                                   # QALI_PROJECT_ROOT decides this session's folder
+        target = root if root is not None else default_workspace().root
+        if Path(target) != Path(self.root):
+            self._switch_root(Path(target))
 
     def _set_theme_from_prefs(self, name: str) -> None:
         self._set_theme(name)
@@ -1163,6 +1200,7 @@ class MainWindow(QMainWindow):
         if not species:
             return
         self.current_species = species
+        self.settings.setValue(LAST_SPECIES_SETTING, species)
         self.species_input.clear()
         self._show_species_title(species)
         if not self.species_list.findItems(species, Qt.MatchExactly):
@@ -1645,7 +1683,7 @@ class MainWindow(QMainWindow):
         proc.setWorkingDirectory(str(self.root))
 
         env = QProcessEnvironment.systemEnvironment()
-        for name, value in stage_env_values(self.root).items():
+        for name, value in stage_env_values(self.root, orca_from_settings(self.settings)).items():
             env.insert(name, value)
         proc.setProcessEnvironment(env)
         # A pipeline never reads stdin; a stray input() must fail, not hang.
@@ -2058,7 +2096,7 @@ def main():
     from .preferences_dialog import QALI_BASE_KEY
 
     base = open_settings().value(QALI_BASE_KEY, "")
-    splash = QSplashScreen(brand.splash(__version__, SPLASH_TAGLINE,
+    splash = QSplashScreen(brand.splash(f"v{__version__}", SPLASH_TAGLINE,
                                         background=base if isinstance(base, str) and base else brand.SPLASH_BG))
     splash.show()
     app.processEvents()

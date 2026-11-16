@@ -33,7 +33,7 @@ linak = "qali.cli:main"
 linak-gui = "qali.gui.app:main"
 
 [build-system]
-requires = ["setuptools>=77", "setuptools-scm>=8"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -42,9 +42,9 @@ where = ["src"]
 [tool.setuptools]
 include-package-data = false
 
-[tool.setuptools_scm]
-fallback_version = "0+unknown"
-tag_regex = "^(?:[\\w-]+-)?[vV]?\\.?(?P<version>\\d+(?:\\.\\d+){0,2}[^+]*)(?:\\+.*)?$"
+[tool.setuptools.dynamic]
+# The one place the version is set; bump it before tagging a release.
+version = { attr = "qali._version.__version__" }
 
 [tool.setuptools.package-data]
 qali = [

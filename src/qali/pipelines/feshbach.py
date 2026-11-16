@@ -130,7 +130,6 @@ class FeshbachInputs:
     mass_source: str
     note: str
     published: dict | None = None    # channel -> TableCurve | FitCurve
-    stale_hint: str | None = None
 
 
 def get_available_elements(data_dir):
@@ -223,7 +222,6 @@ def load_inputs(element, data_dir, isotope_A=None):
         mass_source=mass_src,
         note=params.get('note', ''),
         published=published,
-        stale_hint=_stale_copy_hint(element, data_dir, params),
     )
 
 
@@ -250,24 +248,6 @@ def load_published_curves(params, resonances, data_dir, element):
                 continue
         out[ch] = channel_curve_spec(spec, resonances, rows)
     return out
-
-
-def _stale_copy_hint(element, data_dir, params):
-    """A note when the bundled parameter file has published a(B) curves that this copy lacks."""
-    if params.get('curves'):
-        return None
-    try:
-        from qali.core.paths import reference_path
-        bundled = reference_path('data_json', f'{element}_feshbach.json')
-        if os.path.abspath(bundled) == os.path.abspath(os.path.join(data_dir, f'{element}_feshbach.json')):
-            return None
-        with open(bundled, encoding='utf-8') as f:
-            if not json.load(f).get('curves'):
-                return None
-    except (OSError, ValueError):
-        return None
-    return (f"  Note: the bundled {element}_feshbach.json now has published a(B) curves (tables or fits) that "
-            f"your copy in {data_dir} lacks; delete your copy to get them (it is re-seeded on the next start).")
 
 
 # ============================================================================
@@ -498,8 +478,6 @@ def run_one(element, args):
         boson=is_boson(element, inputs.isotope_A), channel=args.channel,
         published=inputs.published, refine=True,
     )
-    if inputs.stale_hint:
-        print(inputs.stale_hint)
     if len(result.channels) > 1:
         print(f"  NOTE: {len(result.channels)} entrance channels in {element}_feshbach.json; the "
               f"combined curve is channel {result.default_channel!r} (use --channel to pick another).")

@@ -3,14 +3,14 @@
   "gs_label": "7s",
   "excited_label": "7p1/2",
   "alpha0_gs_au": 316.0516,
-  "alpha0_ex_au": 1169.1249,
+  "alpha0_ex_au": 1169.1251,
   "T_K": 300.0,
   "shift_gs_hz_at_T": -2.721299,
-  "shift_ex_hz_at_T": -10.066514,
-  "shift_diff_hz_at_T": -7.345216,
+  "shift_ex_hz_at_T": -10.066516,
+  "shift_diff_hz_at_T": -7.345218,
   "dyn_gs_hz_at_T": -2.733525,
-  "dyn_ex_hz_at_T": -10.572195,
-  "dyn_diff_hz_at_T": -7.83867,
+  "dyn_ex_hz_at_T": -10.572197,
+  "dyn_diff_hz_at_T": -7.838672,
   "note": "shift_*_hz_at_T = static (leading-order) term only. dyn_*_hz_at_T = full static+dynamic term via Planck-spectrum integral of alpha(omega), validated against the Itano <E^2>_T formula and the Farley-Wing high-n closed form (Beloy et al. 2025, arXiv:2507.00948, Sec. II). rates = bound-bound BBR depopulation from lifetimes.json; tau_eff includes Gamma_PI when continuum block is present. continuum = Beterov eq.27 PI (A_L + QD phases) + optional SFI (--field) + multi-step mixing (eq.35; --no-mix to skip); Gamma_quench = Gamma_BBR + Gamma_PI. rydberg_shifts = static Itano + principal-value Planck dyn with TRK/tail/Kramers continuum completion (Farley-Wing asymptote); for high-n labels (no dynamic integral).",
   "rates": {
     "T_K": 300.0,
@@ -45,15 +45,15 @@
       },
       {
         "state": "7p3/2",
-        "Gamma_BBR_s": 6.063047666239134,
+        "Gamma_BBR_s": 6.0629839937722805,
         "Gamma_rad_s": 47571368.36723573,
-        "Gamma_BBR_over_rad": 1.274516137403143e-07
+        "Gamma_BBR_over_rad": 1.2745027527835621e-07
       },
       {
         "state": "7p1/2",
-        "Gamma_BBR_s": 0.01617447573697624,
+        "Gamma_BBR_s": 0.016174457038662556,
         "Gamma_rad_s": 33962875.33214113,
-        "Gamma_BBR_over_rad": 4.762398818944918e-10
+        "Gamma_BBR_over_rad": 4.76239331342941e-10
       },
       {
         "state": "7s",

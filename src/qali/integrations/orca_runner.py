@@ -304,12 +304,14 @@ def resolve_orca_executable():
         if not _has_orca_modules(folder):
             raise RuntimeError(
                 f"'orca' on PATH ({resolved}) is not the ORCA quantum-chemistry program "
-                f"(no ORCA modules next to it); set ORCA_EXE to the ORCA executable.")
+                f"(no ORCA modules next to it); set ORCA_EXE to the ORCA executable "
+                f"(in the app: Edit > Preferences > General).")
         return resolved
     
     raise RuntimeError(
         "ORCA executable not found on system PATH. "
-        "Either add orca to PATH or set ORCA_EXE environment variable.")
+        "Either add orca to PATH, set the ORCA_EXE environment variable, or choose it in "
+        "Edit > Preferences > General.")
 
 
 def resolve_scf_keyword(calc_mode):

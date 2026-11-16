@@ -313,26 +313,6 @@ def load_atomic_gI(element, data_dir, isotope_A):
     return None
 
 
-def _stale_copy_hint(element, data_dir):
-    """A note when the bundled constants file carries measured g factors that this copy lacks."""
-    try:
-        from qali.core.paths import reference_path as _ref
-        bundled = _ref('data_json', f'{element}_hf_constants.json')
-        mine = os.path.join(data_dir, f"{element}_hf_constants.json")
-        if not (os.path.isfile(bundled) and os.path.isfile(mine)):
-            return None
-        with open(bundled, encoding='utf-8') as f:
-            b = f.read()
-        with open(mine, encoding='utf-8') as f:
-            m = f.read()
-    except OSError:
-        return None
-    if ('_gI_prime' in b and '_gI_prime' not in m) or ('gJ_exp' in b and 'gJ_exp' not in m):
-        return (f"  Note: the bundled {element}_hf_constants.json now has measured g_J and atomic g_I values that "
-                f"your copy in {data_dir} lacks; delete your copy to get them (it is re-seeded on the next start).")
-    return None
-
-
 def result_gI_source(element, data_dir, A):
     """'atomic' when the constants file gives the measured atomic g_I′ of this isotope, else 'bare'."""
     return 'atomic' if load_atomic_gI(element, data_dir, A) is not None else 'bare'
@@ -407,9 +387,6 @@ def run_element(element, nuclear, isotope_A=None, state_labels=None,
     # ── HF constants ─────────────────────────────────────────────────────────
     hf_consts, hf_source = load_hf_constants(element, data_dir, nucleus.A, nuclear)
     print(f"  HF constants: {hf_source}")
-    hint = _stale_copy_hint(element, data_dir)
-    if hint:
-        print(hint)
     if hf_consts is None:
         print(f"  No hf_constants available. Fill in {data_dir}/{element}_hf_constants.json")
         return None

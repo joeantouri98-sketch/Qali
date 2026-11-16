@@ -20,7 +20,7 @@
     {
       "wl_nm": 513.6728,
       "alpha_au": -233.3341,
-      "delta_alpha_slope_au_per_nm": 162.9746,
+      "delta_alpha_slope_au_per_nm": 162.9745,
       "nearby_resonance_nm": 512.879,
       "nearby_resonance_label": "15s",
       "robustness": "sensitive"
@@ -28,15 +28,15 @@
     {
       "wl_nm": 521.1527,
       "alpha_au": -249.1581,
-      "delta_alpha_slope_au_per_nm": 126.3961,
+      "delta_alpha_slope_au_per_nm": 126.396,
       "nearby_resonance_nm": 519.911,
       "nearby_resonance_label": "14s",
       "robustness": "sensitive"
     },
     {
       "wl_nm": 532.1591,
-      "alpha_au": -274.4854,
-      "delta_alpha_slope_au_per_nm": 99.0865,
+      "alpha_au": -274.4853,
+      "delta_alpha_slope_au_per_nm": 99.0864,
       "nearby_resonance_nm": 530.107,
       "nearby_resonance_label": "13s",
       "robustness": "sensitive"
@@ -44,7 +44,7 @@
     {
       "wl_nm": 545.2388,
       "alpha_au": -308.3553,
-      "delta_alpha_slope_au_per_nm": 285.7321,
+      "delta_alpha_slope_au_per_nm": 285.7314,
       "nearby_resonance_nm": 545.789,
       "nearby_resonance_label": "12s",
       "robustness": "very sensitive"
@@ -52,7 +52,7 @@
     {
       "wl_nm": 549.6021,
       "alpha_au": -320.7207,
-      "delta_alpha_slope_au_per_nm": 81.4276,
+      "delta_alpha_slope_au_per_nm": 81.4275,
       "nearby_resonance_nm": 553.325,
       "nearby_resonance_label": "10d3/2",
       "robustness": "sensitive"
@@ -60,7 +60,7 @@
     {
       "wl_nm": 571.3173,
       "alpha_au": -392.2596,
-      "delta_alpha_slope_au_per_nm": 331.1803,
+      "delta_alpha_slope_au_per_nm": 331.1796,
       "nearby_resonance_nm": 572.033,
       "nearby_resonance_label": "11s",
       "robustness": "very sensitive"
@@ -68,7 +68,7 @@
     {
       "wl_nm": 579.9882,
       "alpha_au": -426.6014,
-      "delta_alpha_slope_au_per_nm": 74.5229,
+      "delta_alpha_slope_au_per_nm": 74.5228,
       "nearby_resonance_nm": 585.511,
       "nearby_resonance_label": "9d3/2",
       "robustness": "sensitive"
@@ -76,46 +76,46 @@
     {
       "wl_nm": 621.2847,
       "alpha_au": -666.9657,
-      "delta_alpha_slope_au_per_nm": 595.529,
+      "delta_alpha_slope_au_per_nm": 595.5283,
       "nearby_resonance_nm": 622.153,
       "nearby_resonance_label": "10s",
       "robustness": "very sensitive"
     },
     {
       "wl_nm": 643.8729,
-      "alpha_au": -901.5838,
-      "delta_alpha_slope_au_per_nm": 125.7371,
+      "alpha_au": -901.5837,
+      "delta_alpha_slope_au_per_nm": 125.737,
       "nearby_resonance_nm": 650.904,
       "nearby_resonance_label": "8d3/2",
       "robustness": "sensitive"
     },
     {
       "wl_nm": 745.6574,
-      "alpha_au": 2008.3576,
-      "delta_alpha_slope_au_per_nm": 1340.416,
+      "alpha_au": 2008.3577,
+      "delta_alpha_slope_au_per_nm": 1340.4169,
       "nearby_resonance_nm": 744.403,
       "nearby_resonance_label": "9s",
       "robustness": "very sensitive"
     },
     {
       "wl_nm": 772.6078,
-      "alpha_au": 448.4847,
-      "delta_alpha_slope_au_per_nm": -53.5827,
+      "alpha_au": 448.4842,
+      "delta_alpha_slope_au_per_nm": -53.5828,
       "nearby_resonance_nm": 744.403,
       "nearby_resonance_label": "9s",
       "robustness": "sensitive"
     },
     {
       "wl_nm": 840.023,
-      "alpha_au": 2741.7366,
-      "delta_alpha_slope_au_per_nm": 498.7481,
+      "alpha_au": 2741.7367,
+      "delta_alpha_slope_au_per_nm": 498.7484,
       "nearby_resonance_nm": 832.873,
       "nearby_resonance_label": "7d3/2",
       "robustness": "very sensitive"
     },
     {
-      "wl_nm": 1486.2872,
-      "alpha_au": 419.4058,
+      "wl_nm": 1486.2885,
+      "alpha_au": 419.4055,
       "delta_alpha_slope_au_per_nm": 5.8125,
       "nearby_resonance_nm": 1332.875,
       "nearby_resonance_label": "8s",
@@ -131,6 +131,21 @@
   "I_ref_kWcm2": 10.0,
   "point_result": null,
   "extrapolation": null,
+  "published_lines": {
+    "published": [
+      "6d3/2-8p1/2",
+      "6d3/2-8p3/2",
+      "6d5/2-8p3/2",
+      "7p1/2-6d3/2",
+      "7p1/2-8s",
+      "7p3/2-6d3/2",
+      "7p3/2-6d5/2",
+      "7p3/2-8s",
+      "8s-8p1/2",
+      "8s-8p3/2"
+    ],
+    "unticked": []
+  },
   "transitions_gs": [
     {
       "delta_E_au": 0.05575772899933386,
@@ -1675,21 +1690,21 @@
     },
     {
       "delta_E_au": 0.018190987975593584,
-      "fosc": 0.31469,
+      "fosc": 0.314689636205991,
       "sign": 1,
       "other_label": "6d3/2",
       "source": "literature",
       "wl_nm": 2504.7172,
-      "sigma_f": 0.031469000000000004
+      "sigma_f": 0.0314689636205991
     },
     {
       "delta_E_au": 0.034184256237116455,
-      "fosc": 0.20398,
+      "fosc": 0.20398157047237442,
       "sign": 1,
       "other_label": "8s",
       "source": "literature",
       "wl_nm": 1332.8732,
-      "sigma_f": 0.020398
+      "sigma_f": 0.020398157047237443
     },
     {
       "delta_E_au": 0.05470621696898965,

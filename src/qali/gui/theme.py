@@ -9,6 +9,7 @@ pipeline or physics imports.
 
 from __future__ import annotations
 
+import re
 import tempfile
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
@@ -192,8 +193,17 @@ def _readable_on(colour: str) -> str:
 def tokens_for(name: str) -> Tokens:
     """The colour tokens of theme *name*, with the user's colour choices applied."""
     key = resolve(name)
-    base = base_tokens(key)
-    ov = _overrides.get(key)
+    return tokens_with(key, _overrides.get(key))
+
+
+def tokens_with(name: str, overrides: dict[str, str] | None, qali: str | None = None) -> Tokens:
+    """Theme *name* with *overrides* (token -> colour) and Qali base *qali*, without making them current.
+
+    Preferences uses it to show a choice before it is applied.
+    """
+    key = resolve(name)
+    base = base_tokens(key, qali)
+    ov = {k: v for k, v in (overrides or {}).items() if QColor(v).isValid()}
     if not ov:
         return base
     changes = dict(ov)
@@ -203,8 +213,9 @@ def tokens_for(name: str) -> Tokens:
         changes["text_select_text"] = _readable_on(ov["text_select"])
     if "accent" in ov:
         acc = QColor(ov["accent"])
-        changes["accent_hover"] = acc.lighter(112).name() if is_dark(key) else acc.darker(112).name()
-        changes["accent_ink"] = acc.name() if is_dark(key) else acc.darker(150).name()
+        dark = QColor(base.bg).lightness() < 128
+        changes["accent_hover"] = acc.lighter(112).name() if dark else acc.darker(112).name()
+        changes["accent_ink"] = acc.name() if dark else acc.darker(150).name()
         changes["accent_text"] = _readable_on(ov["accent"])
     return replace(base, **changes)
 
@@ -222,21 +233,89 @@ def current() -> Tokens:
     return _current or tokens_for(DARK)
 
 
+# Text sizes chosen in Preferences > Appearance (the defaults above until then)
+UI_SIZE_SETTING = "appearance/ui_font_size"
+MONO_FAMILY_SETTING = "appearance/console_font"
+MONO_SIZE_SETTING = "appearance/console_font_size"
+UI_SIZE_RANGE = (8, 16)
+MONO_SIZE_RANGE = (7, 18)
+
+
+@dataclass(frozen=True)
+class Fonts:
+    ui_size: int = UI_FONT_POINT_SIZE
+    mono_family: str = ""             # '' : the first of MONO_FONT_FAMILIES installed
+    mono_size: int = MONO_FONT_POINT_SIZE
+
+
+DEFAULT_FONTS = Fonts()
+_fonts = DEFAULT_FONTS
+
+
+def fonts() -> Fonts:
+    return _fonts
+
+
+def set_fonts(f: Fonts) -> None:
+    global _fonts
+    _fonts = f
+
+
+def _int_in(value, lo: int, hi: int, default: int) -> int:
+    try:
+        return min(max(int(value), lo), hi)
+    except (TypeError, ValueError):
+        return default
+
+
+def load_fonts(settings) -> Fonts:
+    """The text sizes saved in *settings*; makes them current."""
+    f = Fonts(_int_in(settings.value(UI_SIZE_SETTING, UI_FONT_POINT_SIZE), *UI_SIZE_RANGE, UI_FONT_POINT_SIZE),
+              str(settings.value(MONO_FAMILY_SETTING, "") or ""),
+              _int_in(settings.value(MONO_SIZE_SETTING, MONO_FONT_POINT_SIZE), *MONO_SIZE_RANGE,
+                      MONO_FONT_POINT_SIZE))
+    set_fonts(f)
+    return f
+
+
+def save_fonts(settings, f: Fonts) -> None:
+    """Save *f*; values equal to the defaults are removed rather than written."""
+    for key, value, default in ((UI_SIZE_SETTING, f.ui_size, DEFAULT_FONTS.ui_size),
+                                (MONO_FAMILY_SETTING, f.mono_family, DEFAULT_FONTS.mono_family),
+                                (MONO_SIZE_SETTING, f.mono_size, DEFAULT_FONTS.mono_size)):
+        if value == default:
+            settings.remove(key)
+        else:
+            settings.setValue(key, value)
+
+
 def ui_font() -> QFont:
     """The interface font."""
     font = QFont()
     font.setFamilies(list(UI_FONT_FAMILIES))
-    font.setPointSize(UI_FONT_POINT_SIZE)
+    font.setPointSize(_fonts.ui_size)
     return font
 
 
 def mono_font() -> QFont:
     """The font for commands, logs and raw data."""
     font = QFont()
-    font.setFamilies(list(MONO_FONT_FAMILIES))
+    chosen = [_fonts.mono_family] if _fonts.mono_family else []
+    font.setFamilies(chosen + list(MONO_FONT_FAMILIES))
     font.setStyleHint(QFont.Monospace)
-    font.setPointSize(MONO_FONT_POINT_SIZE)
+    font.setPointSize(_fonts.mono_size)
     return font
+
+
+_PT = re.compile(r"(\d+(?:\.\d+)?)pt")
+
+
+def _scale_points(css: str, ui_size: int) -> str:
+    """The stylesheet's point sizes scaled with the interface text size (to the nearest half point)."""
+    if ui_size == UI_FONT_POINT_SIZE:
+        return css
+    k = ui_size / UI_FONT_POINT_SIZE
+    return _PT.sub(lambda m: f"{round(float(m.group(1)) * k * 2) / 2:g}pt", css)
 
 
 def build_palette(t: Tokens) -> QPalette:
@@ -333,8 +412,36 @@ QListWidget#speciesChips::item:hover {{ background: {raised}; }}
 QListWidget#speciesChips::item:selected {{ background: {selection}; border-color: {border_strong};
     color: {text}; }}
 
-QListWidget#prefsNav {{ border-right: 1px solid {border}; }}
-QListWidget#prefsNav::item {{ border-bottom: 1px solid {border}; border-radius: 0; padding: 8px 10px; }}
+QWidget#prefsHeader {{ background: {surface}; border-bottom: 1px solid {border}; }}
+QLabel#prefsTitle {{ font-size: 11pt; font-weight: 600; }}
+QLabel#prefsCrumb {{ color: {text_muted}; font-size: 11pt; }}
+QLineEdit#prefsSearch {{ background: {bg}; padding: 5px 8px; }}
+QListWidget#prefsNav {{ background: {bg}; border: none; border-right: 1px solid {border}; padding: 10px 8px; }}
+QListWidget#prefsNav::item {{ border: none; border-radius: 7px; padding: 0 10px; color: {text}; }}
+QListWidget#prefsNav::item:hover {{ background: {raised}; }}
+QListWidget#prefsNav::item:selected {{ background: {raised}; color: {accent_ink}; font-weight: 600; }}
+QWidget#prefsFooter {{ background: {bg}; border-top: 1px solid {border}; }}
+QLabel#pageTitle {{ font-size: 15pt; font-weight: 600; }}
+QFrame#prefsCard {{ background: {surface}; border: 1px solid {border}; border-radius: 10px; }}
+QLabel#cardTitle {{ color: {text_muted}; font-weight: 600; }}
+QLabel#changedMark {{ color: {accent_ink}; font-size: 8pt; }}
+QLabel[match="true"] {{ background: {selection}; color: {accent_ink}; border-radius: 4px; }}
+QToolButton#themeCard {{ background: {surface}; border: 1px solid {border}; border-radius: 8px;
+    padding: 8px 12px; text-align: left; }}
+QToolButton#themeCard:hover {{ border-color: {border_strong}; }}
+QToolButton#themeCard:checked {{ background: {raised}; border: 2px solid {accent_ink}; font-weight: 600; }}
+QToolButton#resetButton {{ background: transparent; border: none; color: {accent_ink}; padding: 0 4px;
+    font-size: 11pt; }}
+QToolButton#resetButton:hover {{ background: {raised}; }}
+QDialog#preferences QAbstractSpinBox {{ background: {surface}; color: {text}; border: 1px solid {border_strong};
+    border-radius: 6px; padding: 3px 6px; }}
+QDialog#preferences QAbstractSpinBox:focus {{ border-color: {accent_ink}; }}
+QDialog#preferences QAbstractSpinBox::up-button, QDialog#preferences QAbstractSpinBox::down-button {{
+    subcontrol-origin: border; width: 0; height: 0; border: none; image: none; }}
+QDialog#preferences QAbstractSpinBox::up-arrow, QDialog#preferences QAbstractSpinBox::down-arrow {{
+    width: 0; height: 0; image: none; }}
+QDialog#preferences QAbstractSpinBox QLineEdit {{ border: none; background: transparent; padding: 0;
+    selection-background-color: {text_select}; selection-color: {text_select_text}; }}
 
 QSplitter::handle {{ background: {border}; }}
 QSplitter::handle:horizontal {{ margin: 0 3px; }}
@@ -403,7 +510,8 @@ def _check_image(colour: str) -> str:
 
 def build_stylesheet(t: Tokens) -> str:
     """The application stylesheet for tokens *t*."""
-    return _STYLESHEET.format(**asdict(t), check_image=_check_image(_readable_on(t.accent_ink)))
+    css = _STYLESHEET.format(**asdict(t), check_image=_check_image(_readable_on(t.accent_ink)))
+    return _scale_points(css, _fonts.ui_size)
 
 
 def apply_theme(app: QApplication, name: str) -> Tokens:

@@ -98,12 +98,6 @@ def test_compute_uses_the_published_curve_and_refines_the_grid(cs_inputs):
     assert len(near) > 20                           # the 0.16 G line is resolved on a 0-940 G axis
 
 
-def test_stale_workspace_copy_is_reported(tmp_path, data_dir):
-    from qali.pipelines.feshbach import _stale_copy_hint
-    assert _stale_copy_hint("Cs", str(tmp_path), {"resonances": []}) is not None
-    assert _stale_copy_hint("Cs", str(tmp_path), {"curves": {"x": {}}}) is None
-
-
 # ------------------------------------------------------------------ derived physics
 def test_thermal_factor_matches_the_closed_form():
     from scipy.special import exp1

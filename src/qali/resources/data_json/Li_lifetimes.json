@@ -126130,6 +126130,10 @@
   ],
   "user_lifetime_overrides": {},
   "nist_f_scale": {},
+  "published_lines": {
+    "published": [],
+    "unticked": []
+  },
   "transitions": [
     {
       "upper_label": "2p1/2",

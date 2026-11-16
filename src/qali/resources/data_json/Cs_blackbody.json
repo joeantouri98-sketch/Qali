@@ -3,14 +3,14 @@
   "gs_label": "6s",
   "excited_label": "6p1/2",
   "alpha0_gs_au": 399.7604,
-  "alpha0_ex_au": 1433.4573,
+  "alpha0_ex_au": 1353.8891,
   "T_K": 300.0,
   "shift_gs_hz_at_T": -3.442057,
-  "shift_ex_hz_at_T": -12.342496,
-  "shift_diff_hz_at_T": -8.900439,
+  "shift_ex_hz_at_T": -11.657389,
+  "shift_diff_hz_at_T": -8.215333,
   "dyn_gs_hz_at_T": -3.462962,
-  "dyn_ex_hz_at_T": -13.300753,
-  "dyn_diff_hz_at_T": -9.837791,
+  "dyn_ex_hz_at_T": -12.566046,
+  "dyn_diff_hz_at_T": -9.103083,
   "note": "shift_*_hz_at_T = static (leading-order) term only. dyn_*_hz_at_T = full static+dynamic term via Planck-spectrum integral of alpha(omega), validated against the Itano <E^2>_T formula and the Farley-Wing high-n closed form (Beloy et al. 2025, arXiv:2507.00948, Sec. II). rates = bound-bound BBR depopulation from lifetimes.json; tau_eff includes Gamma_PI when continuum block is present. continuum = Beterov eq.27 PI (A_L + QD phases) + optional SFI (--field) + multi-step mixing (eq.35; --no-mix to skip); Gamma_quench = Gamma_BBR + Gamma_PI. rydberg_shifts = static Itano + principal-value Planck dyn with TRK/tail/Kramers continuum completion (Farley-Wing asymptote); for high-n labels (no dynamic integral).",
   "rates": {
     "T_K": 300.0,
@@ -21,15 +21,15 @@
     "sanity": [
       {
         "state": "6p3/2",
-        "Gamma_BBR_s": 1.4649813424735498,
+        "Gamma_BBR_s": 1.3988046846887483,
         "Gamma_rad_s": 32787134.6542431,
-        "Gamma_BBR_over_rad": 4.468159105461695e-08
+        "Gamma_BBR_over_rad": 4.2663218345849686e-08
       },
       {
         "state": "6p1/2",
-        "Gamma_BBR_s": 0.2386214281549965,
+        "Gamma_BBR_s": 0.22638780584754686,
         "Gamma_rad_s": 28630080.792685404,
-        "Gamma_BBR_over_rad": 8.334640404366621e-09
+        "Gamma_BBR_over_rad": 7.907340796096735e-09
       },
       {
         "state": "6f7/2",
@@ -46,14 +46,14 @@
       {
         "state": "6d5/2",
         "Gamma_BBR_s": 3119.5308992867763,
-        "Gamma_rad_s": 15986379.400027914,
-        "Gamma_BBR_over_rad": 0.00019513679872262566
+        "Gamma_rad_s": 16502566.407236632,
+        "Gamma_BBR_over_rad": 0.00018903307657158183
       },
       {
         "state": "6d3/2",
         "Gamma_BBR_s": 2484.768099445865,
-        "Gamma_rad_s": 17263915.402015194,
-        "Gamma_BBR_over_rad": 0.00014392842188949915
+        "Gamma_rad_s": 16393888.7760068,
+        "Gamma_BBR_over_rad": 0.0001515667291266753
       },
       {
         "state": "6g9/2",
@@ -221,8 +221,8 @@
           }
         ],
         "Gamma_PI_s": 13.65917,
-        "Gamma_mix_PI_s": 5.506276,
-        "Gamma_ion_s": 25.728049,
+        "Gamma_mix_PI_s": 5.506273,
+        "Gamma_ion_s": 25.728045,
         "Gamma_quench_s": 67004.057072
       },
       {
@@ -271,8 +271,8 @@
           }
         ],
         "Gamma_PI_s": 13.65917,
-        "Gamma_mix_PI_s": 5.439305,
-        "Gamma_ion_s": 25.638091,
+        "Gamma_mix_PI_s": 5.43926,
+        "Gamma_ion_s": 25.63803,
         "Gamma_quench_s": 66119.745891
       },
       {
@@ -671,8 +671,8 @@
           }
         ],
         "Gamma_PI_s": 59.437347,
-        "Gamma_mix_PI_s": 12.589069,
-        "Gamma_ion_s": 96.715301,
+        "Gamma_mix_PI_s": 12.589072,
+        "Gamma_ion_s": 96.715304,
         "Gamma_quench_s": 69061.498465
       },
       {
@@ -721,8 +721,8 @@
           }
         ],
         "Gamma_PI_s": 59.437347,
-        "Gamma_mix_PI_s": 10.342249,
-        "Gamma_ion_s": 93.686648,
+        "Gamma_mix_PI_s": 10.342289,
+        "Gamma_ion_s": 93.686702,
         "Gamma_quench_s": 65739.578065
       },
       {
@@ -1029,10 +1029,10 @@
         "state": "10d5/2",
         "n": 10,
         "l": "d",
-        "Gamma_rad_s": 3009304.51418,
+        "Gamma_rad_s": 3012181.96429,
         "Gamma_BBR_s": 65861.3813488,
         "tau_rad_s": 3.3e-07,
-        "tau_eff_s": 3.3e-07,
+        "tau_eff_s": 3.2e-07,
         "top_channels": [
           {
             "partner": "8f7/2",
@@ -1071,8 +1071,8 @@
           }
         ],
         "Gamma_PI_s": 1.099012,
-        "Gamma_mix_PI_s": 0.486306,
-        "Gamma_ion_s": 2.127731,
+        "Gamma_mix_PI_s": 0.486671,
+        "Gamma_ion_s": 2.12822,
         "Gamma_quench_s": 65862.48036
       },
       {
@@ -1171,8 +1171,8 @@
           }
         ],
         "Gamma_PI_s": 161.9468,
-        "Gamma_mix_PI_s": 12.116767,
-        "Gamma_ion_s": 233.82504,
+        "Gamma_mix_PI_s": 12.116769,
+        "Gamma_ion_s": 233.825041,
         "Gamma_quench_s": 58047.774278
       },
       {
@@ -1371,8 +1371,8 @@
           }
         ],
         "Gamma_PI_s": 0.08259,
-        "Gamma_mix_PI_s": 0.005952,
-        "Gamma_ion_s": 0.118832,
+        "Gamma_mix_PI_s": 0.005951,
+        "Gamma_ion_s": 0.11883,
         "Gamma_quench_s": 43079.713155
       },
       {
@@ -1479,7 +1479,7 @@
         "state": "11d5/2",
         "n": 11,
         "l": "d",
-        "Gamma_rad_s": 2133782.89863,
+        "Gamma_rad_s": 2133424.77467,
         "Gamma_BBR_s": 68859.439299,
         "tau_rad_s": 4.7e-07,
         "tau_eff_s": 4.5e-07,
@@ -1521,8 +1521,8 @@
           }
         ],
         "Gamma_PI_s": 6.360723,
-        "Gamma_mix_PI_s": 2.47027,
-        "Gamma_ion_s": 11.853997,
+        "Gamma_mix_PI_s": 2.470028,
+        "Gamma_ion_s": 11.853672,
         "Gamma_quench_s": 68865.800022
       },
       {
@@ -1821,8 +1821,8 @@
           }
         ],
         "Gamma_PI_s": 1.589936,
-        "Gamma_mix_PI_s": 0.069292,
-        "Gamma_ion_s": 2.22689,
+        "Gamma_mix_PI_s": 0.069293,
+        "Gamma_ion_s": 2.226891,
         "Gamma_quench_s": 54278.375048
       },
       {
@@ -2022,7 +2022,7 @@
         ],
         "Gamma_PI_s": 541.003877,
         "Gamma_mix_PI_s": 34.092831,
-        "Gamma_ion_s": 775.486562,
+        "Gamma_ion_s": 775.486561,
         "Gamma_quench_s": 59545.259519
       },
       {
@@ -2072,7 +2072,7 @@
         ],
         "Gamma_PI_s": 541.003877,
         "Gamma_mix_PI_s": 7.667949,
-        "Gamma_ion_s": 739.632488,
+        "Gamma_ion_s": 739.632487,
         "Gamma_quench_s": 37941.791894
       },
       {
@@ -2221,8 +2221,8 @@
           }
         ],
         "Gamma_PI_s": 10.523417,
-        "Gamma_mix_PI_s": 0.325086,
-        "Gamma_ion_s": 14.561374,
+        "Gamma_mix_PI_s": 0.325073,
+        "Gamma_ion_s": 14.561356,
         "Gamma_quench_s": 59129.429106
       },
       {
@@ -2621,8 +2621,8 @@
           }
         ],
         "Gamma_PI_s": 37.152072,
-        "Gamma_mix_PI_s": 0.910529,
-        "Gamma_ion_s": 51.106745,
+        "Gamma_mix_PI_s": 0.910534,
+        "Gamma_ion_s": 51.106751,
         "Gamma_quench_s": 59796.446179
       },
       {
@@ -3021,8 +3021,8 @@
           }
         ],
         "Gamma_PI_s": 88.679393,
-        "Gamma_mix_PI_s": 1.849684,
-        "Gamma_ion_s": 121.658314,
+        "Gamma_mix_PI_s": 1.849689,
+        "Gamma_ion_s": 121.658322,
         "Gamma_quench_s": 58114.627975
       },
       {
@@ -14258,10 +14258,10 @@
         "E_bind_eV": 0.214211,
         "Gamma_PI_s": 13.65917,
         "Gamma_SFI_s": 4.673133,
-        "Gamma_mix_PI_s": 5.506276,
-        "Gamma_mix_SFI_s": 1.88947,
+        "Gamma_mix_PI_s": 5.506273,
+        "Gamma_mix_SFI_s": 1.889469,
         "field_ionized": false,
-        "Gamma_ion_s": 25.728049,
+        "Gamma_ion_s": 25.728045,
         "Gamma_BBR_s": 66990.397902,
         "Gamma_rad_s": 3399490.0,
         "Gamma_quench_s": 67004.057072,
@@ -14279,10 +14279,10 @@
         "E_bind_eV": 0.214217,
         "Gamma_PI_s": 13.65917,
         "Gamma_SFI_s": 4.673133,
-        "Gamma_mix_PI_s": 5.439305,
-        "Gamma_mix_SFI_s": 1.866483,
+        "Gamma_mix_PI_s": 5.43926,
+        "Gamma_mix_SFI_s": 1.866467,
         "field_ionized": false,
-        "Gamma_ion_s": 25.638091,
+        "Gamma_ion_s": 25.63803,
         "Gamma_BBR_s": 66106.086721,
         "Gamma_rad_s": 3357870.0,
         "Gamma_quench_s": 66119.745891,
@@ -14447,10 +14447,10 @@
         "E_bind_eV": 0.169134,
         "Gamma_PI_s": 59.437347,
         "Gamma_SFI_s": 20.351181,
-        "Gamma_mix_PI_s": 12.589069,
-        "Gamma_mix_SFI_s": 4.337703,
+        "Gamma_mix_PI_s": 12.589072,
+        "Gamma_mix_SFI_s": 4.337704,
         "field_ionized": false,
-        "Gamma_ion_s": 96.715301,
+        "Gamma_ion_s": 96.715304,
         "Gamma_BBR_s": 69002.061118,
         "Gamma_rad_s": 2447970.0,
         "Gamma_quench_s": 69061.498465,
@@ -14468,10 +14468,10 @@
         "E_bind_eV": 0.169138,
         "Gamma_PI_s": 59.437347,
         "Gamma_SFI_s": 20.351181,
-        "Gamma_mix_PI_s": 10.342249,
-        "Gamma_mix_SFI_s": 3.555871,
+        "Gamma_mix_PI_s": 10.342289,
+        "Gamma_mix_SFI_s": 3.555884,
         "field_ionized": false,
-        "Gamma_ion_s": 93.686648,
+        "Gamma_ion_s": 93.686702,
         "Gamma_BBR_s": 65680.140718,
         "Gamma_rad_s": 2419120.0,
         "Gamma_quench_s": 65739.578065,
@@ -14615,14 +14615,14 @@
         "E_bind_eV": 0.239727,
         "Gamma_PI_s": 1.099012,
         "Gamma_SFI_s": 0.375959,
-        "Gamma_mix_PI_s": 0.486306,
-        "Gamma_mix_SFI_s": 0.166454,
+        "Gamma_mix_PI_s": 0.486671,
+        "Gamma_mix_SFI_s": 0.166579,
         "field_ionized": false,
-        "Gamma_ion_s": 2.127731,
+        "Gamma_ion_s": 2.12822,
         "Gamma_BBR_s": 65861.381349,
-        "Gamma_rad_s": 3009300.0,
+        "Gamma_rad_s": 3012180.0,
         "Gamma_quench_s": 65862.48036,
-        "tau_eff_s": 3.3e-07,
+        "tau_eff_s": 3.2e-07,
         "n_mix_partners": 18
       },
       {
@@ -14657,10 +14657,10 @@
         "E_bind_eV": 0.13692,
         "Gamma_PI_s": 161.9468,
         "Gamma_SFI_s": 55.58367,
-        "Gamma_mix_PI_s": 12.116767,
-        "Gamma_mix_SFI_s": 4.177802,
+        "Gamma_mix_PI_s": 12.116769,
+        "Gamma_mix_SFI_s": 4.177803,
         "field_ionized": false,
-        "Gamma_ion_s": 233.82504,
+        "Gamma_ion_s": 233.825041,
         "Gamma_BBR_s": 57885.827478,
         "Gamma_rad_s": 1774700.0,
         "Gamma_quench_s": 58047.774278,
@@ -14741,10 +14741,10 @@
         "E_bind_eV": 0.328904,
         "Gamma_PI_s": 0.08259,
         "Gamma_SFI_s": 0.028251,
-        "Gamma_mix_PI_s": 0.005952,
-        "Gamma_mix_SFI_s": 0.002039,
+        "Gamma_mix_PI_s": 0.005951,
+        "Gamma_mix_SFI_s": 0.002038,
         "field_ionized": false,
-        "Gamma_ion_s": 0.118832,
+        "Gamma_ion_s": 0.11883,
         "Gamma_BBR_s": 43079.630565,
         "Gamma_rad_s": 1286030.0,
         "Gamma_quench_s": 43079.713155,
@@ -14804,12 +14804,12 @@
         "E_bind_eV": 0.186834,
         "Gamma_PI_s": 6.360723,
         "Gamma_SFI_s": 2.176852,
-        "Gamma_mix_PI_s": 2.47027,
-        "Gamma_mix_SFI_s": 0.846153,
+        "Gamma_mix_PI_s": 2.470028,
+        "Gamma_mix_SFI_s": 0.84607,
         "field_ionized": false,
-        "Gamma_ion_s": 11.853997,
+        "Gamma_ion_s": 11.853672,
         "Gamma_BBR_s": 68859.439299,
-        "Gamma_rad_s": 2133780.0,
+        "Gamma_rad_s": 2133420.0,
         "Gamma_quench_s": 68865.800022,
         "tau_eff_s": 4.5e-07,
         "n_mix_partners": 21
@@ -14930,10 +14930,10 @@
         "E_bind_eV": 0.246188,
         "Gamma_PI_s": 1.589936,
         "Gamma_SFI_s": 0.543886,
-        "Gamma_mix_PI_s": 0.069292,
+        "Gamma_mix_PI_s": 0.069293,
         "Gamma_mix_SFI_s": 0.023775,
         "field_ionized": false,
-        "Gamma_ion_s": 2.22689,
+        "Gamma_ion_s": 2.226891,
         "Gamma_BBR_s": 54276.785112,
         "Gamma_rad_s": 852967.061472,
         "Gamma_quench_s": 54278.375048,
@@ -15017,7 +15017,7 @@
         "Gamma_mix_PI_s": 34.092831,
         "Gamma_mix_SFI_s": 12.094005,
         "field_ionized": false,
-        "Gamma_ion_s": 775.486562,
+        "Gamma_ion_s": 775.486561,
         "Gamma_BBR_s": 59004.255642,
         "Gamma_rad_s": 1039650.0,
         "Gamma_quench_s": 59545.259519,
@@ -15038,7 +15038,7 @@
         "Gamma_mix_PI_s": 7.667949,
         "Gamma_mix_SFI_s": 2.664813,
         "field_ionized": false,
-        "Gamma_ion_s": 739.632488,
+        "Gamma_ion_s": 739.632487,
         "Gamma_BBR_s": 37400.788017,
         "Gamma_rad_s": 1028160.0,
         "Gamma_quench_s": 37941.791894,
@@ -15098,10 +15098,10 @@
         "E_bind_eV": 0.191199,
         "Gamma_PI_s": 10.523417,
         "Gamma_SFI_s": 3.601001,
-        "Gamma_mix_PI_s": 0.325086,
-        "Gamma_mix_SFI_s": 0.111871,
+        "Gamma_mix_PI_s": 0.325073,
+        "Gamma_mix_SFI_s": 0.111866,
         "field_ionized": false,
-        "Gamma_ion_s": 14.561374,
+        "Gamma_ion_s": 14.561356,
         "Gamma_BBR_s": 59118.90569,
         "Gamma_rad_s": 593616.654033,
         "Gamma_quench_s": 59129.429106,
@@ -15266,10 +15266,10 @@
         "E_bind_eV": 0.152784,
         "Gamma_PI_s": 37.152072,
         "Gamma_SFI_s": 12.729467,
-        "Gamma_mix_PI_s": 0.910529,
-        "Gamma_mix_SFI_s": 0.314677,
+        "Gamma_mix_PI_s": 0.910534,
+        "Gamma_mix_SFI_s": 0.314678,
         "field_ionized": false,
-        "Gamma_ion_s": 51.106745,
+        "Gamma_ion_s": 51.106751,
         "Gamma_BBR_s": 59759.294107,
         "Gamma_rad_s": 430709.898276,
         "Gamma_quench_s": 59796.446179,
@@ -15434,10 +15434,10 @@
         "E_bind_eV": 0.12489,
         "Gamma_PI_s": 88.679393,
         "Gamma_SFI_s": 30.4862,
-        "Gamma_mix_PI_s": 1.849684,
-        "Gamma_mix_SFI_s": 0.643038,
+        "Gamma_mix_PI_s": 1.849689,
+        "Gamma_mix_SFI_s": 0.64304,
         "field_ionized": false,
-        "Gamma_ion_s": 121.658314,
+        "Gamma_ion_s": 121.658322,
         "Gamma_BBR_s": 58025.948583,
         "Gamma_rad_s": 320921.378598,
         "Gamma_quench_s": 58114.627975,
@@ -20367,9 +20367,9 @@
         "state": "10d5/2",
         "n": 10,
         "l": "d",
-        "alpha0_au": -5860287.6986,
-        "shift_stat_hz": 50458.827375,
-        "shift_dyn_hz": 1768.043655,
+        "alpha0_au": -5860287.7007,
+        "shift_stat_hz": 50458.827393,
+        "shift_dyn_hz": 1768.042726,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "95% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -20381,7 +20381,7 @@
           "Numerov": 113
         },
         "trk_scale": 1.0,
-        "f_cont": 0.082776,
+        "f_cont": 0.08279,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -20561,9 +20561,9 @@
         "state": "11d5/2",
         "n": 11,
         "l": "d",
-        "alpha0_au": -14953771.0181,
-        "shift_stat_hz": 128756.434703,
-        "shift_dyn_hz": 2256.050223,
+        "alpha0_au": -14953771.0178,
+        "shift_stat_hz": 128756.434701,
+        "shift_dyn_hz": 2256.050421,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "95% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -20575,7 +20575,7 @@
           "Numerov": 113
         },
         "trk_scale": 1.0,
-        "f_cont": 0.069308,
+        "f_cont": 0.069306,
         "n_tail": 300,
         "n_cont": 80
       },

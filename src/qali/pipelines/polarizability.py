@@ -37,15 +37,20 @@ Ovchinnikov, Adv. At. Mol. Opt. Phys. 42, 95 (2000), eq. 2):
 Trap frequencies (Gaussian-beam harmonic approximation):
     z_R = π·w0²/λ,   ω_r = √(4|U0|/(m·w0²)),   ω_z = √(2|U0|/(m·z_R²))
 
-Oscillator strength sources (priority order):
-  1. NIST f-values from f_values/<element>_lines.txt
-  2. Coulomb approximation (Bates & Damgaard 1949) using QDT n*
+Oscillator strength sources (priority order, per line):
+  1. Precision D-line f-values (PRECISION_FOSC_J)
+  2. Published J-resolved matrix elements, the ticked rows of "Published matrix elements"
+     (f_values/<element>_published_anchors.json); the Lifetimes stage uses the same rows
+  3. NIST f-values from f_values/<element>_lines.*
+  4. Curated literature overlay (f_values/<element>_literature.json)
+  5. Models: DHF when chosen, else Numerov / Coulomb approximation with QDT n*
+  Plus the valence photoionization continuum and the ionic core.
 
 Data sources:
   data_json/<element>_rydberg.json     → state energies, quantum defects, IE
   data_json/<element>_transitions.json → complete E1 transition network
-  data_json/<element>_lifetimes.json   → precomputed A coefficients (optional)
-  f_values/<element>_lines.txt         → NIST experimental f-values
+  f_values/<element>_lines.*           → NIST experimental f-values
+  (The lifetimes output is not read: both stages build their f-values from the same sources.)
 
 Outputs:
   data_json/<element>_polarizability.json
@@ -596,6 +601,14 @@ def _trim_transitions(trans_list):
 
 # MAIN
 
+def _published_choice(element):
+    """Which lines of "Published matrix elements" took the published value and which were unticked."""
+    from qali.physics.polarizability_core import published_lines_in_use
+
+    on, off = published_lines_in_use(element)
+    return {'published': on, 'unticked': off}
+
+
 def save_json(result, data_dir=None):
     """Save polarizability results to <data dir>/<element>_polarizability.json."""
     if data_dir is None:
@@ -619,6 +632,7 @@ def save_json(result, data_dir=None):
         point_result=result.get('point_result'),
         extrapolation=result.get('extrapolation'),
         **({'inputs': result['inputs']} if result.get('inputs') else {}),
+        published_lines=_published_choice(el),
         transitions_gs=_trim_transitions(result['transitions_gs']),
         transitions_ex=_trim_transitions(result['transitions_ex']),
     )

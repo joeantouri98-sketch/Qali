@@ -4,7 +4,7 @@ A far-off-resonant Gaussian dipole trap scatters photons through the
 imaginary part of the complex polarizability (atomic units; same convention
 as ``polarizability_core.alpha_real``)::
 
-    α(ω) = Σ_k  s_k f_k / (ω_k² − ω² − i Γ_k ω)
+    α(ω) = Σ_k  s_k f_k / (ω_k² − ω² − i Γ_k(ω) ω),   Γ_k(ω) = Γ_k (ω/ω_k)²
 
     Re[α] → trap depth  U = −(2π a₀³/c) · Re[α] · I      (Grimm et al. 2000)
     Im[α] → scattering  R_sc = (4π a₀³ / (ħ c)) · Im[α] · I
@@ -15,8 +15,9 @@ resonances they polarise but do not scatter trap light.
 Recoil heating is Ė = 2 E_r R_sc with E_r = h²/(2 m λ²), and the
 order-of-magnitude trap lifetime is τ_heat ≈ |U| / Ė.
 
-Known issue: the damping uses a frequency-independent Γ (PHYSICS_BUGS.md
-P21); it is kept as is so results stay comparable until that is fixed.
+The damping is the frequency-dependent radiative damping of a classical oscillator
+(Grimm et al. 2000, Eqs. 2 and 10), so the far-detuned scattering rate carries the
+(ω/ω_k)³ factor; a constant Γ would overestimate R_sc by (ω_k/ω)² (see alpha_complex).
 
 No files, prints or plots here: callers pass the transition network, the
 upper-state decay rates and the atomic mass in.
@@ -174,9 +175,6 @@ def alpha_complex(omega_au: float, transitions: Sequence[dict]) -> tuple[float, 
     Near an undamped pole the channel is skipped; if every channel was a pole,
     both parts are NaN.
     """
-    thr = min((t['delta_E_au'] for t in transitions if t.get('source') == 'continuum'), default=math.inf)
-    if omega_au >= thr:          # above the photoionization threshold: not modelled (see alpha_real)
-        return _NAN, _NAN
     re = 0.0
     im = 0.0
     near_pole = False

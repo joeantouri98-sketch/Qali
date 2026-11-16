@@ -50,6 +50,7 @@ TABLES = (
     TableInfo("blackbody.a_l", "Blackbody", "A_L scaling", "qali.physics.blackbody_core", "A_L_TABLE"),
     TableInfo("lifetimes.known", "Lifetimes", "Known lifetimes", "qali.pipelines.lifetimes", "KNOWN_LIFETIMES", "ns"),
     TableInfo("nist.fscale", "Lifetimes", "NIST f-value scale (decays of a level)", "qali.physics.polarizability_core", "NIST_F_SCALE"),
+    TableInfo("published.lines", "Polarizability", "Published matrix elements", "qali.physics.polarizability_core", "PUBLISHED_LINES", "a.u."),
     TableInfo("tweezer.default_wavelength", "Tweezer", "Default wavelength", "qali.pipelines.tweezer", "DEFAULT_WL_NM", "nm"),
     TableInfo("constants.alkali_mass", "Species constants", "Atomic mass", "qali.core.constants", "ALKALI_MASS_AMU", "u"),
     TableInfo("constants.abundance", "Species constants", "Natural abundance", "qali.core.constants", "NATURAL_ABUNDANCE_PCT", "%"),
@@ -68,7 +69,7 @@ BY_ID = {t.table_id: t for t in TABLES}
 class AddSpec:
     """How a row of a table is named, and what its value may be."""
 
-    kind: str                      # "element" | "element_state" | "isotope" | "element_l" | "precision" | "record"
+    kind: str                      # "element" | "element_state" | "isotope" | "element_l" | "precision" | "record" | "line"
     integer: bool = False
     max_value: float | None = None
     allow_zero: bool = False
@@ -91,9 +92,12 @@ ADDABLE = {
     "blackbody.qd_diff": AddSpec("element_l", allow_zero=True, letters="spd"),   # the model reads only s, p and d
     "polarizability.precision_fosc": AddSpec("precision"),
     "spectroscopy.dline": AddSpec("record"),                                # a whole new element
+    "published.lines": AddSpec("line"),                                     # a published E1 matrix element |D|
 }
 _STATE_RE = re.compile(r"^[1-9]\d?[spdfgh]$")
 _J_RE = re.compile(r"^\d{1,2}/2$")
+_LEVEL_RE = re.compile(r"^([1-9]\d?)([spdf])((?:1|3|5|7)/2)?$")          # 7s, 6p1/2, 5d5/2
+_L_OF = {"s": 0, "p": 1, "d": 2, "f": 3}
 
 def unit(table_id: str, key: str) -> str:
     """Unit of one row; empty for a dimensionless number."""
@@ -300,7 +304,8 @@ def key_fields(table_id: str) -> tuple[str, ...]:
     """Labels of the boxes that name a new row of *table_id*."""
     return {"element": ("Element",), "element_state": ("Element", "State"), "isotope": ("Element", "Mass number"),
             "element_l": ("Element", "Orbital (" + " ".join(ADDABLE[table_id].letters) + ")"),
-            "precision": ("Element", "Lower state", "Upper state", "J (e.g. 1/2)"), "record": ("Element",)}[ADDABLE[table_id].kind]
+            "precision": ("Element", "Lower state", "Upper state", "J (e.g. 1/2)"), "record": ("Element",),
+            "line": ("Element", "Level (e.g. 6p1/2)", "Other level (e.g. 5d3/2, 7s)")}[ADDABLE[table_id].kind]
 
 
 def key_parts(table_id: str, key: str) -> list[str]:
@@ -311,6 +316,8 @@ def key_parts(table_id: str, key: str) -> list[str]:
     parts = [p.strip() for p in key.split(" / ")]
     if kind == "precision" and len(parts) == 3:
         return [parts[0], *parts[1].split("-"), parts[2]]
+    if kind == "line" and len(parts) == 2:
+        return [parts[0], *parts[1].split("-", 1)]
     return parts
 
 
@@ -340,6 +347,14 @@ def make_key(table_id: str, parts: list[str]) -> tuple[str, list]:
         if not _J_RE.match(j):
             raise ValueError("J looks like 1/2 or 3/2.")
         return f"{el} / {lo}-{up} / {j}", [el, (lo, up), j]
+    if spec.kind == "line":
+        lev_a, lev_b = _check_level(parts[1]), _check_level(parts[2])
+        (la, ja), (lb, jb) = lev_a[1:], lev_b[1:]
+        if abs(la - lb) != 1:
+            raise ValueError("An E1 line joins levels whose l differ by one (s-p, p-d, d-f).")
+        if abs(ja - jb) > 1:
+            raise ValueError("An E1 line changes J by at most one.")
+        return f"{el} / {lev_a[0]}-{lev_b[0]}", [el, f"{lev_a[0]}-{lev_b[0]}"]
     if spec.kind == "element_state":
         state = parts[1].lower()
         if not _STATE_RE.match(state):
@@ -352,6 +367,21 @@ def make_key(table_id: str, parts: list[str]) -> tuple[str, list]:
     if not 1 <= a <= 300:
         raise ValueError("Mass number must be between 1 and 300.")
     return f"{el}-{a}", [(el, a)]
+
+
+def _check_level(text: str) -> tuple[str, int, float]:
+    """``(label, l, J)`` of a level the user typed: ``7s``, ``6p1/2``, ``5d5/2`` (an s level needs no J)."""
+    m = _LEVEL_RE.match(text.strip().lower())
+    if not m:
+        raise ValueError(f"'{text}' is not a level; levels look like 7s, 6p1/2 or 5d5/2.")
+    n, letter, j = m.groups()
+    l = _L_OF[letter]
+    if l and not j:
+        raise ValueError(f"Give J for {text}, as in {n}{letter}{2 * l - 1}/2.")
+    J = float(j.split("/")[0]) / 2 if j else 0.5
+    if abs(J - l) != 0.5:
+        raise ValueError(f"J of a {letter} level is {2 * l - 1}/2 or {2 * l + 1}/2." if l else "An s level has J = 1/2.")
+    return (f"{n}{letter}" + (j if l else "")), l, J
 
 
 def check_value(table_id: str, text) -> float | int:
@@ -495,9 +525,21 @@ def element_file_pattern(element: str) -> re.Pattern:
 
 
 # --- "use instead of the computed value" flags ------------------------------------------
-FLAGGABLE = {"lifetimes.known", "nist.fscale"}          # tables whose rows can be ticked to replace what the stage computes
+FLAGGABLE = {"lifetimes.known", "nist.fscale", "published.lines"}   # rows that can be ticked to replace what the stage uses
 # Rows that start ticked; flags.json then records an explicit False when the user unticks one.
 DEFAULT_FLAGS = {"nist.fscale": ("Fr / 7d3/2", "Fr / 7d5/2")}
+# Tables whose packaged rows all start ticked.
+DEFAULT_ALL_FLAGGED = {"published.lines"}
+
+
+def default_flags(table_id: str) -> tuple[str, ...]:
+    """The rows of *table_id* that are ticked until the user unticks them."""
+    if table_id in DEFAULT_ALL_FLAGGED:
+        try:
+            return tuple(defaults(table_id))
+        except Exception:                      # an unreadable table: nothing ticked by default
+            return ()
+    return tuple(DEFAULT_FLAGS.get(table_id, ()))
 
 
 def flags_path() -> Path:
@@ -512,7 +554,7 @@ def load_flags() -> dict[str, dict[str, bool]]:
         data = {}
     out = {}
     for tid in FLAGGABLE:
-        state = {k: True for k in DEFAULT_FLAGS.get(tid, ())}
+        state = {k: True for k in default_flags(tid)}
         rows = data.get(tid) if isinstance(data, dict) else None
         for k, v in (rows.items() if isinstance(rows, dict) else []):
             if v is True:
@@ -530,9 +572,9 @@ def save_flags(data: dict[str, dict[str, bool]]) -> None:
     clean: dict[str, dict[str, bool]] = {}
     for tid in FLAGGABLE:
         ticked = {k for k, v in data.get(tid, {}).items() if v}
-        defaults = set(DEFAULT_FLAGS.get(tid, ()))
-        rows = {k: True for k in ticked - defaults}
-        rows.update({k: False for k in defaults - ticked})
+        start = set(default_flags(tid))
+        rows = {k: True for k in ticked - start}
+        rows.update({k: False for k in start - ticked})
         if rows:
             clean[tid] = rows
     path = flags_path()

@@ -94,11 +94,13 @@ def test_overview_table_copies_selection_and_has_units(tmp_path):
     assert SpeciesOverviewWidget._with_unit("text", "nm") == "text"
 
 
-def test_both_themes_are_edited_and_saved_together(tmp_path):
+def test_one_theme_is_shown_at_a_time_and_all_are_saved(tmp_path):
     st = QSettings(str(tmp_path / "s.ini"), QSettings.IniFormat)
     d = P.PreferencesDialog(None, theme.DARK, st, lambda: None)
-    assert (theme.DARK, "highlight") in d.swatches and (theme.LIGHT, "highlight") in d.swatches
+    assert (theme.DARK, "highlight") in d.swatches and (theme.LIGHT, "highlight") not in d.swatches
     d.chosen[theme.DARK]["highlight"] = "#111111"
+    d._choose_theme(theme.LIGHT)
+    assert (theme.LIGHT, "highlight") in d.swatches and (theme.DARK, "highlight") not in d.swatches
     d.chosen[theme.LIGHT]["highlight"] = "#eeeeee"
     d._ok()
     assert st.value("appearance/colors/dark/highlight") == "#111111"
@@ -106,6 +108,87 @@ def test_both_themes_are_edited_and_saved_together(tmp_path):
     d3 = P.PreferencesDialog(None, theme.DARK, st, lambda: None)
     d3._cancel()
     assert theme.tokens_for(theme.LIGHT).highlight == "#eeeeee"   # cancel restores what was open, not the defaults
+
+
+def test_preview_shows_a_choice_before_it_is_applied(tmp_path):
+    st = QSettings(str(tmp_path / "s.ini"), QSettings.IniFormat)
+    d = P.PreferencesDialog(None, theme.DARK, st, lambda: None)
+    d.chosen[theme.DARK]["accent"] = "#4c8bd6"
+    d._refresh()
+    assert d.preview.tokens.accent == "#4c8bd6"
+    assert theme.tokens_for(theme.DARK).accent == theme.THEMES[theme.DARK].accent      # nothing applied yet
+    assert d._marks["accent"].isVisibleTo(d) is not None and not d._resets["accent"].isHidden()
+    assert d._resets["highlight"].isHidden()
+
+
+def test_changed_count_and_search(tmp_path):
+    from PySide6.QtCore import Qt
+
+    st = QSettings(str(tmp_path / "s.ini"), QSettings.IniFormat)
+    d = P.PreferencesDialog(None, theme.DARK, st, lambda: None, root=tmp_path)
+    d.chosen[theme.DARK]["accent"] = "#4c8bd6"
+    d.base_choice = "#203040"
+    d._update_counts()
+    rows = {d.nav.item(i).data(Qt.UserRole): d.nav.item(i) for i in range(d.nav.count())}
+    assert rows["appearance"].data(P.BADGE_ROLE) == 2
+    assert rows["extrapolator"].data(P.BADGE_ROLE) == 0
+    d.extrapolator.spins["ridge.tau1"].setValue(1.0)
+    d._update_counts()
+    assert rows["extrapolator"].data(P.BADGE_ROLE) == 1
+    d.search.setText("slope prior")
+    assert d.nav.currentItem().data(Qt.UserRole) == "extrapolator"
+    assert rows["appearance"].isHidden() and not rows["extrapolator"].isHidden()
+    assert d.extrapolator.labels["ridge.tau1"].property("match")
+    d.search.setText("stage done")
+    assert d.nav.currentItem().data(Qt.UserRole) == "appearance"
+    assert d.colour_labels["stage_done"].property("match")
+    d.search.setText("")
+    assert not any(d.nav.item(i).isHidden() for i in range(d.nav.count()))
+
+
+def test_cancel_undoes_an_earlier_apply_on_every_page(tmp_path, monkeypatch):
+    from qali.core import paths, user_tables
+
+    monkeypatch.setenv(paths.PROJECT_ROOT_ENV, str(tmp_path))
+    from qali.gui.extrapolator_settings import settings_file
+    from qali.physics.extrapolation import fit_settings as fs
+
+    st = QSettings(str(tmp_path / "s.ini"), QSettings.IniFormat)
+    before = user_tables.load_overrides()
+    d = P.PreferencesDialog(None, theme.DARK, st, lambda: None, root=tmp_path)
+    d.extrapolator.spins["ridge.tau1"].setValue(1.0)
+    tid = user_tables.TABLES[0].table_id
+    key, packaged, _now = user_tables.packaged_rows(tid)[0]
+    d.tables._overrides = {tid: {key: float(packaged) * 2 + 1}}
+    d._apply()
+    assert fs.load(settings_file(tmp_path)) == {"ridge.tau1": 1.0}
+    assert user_tables.load_overrides().get(tid)
+    d._cancel()
+    assert fs.load(settings_file(tmp_path)) == {}
+    assert user_tables.load_overrides() == before
+
+
+def test_defaults_button_asks_first(tmp_path, monkeypatch):
+    st = QSettings(str(tmp_path / "s.ini"), QSettings.IniFormat)
+    d = P.PreferencesDialog(None, theme.DARK, st, lambda: None)
+    d.chosen[theme.DARK]["accent"] = "#4c8bd6"
+    monkeypatch.setattr(P.QMessageBox, "question", lambda *a, **k: P.QMessageBox.No)
+    d._reset_all()
+    assert d.chosen[theme.DARK] == {"accent": "#4c8bd6"}
+    monkeypatch.setattr(P.QMessageBox, "question", lambda *a, **k: P.QMessageBox.Yes)
+    d._reset_all()
+    assert d.chosen[theme.DARK] == {}
+
+
+def test_last_page_and_size_are_remembered(tmp_path):
+    from PySide6.QtCore import QSize
+
+    st = QSettings(str(tmp_path / "s.ini"), QSettings.IniFormat)
+    d = P.PreferencesDialog(None, theme.DARK, st, lambda: None, root=tmp_path, start_tab="tables")
+    d.resize(900, 640)
+    d._cancel()
+    d2 = P.PreferencesDialog(None, theme.DARK, st, lambda: None, root=tmp_path)
+    assert d2.nav.currentItem().text() == "Tables and variables" and d2.size() == QSize(900, 640)
 
 
 def test_card_labels_use_real_subscripts_and_copy_as_plain_text():

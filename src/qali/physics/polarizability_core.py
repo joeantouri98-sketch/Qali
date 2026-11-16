@@ -19,7 +19,7 @@ import re
 
 import numpy as np
 
-from qali.core.paths import bundled_file, reference_path
+from qali.core.paths import bundled_file, reference_path, resource_root
 from qali.physics.rydberg import unwrap_asd_field
 from qali.physics.qdt_radial import level_defect, level_defects_from_rydberg, parse_J2_set
 
@@ -999,6 +999,162 @@ def load_literature_fvalues(element, f_values_dir=None, verbose=True):
 
 
 
+def _published_rows(element, f_values_dir=None):
+    """[(lower, upper, |D| a.u., σ_D, ref)] of f_values/<El>_published_anchors.json (the user's copy if edited)."""
+    if f_values_dir is None:
+        f_values_dir = reference_path("f_values")
+    path = bundled_file("f_values", f_values_dir, f"{element}_published_anchors.json")
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, encoding='utf-8') as f:
+            raw = json.load(f)
+    except (OSError, ValueError):
+        return []
+    out = []
+    for row in raw.get('transitions', []) if isinstance(raw, dict) else []:
+        try:
+            D, sD = float(row['D']), float(row.get('D_unc') or 0.0)
+        except (KeyError, TypeError, ValueError):
+            continue
+        a, b = str(row.get('lower', '')), str(row.get('upper', ''))
+        if a and b and D > 0:
+            out.append((a, b, D, sD, str(row.get('ref', ''))))
+    return out
+
+
+# σ_D of a line the user adds without an uncertainty: 10 % of |D|.
+ADDED_LINE_REL_SIGMA = 0.10
+
+
+def _added_published_rows(element):
+    """[(lower, upper, |D|, σ_D, source)] of the lines the user added to "Published matrix elements"."""
+    out = []
+    for key, rec in _user_tables.load_additions().get("published.lines", {}).items():
+        el, _sep, line = key.partition(" / ")
+        a, _dash, b = line.partition("-")
+        try:
+            D = float(rec["value"])
+            sD = float(rec.get("sigma") or ADDED_LINE_REL_SIGMA * D)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if el == element and a and b and D > 0:
+            out.append((a, b, D, sD, str(rec.get("source") or "added by the user")))
+    return out
+
+
+def published_line_sources(element):
+    """{'6p1/2-5d3/2': (reference, σ_D)} of the packaged and added lines of *element*."""
+    return {published_line_key(a, b): (ref, sD)
+            for a, b, _D, sD, ref in _published_rows(element) + _added_published_rows(element)}
+
+
+def published_line_alternatives(element, lines=()):
+    """{'6p1/2-5d3/2': (|D| a.u. or None, source)}: what each line of *element* takes when its row is unticked.
+
+    The polarizability network is built without any published line, and each line's f there is turned back into
+    |D| = sqrt(3 g |f| / (2 ΔE)), g = 2J+1 of the level the network is built on. ``source`` is that f's source
+    ('NIST', 'literature' for the multiplet-averaged overlay, a model name) or None when the network has no such line.
+    *lines* adds lines not (yet) in the table, such as a row the user is adding.
+    """
+    keys = sorted(set(PUBLISHED_LINES.get(element, {})) | set(lines))
+    return dict(_alternatives(element, tuple(keys)))
+
+
+@functools.lru_cache(maxsize=16)
+def _alternatives(element, keys):
+    try:
+        data = load_element(element, str(reference_path('data_json')), verbose=False)
+    except Exception:
+        return tuple((k, (None, None)) for k in keys)
+    data['published_lines'] = {}
+    nets = {}
+    out = []
+    for key in keys:
+        lower, _dash, upper = key.partition('-')
+        if lower not in nets:
+            try:
+                nets[lower] = {t['other_label']: t for t in build_transitions_for_state(lower, data, data['transitions'])}
+            except Exception:
+                nets[lower] = {}
+        t = nets[lower].get(upper)
+        J = re.sub(r'^\d+[a-z]', '', lower) or '1/2'
+        g = _j_degeneracy(J) or 2
+        if t is None or not t.get('fosc') or not t.get('delta_E_au'):
+            out.append((key, (None, None)))
+            continue
+        D = math.sqrt(3.0 * g * abs(t['fosc']) / (2.0 * abs(t['delta_E_au'])))
+        out.append((key, (D, t.get('source'))))
+    return tuple(out)
+
+
+def published_line_key(lower, upper):
+    """Row name of a line in PUBLISHED_LINES: ``'6p1/2-5d3/2'``."""
+    return f"{lower}-{upper}"
+
+
+def _published_table():
+    """{element: {'6p1/2-5d3/2': |D| a.u.}} from every packaged f_values/<El>_published_anchors.json."""
+    out = {}
+    try:
+        names = sorted(p.name for p in (resource_root() / 'f_values').glob('*_published_anchors.json'))
+    except OSError:
+        names = []
+    for name in names:
+        element = name[:-len('_published_anchors.json')]
+        rows = {published_line_key(a, b): D for a, b, D, _s, _r in _published_rows(element)}
+        if rows:
+            out[element] = rows
+    return out
+
+
+# Published J-resolved |D| (a.u.) per line, from f_values/<El>_published_anchors.json. A ticked row (Override,
+# Tables and variables) makes Polarizability and Lifetimes both use this value for the line in place of NIST's;
+# an unticked row leaves the line to NIST. Every row starts ticked (user_tables.DEFAULT_ALL_FLAGGED): for Cs
+# np-(n-1)d the NIST f comes from 5d lifetimes that disagree with the measured 6p Stark shifts (Safronova &
+# Clark, PRA 69, 040501 (2004)), while the published values reproduce them.
+PUBLISHED_LINES = _published_table()
+_user_tables.apply("published.lines", PUBLISHED_LINES)
+
+
+def published_lines_in_use(element):
+    """``(ticked, unticked)`` row names of *element* in PUBLISHED_LINES."""
+    rows = PUBLISHED_LINES.get(element, {})
+    on = _user_tables.ticked_values("published.lines", PUBLISHED_LINES, element)
+    return sorted(k for k in rows if k in on), sorted(k for k in rows if k not in on)
+
+
+def load_published_lines(element, f_values_dir=None, ticked_only=True):
+    """{(lower_label, upper_label): (|D| a.u., σ_D)} of the published lines in use, both orders as keys
+    ('6p1/2', '5d3/2' and '5d3/2', '6p1/2'). With *ticked_only*, only the lines whose Override box is ticked
+    in "Published matrix elements"; |D| is the value in that table (the user may have changed it).
+
+    These are J-resolved all-order matrix elements (Safronova et al.; Roberts et al. for Fr). The literature
+    overlay carries them averaged over the multiplet, which is wrong per line when the fine-structure partners
+    differ (Cs 6p1/2-6d3/2: 8 %), and NIST's f for some np-(n-1)d lines comes from 5d lifetimes that disagree with
+    the measured 6p Stark shifts (Safronova & Clark, PRA 69, 040501 (2004)).
+    """
+    on = _user_tables.ticked_values("published.lines", PUBLISHED_LINES, element) if ticked_only else None
+    out = {}
+    for a, b, D, sD, _ref in _published_rows(element, f_values_dir) + _added_published_rows(element):
+        key = published_line_key(a, b)
+        if on is not None:
+            if key not in on:
+                continue
+            if D > 0 and on[key] != D:
+                sD *= on[key] / D                      # keep the relative uncertainty of an edited value
+            D = on[key]
+        out[(a, b)] = out[(b, a)] = (D, sD)
+    return out
+
+
+def _published_f(D, sD, dE_au, lower_J):
+    """Absorption f = (2/3) ΔE D²/(2J_lower + 1) of one line and its 1σ from σ_D."""
+    g = _j_degeneracy(lower_J) or 2
+    f = 2.0 / 3.0 * abs(dE_au) * D * D / g
+    return f, (2.0 * f * sD / D if D else 0.0)
+
+
 # ELEMENT DATA LOADER
 
 def load_element(element, data_dir=None, f_values_dir=None, verbose=True, extrapolation=None,
@@ -1113,6 +1269,7 @@ def load_element(element, data_dir=None, f_values_dir=None, verbose=True, extrap
         alpha_core_au   = ALPHA_CORE_AU.get(element, 0.0),
         core_electrons  = CORE_ELECTRONS.get(element, 0),
         core_oscillators = core_oscillators(element),
+        published_lines = load_published_lines(element, f_values_dir),
         ryd             = ryd,
         extrapolation   = extrap_block,
     )
@@ -1377,6 +1534,7 @@ def _ls_state_term(t, state_label, data):
     dhf_used = False
     # Priority 1 (same as get_fosc): lifetime-derived precision D-line f, per J_upper, s -> p only.
     prec = (data.get('precision_fosc_j') or {}).get((lo_nl, up_nl)) if Ll == 0 else None
+    pub_lines = data.get('published_lines') or {}
     for jl in JL:
         for ju in JU:
             if prec:
@@ -1385,6 +1543,17 @@ def _ls_state_term(t, state_label, data):
                     lines[(jl, ju)] = float(_jf)
                     src_line = 'precision'
                     continue
+            # Priority 2: a published J-resolved matrix element for this line (load_published_lines)
+            _lo_lab = lo_nl + (f"{jl}/2" if Ll else '')
+            _up_lab = up_nl + (f"{ju}/2" if Lu else '')
+            _pub = pub_lines.get((_lo_lab, _up_lab))
+            if _pub:
+                _e = data['state_energy_au']
+                _dE = (_e[_up_lab] - _e[_lo_lab]) if (_lo_lab in _e and _up_lab in _e) \
+                    else omega_au_from_nm(t['wavelength_nm'])
+                lines[(jl, ju)] = _published_f(_pub[0], _pub[1], _dE, f"{jl}/2")[0]
+                src_line = 'literature'
+                continue
             hit = nist_line_f(jl_data, lo_nl, up_nl, Lu, ju, Ll, jl)
             if hit is not None:
                 lines[(jl, ju)] = hit[0]
@@ -1560,6 +1729,14 @@ def build_transitions_for_state(state_label, data, all_transitions):
                               numerov_scale=numerov_scale)
             sign = +1
 
+        # A published J-resolved matrix element for this exact line replaces NIST, literature and model values
+        # (not the lifetime-derived precision D-line f): see load_published_lines.
+        pub = (data.get('published_lines') or {}).get((ll, ul))
+        pub_sigma = None
+        if pub and src != 'precision':
+            f, pub_sigma = _published_f(pub[0], pub[1], dE_au, t.get('lower_J'))
+            src = 'literature'
+
         dhf_f = None
         if src in ('Numerov', 'Coulomb') and data.get('dhf_lines') is not None:
             # a structure model (DHF or Brueckner, opt-in) replaces the model sources, never a measured value
@@ -1586,6 +1763,8 @@ def build_transitions_for_state(state_label, data, all_transitions):
                 _g_lo = 2 * (2 * L_CHAR.get(ll_char, 0) + 1)
                 _g_up = 2 * (2 * L_CHAR.get(lu, 0) + 1)
             f = f * _g_lo / _g_up
+            if pub_sigma is not None:
+                pub_sigma = pub_sigma * _g_lo / _g_up
 
         result.append(dict(
             delta_E_au  = dE_au,
@@ -1594,7 +1773,7 @@ def build_transitions_for_state(state_label, data, all_transitions):
             other_label = other_label,
             source      = src,
             wl_nm       = t['wavelength_nm'],
-            sigma_f     = f * fosc_rel_uncertainty(
+            sigma_f     = pub_sigma if pub_sigma is not None else f * fosc_rel_uncertainty(
                 src, _transition_acc(src, data, ll, ul, upper_J)),
         ))
 

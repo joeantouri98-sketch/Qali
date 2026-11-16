@@ -56,6 +56,8 @@ from qali.physics.polarizability_core import (
     is_transition_metal_species,
     load_literature_fvalues,
     load_nist_fvalues,
+    load_published_lines,
+    published_lines_in_use,
 )
 
 # Known experimental lifetimes for validation (ns)
@@ -208,14 +210,15 @@ def main(argv: list[str] | None = None) -> int:
 
     # Metals: NIST lines only unless explicitly --orca-only
     orca_file = chosen["orca"] or _orca_file(element, data_dir)
+    published = load_published_lines(element)          # the ticked rows of "Published matrix elements"
     sources = FValueSources(nist=nist, literature=literature, nist_series_caveats=caveats,
-                            nist_fit_exclusions=fit_excl)
+                            nist_fit_exclusions=fit_excl, published=published)
     if os.path.exists(orca_file) and (args.orca_only or (
             not args.nist_only and not (is_transition_metal_species(element) or no_qdt))):
         orca_fosc, ee_fosc, excitations = _orca_fvalues(orca_file)
         sources = FValueSources(nist=nist, literature=literature, orca_fosc=orca_fosc,
                                 ee_fosc=ee_fosc, orca_excitations=excitations,
-                                nist_series_caveats=caveats, nist_fit_exclusions=fit_excl)
+                                nist_series_caveats=caveats, nist_fit_exclusions=fit_excl, published=published)
 
     from qali.pipelines.dhf import load_dhf_lines, model_f_choice
     _model, _model_spec = model_f_choice(args)
@@ -447,6 +450,12 @@ def apply_lifetime_overrides(lifetimes: list[dict], overrides: dict[str, float])
     return sorted(used)
 
 
+def _published_choice(element) -> dict[str, list[str]]:
+    """Which lines of "Published matrix elements" took the published value and which were unticked."""
+    on, off = published_lines_in_use(element)
+    return {'published': on, 'unticked': off}
+
+
 def output_json(sp, args, IE, n_start, result: LifetimesResult) -> dict:
     """The ``<El>_lifetimes.json`` document."""
     drop_counts = _drop_counts(result)
@@ -471,6 +480,7 @@ def output_json(sp, args, IE, n_start, result: LifetimesResult) -> dict:
         'lifetimes':         table,
         'user_lifetime_overrides': {st: wanted[st] for st in used},
         'nist_f_scale': _user_tables.ticked_values('nist.fscale', NIST_F_SCALE, sp['symbol']),
+        'published_lines': _published_choice(sp['species_id']),
         'transitions':       [_transition_json(t) for t in result.transitions],
         'numerov_calibration': (None if cal is None else {
             'pooled': cal['global'],

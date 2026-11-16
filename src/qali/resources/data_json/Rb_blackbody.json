@@ -3,14 +3,14 @@
   "gs_label": "5s",
   "excited_label": "5p1/2",
   "alpha0_gs_au": 318.7964,
-  "alpha0_ex_au": 816.0234,
+  "alpha0_ex_au": 818.5986,
   "T_K": 300.0,
   "shift_gs_hz_at_T": -2.744932,
-  "shift_ex_hz_at_T": -7.026205,
-  "shift_diff_hz_at_T": -4.281273,
+  "shift_ex_hz_at_T": -7.048378,
+  "shift_diff_hz_at_T": -4.303446,
   "dyn_gs_hz_at_T": -2.758766,
-  "dyn_ex_hz_at_T": -7.155437,
-  "dyn_diff_hz_at_T": -4.39667,
+  "dyn_ex_hz_at_T": -7.178315,
+  "dyn_diff_hz_at_T": -4.419549,
   "note": "shift_*_hz_at_T = static (leading-order) term only. dyn_*_hz_at_T = full static+dynamic term via Planck-spectrum integral of alpha(omega), validated against the Itano <E^2>_T formula and the Farley-Wing high-n closed form (Beloy et al. 2025, arXiv:2507.00948, Sec. II). rates = bound-bound BBR depopulation from lifetimes.json; tau_eff includes Gamma_PI when continuum block is present. continuum = Beterov eq.27 PI (A_L + QD phases) + optional SFI (--field) + multi-step mixing (eq.35; --no-mix to skip); Gamma_quench = Gamma_BBR + Gamma_PI. rydberg_shifts = static Itano + principal-value Planck dyn with TRK/tail/Kramers continuum completion (Farley-Wing asymptote); for high-n labels (no dynamic integral).",
   "rates": {
     "T_K": 300.0,
@@ -33,27 +33,27 @@
       },
       {
         "state": "5p3/2",
-        "Gamma_BBR_s": 4.550067086459005e-07,
+        "Gamma_BBR_s": 4.5259975400126385e-07,
         "Gamma_rad_s": 38119144.96980008,
-        "Gamma_BBR_over_rad": 1.1936435326825403e-14
+        "Gamma_BBR_over_rad": 1.1873292393096339e-14
       },
       {
         "state": "5p1/2",
-        "Gamma_BBR_s": 1.5607855966634993e-07,
+        "Gamma_BBR_s": 1.5772790863261366e-07,
         "Gamma_rad_s": 36138434.853625916,
-        "Gamma_BBR_over_rad": 4.318907564716792e-15
+        "Gamma_BBR_over_rad": 4.364547310127577e-15
       },
       {
         "state": "5d5/2",
         "Gamma_BBR_s": 2707.878368597911,
-        "Gamma_rad_s": 5295138.464131641,
-        "Gamma_BBR_over_rad": 0.0005113895296488683
+        "Gamma_rad_s": 5448432.650984529,
+        "Gamma_BBR_over_rad": 0.0004970013473707156
       },
       {
         "state": "5d3/2",
         "Gamma_BBR_s": 2655.7481373927017,
-        "Gamma_rad_s": 5510122.039241142,
-        "Gamma_BBR_over_rad": 0.00048197628264481294
+        "Gamma_rad_s": 5270261.118748076,
+        "Gamma_BBR_over_rad": 0.0005039120600581478
       },
       {
         "state": "5g9/2",
@@ -79,9 +79,9 @@
         "state": "7d3/2",
         "n": 7,
         "l": "d",
-        "Gamma_rad_s": 3022733.53902,
+        "Gamma_rad_s": 2942574.91866,
         "Gamma_BBR_s": 48484.9967309,
-        "tau_rad_s": 3.3e-07,
+        "tau_rad_s": 3.4e-07,
         "tau_eff_s": 3.3e-07,
         "top_channels": [
           {
@@ -121,17 +121,17 @@
           }
         ],
         "Gamma_PI_s": 0.002516,
-        "Gamma_mix_PI_s": 0.00113,
-        "Gamma_ion_s": 0.004894,
+        "Gamma_mix_PI_s": 0.001107,
+        "Gamma_ion_s": 0.004862,
         "Gamma_quench_s": 48484.999246
       },
       {
         "state": "7d5/2",
         "n": 7,
         "l": "d",
-        "Gamma_rad_s": 2959218.97955,
+        "Gamma_rad_s": 3011031.2777,
         "Gamma_BBR_s": 48604.2821534,
-        "tau_rad_s": 3.4e-07,
+        "tau_rad_s": 3.3e-07,
         "tau_eff_s": 3.3e-07,
         "top_channels": [
           {
@@ -171,8 +171,8 @@
           }
         ],
         "Gamma_PI_s": 0.002516,
-        "Gamma_mix_PI_s": 0.001105,
-        "Gamma_ion_s": 0.00486,
+        "Gamma_mix_PI_s": 0.001121,
+        "Gamma_ion_s": 0.004881,
         "Gamma_quench_s": 48604.284669
       },
       {
@@ -221,8 +221,8 @@
           }
         ],
         "Gamma_PI_s": 1.533606,
-        "Gamma_mix_PI_s": 1.023405,
-        "Gamma_ion_s": 3.432045,
+        "Gamma_mix_PI_s": 1.023608,
+        "Gamma_ion_s": 3.432318,
         "Gamma_quench_s": 48600.056401
       },
       {
@@ -271,8 +271,8 @@
           }
         ],
         "Gamma_PI_s": 1.533606,
-        "Gamma_mix_PI_s": 1.02356,
-        "Gamma_ion_s": 3.432254,
+        "Gamma_mix_PI_s": 1.023413,
+        "Gamma_ion_s": 3.432056,
         "Gamma_quench_s": 48563.462547
       },
       {
@@ -429,7 +429,7 @@
         "state": "7s",
         "n": 7,
         "l": "s",
-        "Gamma_rad_s": 11278222.8099,
+        "Gamma_rad_s": 11279066.1176,
         "Gamma_BBR_s": 1922.01164389,
         "tau_rad_s": 9e-08,
         "tau_eff_s": 9e-08,
@@ -479,10 +479,10 @@
         "state": "8d3/2",
         "n": 8,
         "l": "d",
-        "Gamma_rad_s": 2179099.1937,
+        "Gamma_rad_s": 2130452.55198,
         "Gamma_BBR_s": 65179.9880573,
-        "tau_rad_s": 4.6e-07,
-        "tau_eff_s": 4.5e-07,
+        "tau_rad_s": 4.7e-07,
+        "tau_eff_s": 4.6e-07,
         "top_channels": [
           {
             "partner": "7f5/2",
@@ -521,17 +521,17 @@
           }
         ],
         "Gamma_PI_s": 0.15791,
-        "Gamma_mix_PI_s": 0.049744,
-        "Gamma_ion_s": 0.278709,
+        "Gamma_mix_PI_s": 0.049101,
+        "Gamma_ion_s": 0.277846,
         "Gamma_quench_s": 65180.145967
       },
       {
         "state": "8d5/2",
         "n": 8,
         "l": "d",
-        "Gamma_rad_s": 2138307.15151,
+        "Gamma_rad_s": 2169901.35249,
         "Gamma_BBR_s": 64908.1997337,
-        "tau_rad_s": 4.7e-07,
+        "tau_rad_s": 4.6e-07,
         "tau_eff_s": 4.5e-07,
         "top_channels": [
           {
@@ -571,8 +571,8 @@
           }
         ],
         "Gamma_PI_s": 0.15791,
-        "Gamma_mix_PI_s": 0.048941,
-        "Gamma_ion_s": 0.277632,
+        "Gamma_mix_PI_s": 0.049356,
+        "Gamma_ion_s": 0.278189,
         "Gamma_quench_s": 64908.357644
       },
       {
@@ -621,8 +621,8 @@
           }
         ],
         "Gamma_PI_s": 14.113056,
-        "Gamma_mix_PI_s": 4.497744,
-        "Gamma_ion_s": 24.982438,
+        "Gamma_mix_PI_s": 4.497768,
+        "Gamma_ion_s": 24.98247,
         "Gamma_quench_s": 56928.693971
       },
       {
@@ -671,8 +671,8 @@
           }
         ],
         "Gamma_PI_s": 14.113056,
-        "Gamma_mix_PI_s": 4.498923,
-        "Gamma_ion_s": 24.984019,
+        "Gamma_mix_PI_s": 4.498906,
+        "Gamma_ion_s": 24.983996,
         "Gamma_quench_s": 56882.750463
       },
       {
@@ -771,8 +771,8 @@
           }
         ],
         "Gamma_PI_s": 0.000173,
-        "Gamma_mix_PI_s": 6.3e-05,
-        "Gamma_ion_s": 0.000317,
+        "Gamma_mix_PI_s": 6.4e-05,
+        "Gamma_ion_s": 0.000318,
         "Gamma_quench_s": 44708.623499
       },
       {
@@ -821,15 +821,15 @@
           }
         ],
         "Gamma_PI_s": 0.000173,
-        "Gamma_mix_PI_s": 6.8e-05,
-        "Gamma_ion_s": 0.000323,
+        "Gamma_mix_PI_s": 6.7e-05,
+        "Gamma_ion_s": 0.000322,
         "Gamma_quench_s": 44989.709364
       },
       {
         "state": "8s",
         "n": 8,
         "l": "s",
-        "Gamma_rad_s": 6156215.87599,
+        "Gamma_rad_s": 6156545.93324,
         "Gamma_BBR_s": 27129.4220956,
         "tau_rad_s": 1.6e-07,
         "tau_eff_s": 1.6e-07,
@@ -1121,8 +1121,8 @@
           }
         ],
         "Gamma_PI_s": 0.025987,
-        "Gamma_mix_PI_s": 0.00546,
-        "Gamma_ion_s": 0.042205,
+        "Gamma_mix_PI_s": 0.005529,
+        "Gamma_ion_s": 0.042298,
         "Gamma_quench_s": 72011.581719
       },
       {
@@ -1171,8 +1171,8 @@
           }
         ],
         "Gamma_PI_s": 0.025987,
-        "Gamma_mix_PI_s": 0.005612,
-        "Gamma_ion_s": 0.042409,
+        "Gamma_mix_PI_s": 0.005578,
+        "Gamma_ion_s": 0.042364,
         "Gamma_quench_s": 71403.848047
       },
       {
@@ -1372,7 +1372,7 @@
         ],
         "Gamma_PI_s": 164.428288,
         "Gamma_mix_PI_s": 18.885494,
-        "Gamma_ion_s": 246.302363,
+        "Gamma_ion_s": 246.302364,
         "Gamma_quench_s": 59289.052834
       },
       {
@@ -1471,8 +1471,8 @@
           }
         ],
         "Gamma_PI_s": 0.526968,
-        "Gamma_mix_PI_s": 0.082451,
-        "Gamma_ion_s": 0.817908,
+        "Gamma_mix_PI_s": 0.082664,
+        "Gamma_ion_s": 0.818194,
         "Gamma_quench_s": 84814.859214
       },
       {
@@ -1521,8 +1521,8 @@
           }
         ],
         "Gamma_PI_s": 0.526968,
-        "Gamma_mix_PI_s": 0.083337,
-        "Gamma_ion_s": 0.819097,
+        "Gamma_mix_PI_s": 0.08323,
+        "Gamma_ion_s": 0.818954,
         "Gamma_quench_s": 84002.836631
       },
       {
@@ -1771,8 +1771,8 @@
           }
         ],
         "Gamma_PI_s": 3.592765,
-        "Gamma_mix_PI_s": 0.481089,
-        "Gamma_ion_s": 5.468017,
+        "Gamma_mix_PI_s": 0.481177,
+        "Gamma_ion_s": 5.468135,
         "Gamma_quench_s": 86929.526134
       },
       {
@@ -1821,8 +1821,8 @@
           }
         ],
         "Gamma_PI_s": 3.592765,
-        "Gamma_mix_PI_s": 0.484208,
-        "Gamma_ion_s": 5.472205,
+        "Gamma_mix_PI_s": 0.484165,
+        "Gamma_ion_s": 5.472147,
         "Gamma_quench_s": 86204.702975
       },
       {
@@ -13366,12 +13366,12 @@
         "E_bind_eV": 0.422873,
         "Gamma_PI_s": 0.002516,
         "Gamma_SFI_s": 0.000861,
-        "Gamma_mix_PI_s": 0.00113,
-        "Gamma_mix_SFI_s": 0.000387,
+        "Gamma_mix_PI_s": 0.001107,
+        "Gamma_mix_SFI_s": 0.000379,
         "field_ionized": false,
-        "Gamma_ion_s": 0.004894,
+        "Gamma_ion_s": 0.004862,
         "Gamma_BBR_s": 48484.996731,
-        "Gamma_rad_s": 3022730.0,
+        "Gamma_rad_s": 2942570.0,
         "Gamma_quench_s": 48484.999246,
         "tau_eff_s": 3.3e-07,
         "n_mix_partners": 12
@@ -13387,12 +13387,12 @@
         "E_bind_eV": 0.422686,
         "Gamma_PI_s": 0.002516,
         "Gamma_SFI_s": 0.000861,
-        "Gamma_mix_PI_s": 0.001105,
-        "Gamma_mix_SFI_s": 0.000378,
+        "Gamma_mix_PI_s": 0.001121,
+        "Gamma_mix_SFI_s": 0.000384,
         "field_ionized": false,
-        "Gamma_ion_s": 0.00486,
+        "Gamma_ion_s": 0.004881,
         "Gamma_BBR_s": 48604.282153,
-        "Gamma_rad_s": 2959220.0,
+        "Gamma_rad_s": 3011030.0,
         "Gamma_quench_s": 48604.284669,
         "tau_eff_s": 3.3e-07,
         "n_mix_partners": 10
@@ -13408,10 +13408,10 @@
         "E_bind_eV": 0.27885,
         "Gamma_PI_s": 1.533606,
         "Gamma_SFI_s": 0.524603,
-        "Gamma_mix_PI_s": 1.023405,
-        "Gamma_mix_SFI_s": 0.350432,
+        "Gamma_mix_PI_s": 1.023608,
+        "Gamma_mix_SFI_s": 0.350501,
         "field_ionized": false,
-        "Gamma_ion_s": 3.432045,
+        "Gamma_ion_s": 3.432318,
         "Gamma_BBR_s": 48598.522795,
         "Gamma_rad_s": 3551160.0,
         "Gamma_quench_s": 48600.056401,
@@ -13429,10 +13429,10 @@
         "E_bind_eV": 0.278852,
         "Gamma_PI_s": 1.533606,
         "Gamma_SFI_s": 0.524603,
-        "Gamma_mix_PI_s": 1.02356,
-        "Gamma_mix_SFI_s": 0.350485,
+        "Gamma_mix_PI_s": 1.023413,
+        "Gamma_mix_SFI_s": 0.350434,
         "field_ionized": false,
-        "Gamma_ion_s": 3.432254,
+        "Gamma_ion_s": 3.432056,
         "Gamma_BBR_s": 48561.928941,
         "Gamma_rad_s": 3549810.0,
         "Gamma_quench_s": 48563.462547,
@@ -13518,7 +13518,7 @@
         "field_ionized": false,
         "Gamma_ion_s": 0.0,
         "Gamma_BBR_s": 1922.011644,
-        "Gamma_rad_s": 11278200.0,
+        "Gamma_rad_s": 11279100.0,
         "Gamma_quench_s": 1922.011644,
         "tau_eff_s": 9e-08,
         "n_mix_partners": 8
@@ -13534,14 +13534,14 @@
         "E_bind_eV": 0.306163,
         "Gamma_PI_s": 0.15791,
         "Gamma_SFI_s": 0.054016,
-        "Gamma_mix_PI_s": 0.049744,
-        "Gamma_mix_SFI_s": 0.017039,
+        "Gamma_mix_PI_s": 0.049101,
+        "Gamma_mix_SFI_s": 0.016819,
         "field_ionized": false,
-        "Gamma_ion_s": 0.278709,
+        "Gamma_ion_s": 0.277846,
         "Gamma_BBR_s": 65179.988057,
-        "Gamma_rad_s": 2179100.0,
+        "Gamma_rad_s": 2130450.0,
         "Gamma_quench_s": 65180.145967,
-        "tau_eff_s": 4.5e-07,
+        "tau_eff_s": 4.6e-07,
         "n_mix_partners": 15
       },
       {
@@ -13555,12 +13555,12 @@
         "E_bind_eV": 0.306037,
         "Gamma_PI_s": 0.15791,
         "Gamma_SFI_s": 0.054016,
-        "Gamma_mix_PI_s": 0.048941,
-        "Gamma_mix_SFI_s": 0.016765,
+        "Gamma_mix_PI_s": 0.049356,
+        "Gamma_mix_SFI_s": 0.016907,
         "field_ionized": false,
-        "Gamma_ion_s": 0.277632,
+        "Gamma_ion_s": 0.278189,
         "Gamma_BBR_s": 64908.199734,
-        "Gamma_rad_s": 2138310.0,
+        "Gamma_rad_s": 2169900.0,
         "Gamma_quench_s": 64908.357644,
         "tau_eff_s": 4.5e-07,
         "n_mix_partners": 12
@@ -13576,10 +13576,10 @@
         "E_bind_eV": 0.2134,
         "Gamma_PI_s": 14.113056,
         "Gamma_SFI_s": 4.82845,
-        "Gamma_mix_PI_s": 4.497744,
-        "Gamma_mix_SFI_s": 1.543188,
+        "Gamma_mix_PI_s": 4.497768,
+        "Gamma_mix_SFI_s": 1.543196,
         "field_ionized": false,
-        "Gamma_ion_s": 24.982438,
+        "Gamma_ion_s": 24.98247,
         "Gamma_BBR_s": 56914.580915,
         "Gamma_rad_s": 2438110.0,
         "Gamma_quench_s": 56928.693971,
@@ -13597,10 +13597,10 @@
         "E_bind_eV": 0.213401,
         "Gamma_PI_s": 14.113056,
         "Gamma_SFI_s": 4.82845,
-        "Gamma_mix_PI_s": 4.498923,
-        "Gamma_mix_SFI_s": 1.54359,
+        "Gamma_mix_PI_s": 4.498906,
+        "Gamma_mix_SFI_s": 1.543584,
         "field_ionized": false,
-        "Gamma_ion_s": 24.984019,
+        "Gamma_ion_s": 24.983996,
         "Gamma_BBR_s": 56868.637407,
         "Gamma_rad_s": 2437220.0,
         "Gamma_quench_s": 56882.750463,
@@ -13639,10 +13639,10 @@
         "E_bind_eV": 0.478067,
         "Gamma_PI_s": 0.000173,
         "Gamma_SFI_s": 5.9e-05,
-        "Gamma_mix_PI_s": 6.3e-05,
+        "Gamma_mix_PI_s": 6.4e-05,
         "Gamma_mix_SFI_s": 2.2e-05,
         "field_ionized": false,
-        "Gamma_ion_s": 0.000317,
+        "Gamma_ion_s": 0.000318,
         "Gamma_BBR_s": 44708.623326,
         "Gamma_rad_s": 2249210.0,
         "Gamma_quench_s": 44708.623499,
@@ -13660,10 +13660,10 @@
         "E_bind_eV": 0.47573,
         "Gamma_PI_s": 0.000173,
         "Gamma_SFI_s": 5.9e-05,
-        "Gamma_mix_PI_s": 6.8e-05,
+        "Gamma_mix_PI_s": 6.7e-05,
         "Gamma_mix_SFI_s": 2.3e-05,
         "field_ionized": false,
-        "Gamma_ion_s": 0.000323,
+        "Gamma_ion_s": 0.000322,
         "Gamma_BBR_s": 44989.709192,
         "Gamma_rad_s": 2335200.0,
         "Gamma_quench_s": 44989.709364,
@@ -13686,7 +13686,7 @@
         "field_ionized": false,
         "Gamma_ion_s": 1.9e-05,
         "Gamma_BBR_s": 27129.422096,
-        "Gamma_rad_s": 6156220.0,
+        "Gamma_rad_s": 6156550.0,
         "Gamma_quench_s": 27129.4221,
         "tau_eff_s": 1.6e-07,
         "n_mix_partners": 10
@@ -13786,10 +13786,10 @@
         "E_bind_eV": 0.338713,
         "Gamma_PI_s": 0.025987,
         "Gamma_SFI_s": 0.008889,
-        "Gamma_mix_PI_s": 0.00546,
-        "Gamma_mix_SFI_s": 0.001868,
+        "Gamma_mix_PI_s": 0.005529,
+        "Gamma_mix_SFI_s": 0.001892,
         "field_ionized": false,
-        "Gamma_ion_s": 0.042205,
+        "Gamma_ion_s": 0.042298,
         "Gamma_BBR_s": 72011.555732,
         "Gamma_rad_s": 1405130.0,
         "Gamma_quench_s": 72011.581719,
@@ -13807,10 +13807,10 @@
         "E_bind_eV": 0.337314,
         "Gamma_PI_s": 0.025987,
         "Gamma_SFI_s": 0.008889,
-        "Gamma_mix_PI_s": 0.005612,
-        "Gamma_mix_SFI_s": 0.00192,
+        "Gamma_mix_PI_s": 0.005578,
+        "Gamma_mix_SFI_s": 0.001909,
         "field_ionized": false,
-        "Gamma_ion_s": 0.042409,
+        "Gamma_ion_s": 0.042364,
         "Gamma_BBR_s": 71403.82206,
         "Gamma_rad_s": 1448480.0,
         "Gamma_quench_s": 71403.848047,
@@ -13894,7 +13894,7 @@
         "Gamma_mix_PI_s": 18.885494,
         "Gamma_mix_SFI_s": 6.549461,
         "field_ionized": false,
-        "Gamma_ion_s": 246.302363,
+        "Gamma_ion_s": 246.302364,
         "Gamma_BBR_s": 59124.624547,
         "Gamma_rad_s": 1274910.0,
         "Gamma_quench_s": 59289.052834,
@@ -13933,10 +13933,10 @@
         "E_bind_eV": 0.252551,
         "Gamma_PI_s": 0.526968,
         "Gamma_SFI_s": 0.180265,
-        "Gamma_mix_PI_s": 0.082451,
-        "Gamma_mix_SFI_s": 0.028224,
+        "Gamma_mix_PI_s": 0.082664,
+        "Gamma_mix_SFI_s": 0.028297,
         "field_ionized": false,
-        "Gamma_ion_s": 0.817908,
+        "Gamma_ion_s": 0.818194,
         "Gamma_BBR_s": 84814.332246,
         "Gamma_rad_s": 936306.683577,
         "Gamma_quench_s": 84814.859214,
@@ -13954,10 +13954,10 @@
         "E_bind_eV": 0.251645,
         "Gamma_PI_s": 0.526968,
         "Gamma_SFI_s": 0.180265,
-        "Gamma_mix_PI_s": 0.083337,
-        "Gamma_mix_SFI_s": 0.028528,
+        "Gamma_mix_PI_s": 0.08323,
+        "Gamma_mix_SFI_s": 0.028491,
         "field_ionized": false,
-        "Gamma_ion_s": 0.819097,
+        "Gamma_ion_s": 0.818954,
         "Gamma_BBR_s": 84002.309662,
         "Gamma_rad_s": 959139.738291,
         "Gamma_quench_s": 84002.836631,
@@ -14059,10 +14059,10 @@
         "E_bind_eV": 0.195555,
         "Gamma_PI_s": 3.592765,
         "Gamma_SFI_s": 1.229378,
-        "Gamma_mix_PI_s": 0.481089,
-        "Gamma_mix_SFI_s": 0.164785,
+        "Gamma_mix_PI_s": 0.481177,
+        "Gamma_mix_SFI_s": 0.164815,
         "field_ionized": false,
-        "Gamma_ion_s": 5.468017,
+        "Gamma_ion_s": 5.468135,
         "Gamma_BBR_s": 86925.933369,
         "Gamma_rad_s": 654970.249573,
         "Gamma_quench_s": 86929.526134,
@@ -14080,10 +14080,10 @@
         "E_bind_eV": 0.194939,
         "Gamma_PI_s": 3.592765,
         "Gamma_SFI_s": 1.229378,
-        "Gamma_mix_PI_s": 0.484208,
-        "Gamma_mix_SFI_s": 0.165854,
+        "Gamma_mix_PI_s": 0.484165,
+        "Gamma_mix_SFI_s": 0.165839,
         "field_ionized": false,
-        "Gamma_ion_s": 5.472205,
+        "Gamma_ion_s": 5.472147,
         "Gamma_BBR_s": 86201.110209,
         "Gamma_rad_s": 672387.771936,
         "Gamma_quench_s": 86204.702975,
@@ -18750,9 +18750,9 @@
         "state": "7d3/2",
         "n": 7,
         "l": "d",
-        "alpha0_au": 337947.2283,
-        "shift_stat_hz": -2909.82657,
-        "shift_dyn_hz": 605.489656,
+        "alpha0_au": 337947.2868,
+        "shift_stat_hz": -2909.827074,
+        "shift_dyn_hz": 605.496729,
         "dyn_reliable": true,
         "static_valid": true,
         "static_note": "",
@@ -18764,7 +18764,7 @@
           "Numerov": 123
         },
         "trk_scale": 1.0,
-        "f_cont": 0.202213,
+        "f_cont": 0.201831,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -18772,9 +18772,9 @@
         "state": "7d5/2",
         "n": 7,
         "l": "d",
-        "alpha0_au": 326505.4927,
-        "shift_stat_hz": -2811.309809,
-        "shift_dyn_hz": 561.451726,
+        "alpha0_au": 326505.4524,
+        "shift_stat_hz": -2811.309463,
+        "shift_dyn_hz": 561.447017,
         "dyn_reliable": true,
         "static_valid": true,
         "static_note": "",
@@ -18786,7 +18786,7 @@
           "Numerov": 97
         },
         "trk_scale": 1.0,
-        "f_cont": 0.202213,
+        "f_cont": 0.202468,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -18901,9 +18901,9 @@
         "state": "7s",
         "n": 7,
         "l": "s",
-        "alpha0_au": 32657.6083,
-        "shift_stat_hz": -281.191761,
-        "shift_dyn_hz": -409.589804,
+        "alpha0_au": 32657.6097,
+        "shift_stat_hz": -281.191774,
+        "shift_dyn_hz": -409.590081,
         "dyn_reliable": true,
         "static_valid": true,
         "static_note": "",
@@ -18917,15 +18917,15 @@
         "trk_scale": 0.99292,
         "f_cont": 0.0,
         "n_tail": 150,
-        "n_cont": 80
+        "n_cont": 0
       },
       {
         "state": "8d3/2",
         "n": 8,
         "l": "d",
-        "alpha0_au": 943304.4877,
-        "shift_stat_hz": -8122.133376,
-        "shift_dyn_hz": 1195.746557,
+        "alpha0_au": 943304.5166,
+        "shift_stat_hz": -8122.133624,
+        "shift_dyn_hz": 1195.754541,
         "dyn_reliable": true,
         "static_valid": true,
         "static_note": "",
@@ -18937,7 +18937,7 @@
           "Numerov": 123
         },
         "trk_scale": 1.0,
-        "f_cont": 0.169975,
+        "f_cont": 0.169766,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -18945,9 +18945,9 @@
         "state": "8d5/2",
         "n": 8,
         "l": "d",
-        "alpha0_au": 905008.829,
-        "shift_stat_hz": -7792.396316,
-        "shift_dyn_hz": 1146.289461,
+        "alpha0_au": 905008.8091,
+        "shift_stat_hz": -7792.396145,
+        "shift_dyn_hz": 1146.284121,
         "dyn_reliable": true,
         "static_valid": true,
         "static_note": "",
@@ -18959,7 +18959,7 @@
           "Numerov": 97
         },
         "trk_scale": 1.0,
-        "f_cont": 0.169975,
+        "f_cont": 0.170115,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -19074,9 +19074,9 @@
         "state": "8s",
         "n": 8,
         "l": "s",
-        "alpha0_au": 133069.7166,
-        "shift_stat_hz": -1145.770004,
-        "shift_dyn_hz": -387.105585,
+        "alpha0_au": 133069.7171,
+        "shift_stat_hz": -1145.770008,
+        "shift_dyn_hz": -387.105584,
         "dyn_reliable": true,
         "static_valid": true,
         "static_note": "",
@@ -19088,7 +19088,7 @@
           "Numerov": 76
         },
         "trk_scale": 1.0,
-        "f_cont": 0.000814,
+        "f_cont": 0.000813,
         "n_tail": 150,
         "n_cont": 80
       },

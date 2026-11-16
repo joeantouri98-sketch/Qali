@@ -192,9 +192,38 @@ def test_fr_7d_scale_rows_start_ticked_and_can_be_unticked(page):
         page._overrides.get("nist.fscale"), page._additions.get("nist.fscale"),
         page._flags.get("nist.fscale"), U.tables_dir())
     page.ovr_none.click()
-    assert page.apply() == [] and U.load_flags() == {}
+    assert page.apply() == [] and "nist.fscale" not in U.load_flags()
     page.reset_table()
     assert page._flags["nist.fscale"] == FR
+
+
+def test_published_lines_start_ticked_and_each_change_is_explained(page, monkeypatch):
+    shown: list[str] = []
+    monkeypatch.setattr(T.QMessageBox, "open", lambda self: shown.append(self.text()))
+    page.tree.setCurrentItem(_find(page.tree, "table", "published.lines"))
+    assert not page.grid.isColumnHidden(4) and not page._is_edited("published.lines")
+    row = next(r for r in range(page.grid.rowCount()) if page.grid.item(r, 0).text() == "Cs / 6p3/2-5d5/2")
+    assert page.override_box(row).isChecked()
+    page.override_box(row).setChecked(False)
+    assert len(shown) == 1 and "NIST" in shown[0] and "Stark" in shown[0]
+    page.override_box(row).setChecked(True)
+    assert len(shown) == 2 and "published matrix element" in shown[1]
+    page.ovr_none.click()                                     # one note for the whole batch
+    assert len(shown) == 3 and shown[2].startswith("These ")
+    assert page.apply() == [] and "published.lines" not in U.load_flags()
+    page.reset_table()
+    assert not page._is_edited("published.lines")
+
+
+def test_published_lines_note_can_be_switched_off(page, monkeypatch):
+    shown: list[str] = []
+    monkeypatch.setattr(T.QMessageBox, "open", lambda self: shown.append(self.text()))
+    from qali.gui.main_window import open_settings
+
+    open_settings().setValue(T.PUBLISHED_NOTICE_KEY, True)
+    page.tree.setCurrentItem(_find(page.tree, "table", "published.lines"))
+    page.override_box(0).setChecked(False)
+    assert shown == [] and page._is_edited("published.lines")
 
 
 def test_override_column_only_for_lifetimes_and_its_ticks_are_saved(page):
@@ -207,7 +236,8 @@ def test_override_column_only_for_lifetimes_and_its_ticks_are_saved(page):
     assert page._flags["lifetimes.known"] == {key: True}
     assert page.apply() == [] and U.load_flags()["lifetimes.known"] == {key: True}
     page.ovr_none.click()
-    assert page._flags == {"nist.fscale": FR} and page.apply() == [] and U.load_flags() == {"nist.fscale": FR}
+    assert "lifetimes.known" not in page._flags and page._flags["nist.fscale"] == FR
+    assert page.apply() == [] and "lifetimes.known" not in U.load_flags() and U.load_flags()["nist.fscale"] == FR
 
 
 def test_override_all_follows_the_filter_and_reset_clears(page):
@@ -238,3 +268,48 @@ def test_add_with_the_override_box_ticked_sets_the_flag(page, monkeypatch):
     assert page.override_box(last).isChecked()
     page._remove_row()
     assert "lifetimes.known" not in page._flags
+
+
+def test_published_columns_show_nist_and_the_source(page):
+    page.tree.setCurrentItem(_find(page.tree, "table", "published.lines"))
+    heads = [page.grid.horizontalHeaderItem(c).text() for c in range(3)]
+    assert heads == ["Name", "NIST", "Published"]
+    rows = {page.grid.item(r, 0).text(): r for r in range(page.grid.rowCount())}
+    r = rows["Cs / 6p1/2-5d3/2"]
+    assert float(page.grid.item(r, 1).text()) == pytest.approx(7.29, abs=0.01)
+    assert "Safronova" in page.grid.item(r, 2).toolTip()
+    r = rows["Cs / 6p1/2-7s"]
+    assert page.grid.item(r, 1).text() == "\u2014" and "literature" in page.grid.item(r, 1).toolTip()
+    page.tree.setCurrentItem(_find(page.tree, "table", "polarizability.alpha_core"))
+    assert page.grid.horizontalHeaderItem(1).text() == "Packaged"
+
+
+def test_add_a_published_line(page, monkeypatch):
+    page.tree.setCurrentItem(_find(page.tree, "table", "published.lines"))
+    existing = {k: now for k, _pk, now in U.packaged_rows("published.lines")}
+    dlg = T.AddRowDialog("published.lines", existing, page)
+    assert dlg.use.isChecked() and dlg.sigma is not None
+    for box, text in zip(dlg.boxes, ("Cs", "5d3/2", "6p1/2")):       # the 6p1/2-5d3/2 row, written the other way
+        box.setText(text)
+    dlg.value.setText("7.0")
+    dlg.accept()
+    assert "already in this table" in dlg.error.text()
+    for box, text in zip(dlg.boxes, ("Cs", "7p1/2", "6d3/2")):
+        box.setText(text)
+    dlg.sigma.setText("0.2")
+    dlg.accept()
+    assert dlg.result_row == ("Cs / 7p1/2-6d3/2", 7.0, "") and dlg.sigma_value == 0.2
+
+
+def test_published_lines_note_closes_with_ok(page):
+    """The real note, OK pressed (a crash once: the check box was read back after PySide6 had freed it)."""
+    from PySide6.QtWidgets import QMessageBox
+
+    from qali.gui.main_window import open_settings
+
+    page.tree.setCurrentItem(_find(page.tree, "table", "published.lines"))
+    page.override_box(0).setChecked(False)
+    page._notice.checkBox().setChecked(True)
+    page._notice.button(QMessageBox.Ok).click()
+    assert open_settings().value(T.PUBLISHED_NOTICE_KEY, False, type=bool)
+    assert page.apply() == [] and len(U.load_flags()["published.lines"]) == len(U.default_flags("published.lines")) - 1

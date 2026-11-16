@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import ClassVar
 
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QGuiApplication, QKeySequence
@@ -31,6 +32,7 @@ from PySide6.QtWidgets import (
 
 from qali.core.workspace import Workspace
 
+from . import units
 from .stages import PIPELINE, stage_has_output
 
 # Cards flow into as many columns of at least this width as fit.
@@ -223,8 +225,15 @@ class SpeciesOverviewWidget(QWidget):
         except (TypeError, ValueError):
             return None
 
+    # stored units that Preferences > Units and numbers converts; anything else is shown as stored
+    _KIND_OF_UNIT: ClassVar[dict[str, str]] = {"eV": "energy", "nm": "wavelength", "s": "time",
+                                               "Hz": "frequency", "a0": "length"}
+
     @classmethod
-    def _with_unit(cls, value, unit):
+    def _with_unit(cls, value, unit, kind=None):
+        kind = kind or cls._KIND_OF_UNIT.get(unit)
+        if kind and isinstance(value, (int, float)) and not isinstance(value, bool):
+            return units.show(value, kind)
         text = cls._format_value(value)
         return f"{text} {unit}" if unit and value is not None and not isinstance(value, str) else text
 
@@ -236,11 +245,7 @@ class SpeciesOverviewWidget(QWidget):
             return "Yes" if value else "No"
         if isinstance(value, (int, float)):
             x = float(value)
-            if x == 0:
-                return "0"
-            if abs(x) >= 1e5 or abs(x) < 1e-4:
-                return f"{x:.6e}"
-            return f"{x:.6g}"
+            return units.number(x)
         return str(value)
 
     @staticmethod
@@ -345,7 +350,7 @@ class SpeciesOverviewWidget(QWidget):
         rows = []
         for label, keys in (
             ("Method", ("method",)),
-            ("Ionization energy [eV]", ("ionization_energy_eV",)),
+            ("Ionization energy", ("ionization_energy_eV",)),
             ("States", ("num_states",)),
             ("Theoretical states", ("num_theoretical",)),
             ("n min", ("n_start",)),
@@ -353,7 +358,8 @@ class SpeciesOverviewWidget(QWidget):
         ):
             value = self._find_value(data, keys)
             if value is not None:
-                rows.append((label, self._format_value(value)))
+                rows.append((label, self._with_unit(value, "eV") if label == "Ionization energy"
+                             else self._format_value(value)))
 
         defects = data.get("quantum_defects")
         if isinstance(defects, dict) and defects:
@@ -387,8 +393,8 @@ class SpeciesOverviewWidget(QWidget):
         rows = [("Transitions", str(len(trans_list)))]
         if wl_values:
             rows.extend([
-                ("λ min", f"{min(wl_values):.3f} nm"),
-                ("λ max", f"{max(wl_values):.3f} nm"),
+                ("λ min", units.show(min(wl_values), "wavelength")),
+                ("λ max", units.show(max(wl_values), "wavelength")),
             ])
         if fs:
             strongest, row = max(fs, key=lambda x: x[0])
@@ -444,7 +450,8 @@ class SpeciesOverviewWidget(QWidget):
                           ("C6_expt_au", "a.u."), ("magic_wavelength_nm", "nm")):
             value = self._find_value(data, (key,))
             if value is not None:
-                rows.append((CARD_LABELS.get(key, key), self._with_unit(value, unit)))
+                kind = "polarizability" if key.startswith("alpha") else None
+                rows.append((CARD_LABELS.get(key, key), self._with_unit(value, unit, kind)))
         if not rows:
             rows.append(("Status", "File present but no summary values found"))
         return self._card("Polarizability", rows)
@@ -610,10 +617,10 @@ class SpeciesOverviewWidget(QWidget):
             ):
                 value = clock.get(key)
                 if value is not None:
-                    summary.addRow(
-                        label,
-                        QLabel(f"{self._format_value(value)} {unit}"),
-                    )
+                    scale = {"MHz": 1e6, "GHz": 1e9, "Hz": 1.0}.get(unit)
+                    text = (units.show(float(value) * scale, "frequency") if scale and self._number(value) is not None
+                            else f"{self._format_value(value)} {unit}")
+                    summary.addRow(label, QLabel(text))
 
             if clock.get("note"):
                 summary.addRow("Clock note", QLabel(str(clock["note"])))

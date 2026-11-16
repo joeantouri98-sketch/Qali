@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """``physics.tweezer_core`` against reference values and its own invariants.
 
-These pin the prefactors and conventions, not the known large-detuning issue
-(PHYSICS_BUGS.md P21): the two-level check runs close to resonance, where the
-frequency dependence of Γ does not matter.
+These pin the prefactors and conventions near resonance (the two-level check) and the
+frequency dependence of the damping far from it (the (ω/ω₀)³ law of Grimm et al.).
 """
 from __future__ import annotations
 
@@ -49,6 +48,24 @@ def test_near_resonance_reproduces_the_two_level_relation():
     detuning_s = abs(omega - omega_au_from_nm(NA_D2_NM)) / AU_TIME_S
     expected = NA_D2_A_S / detuning_s * abs(U) / HBAR_SI
     assert scattering_rate_Hz(im, I_Wm2) == pytest.approx(expected, rel=2e-3)
+
+
+def _grimm_rate(omega, omega0, gamma):
+    """Shape of Grimm et al. (2000) Eq. 10: (ω/ω₀)³ (Γ/(ω₀−ω) + Γ/(ω₀+ω))², prefactors dropped."""
+    return (omega / omega0) ** 3 * (gamma / (omega0 - omega) + gamma / (omega0 + omega)) ** 2
+
+
+@pytest.mark.parametrize("wl_trap", [700.0, 1064.0, 1550.0])
+def test_far_detuned_scattering_follows_grimm_eq_10(wl_trap):
+    """R_sc(far) / R_sc(near) equals the ratio from Grimm's Eq. 10, which carries the
+    frequency-dependent damping. A constant Γ would be off by (ω₀/ω)² (3.3x at 1064 nm)."""
+    channels, _, _ = attach_gamma([_channel(NA_D2_NM, 0.64, "3p3/2")], {"3p3/2": NA_D2_A_S})
+    omega0 = omega_au_from_nm(NA_D2_NM)
+    gamma = NA_D2_A_S * AU_TIME_S
+    near, far = omega_au_from_nm(589.5), omega_au_from_nm(wl_trap)
+    got = alpha_complex(far, channels)[1] / alpha_complex(near, channels)[1]
+    expected = _grimm_rate(far, omega0, gamma) / _grimm_rate(near, omega0, gamma)
+    assert got == pytest.approx(expected, rel=1e-6)
 
 
 def test_undamped_real_part_equals_alpha_real():

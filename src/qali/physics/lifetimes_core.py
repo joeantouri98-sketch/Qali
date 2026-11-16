@@ -112,6 +112,9 @@ class FValueSources:
     nist_fit_exclusions: Sequence[Mapping] = ()
     # DHF + core polarisation E1 network (opt-in, --dhf): ahead of ORCA / Numerov / Coulomb
     dhf: DHFLines | None = None
+    # polarizability_core.load_published_lines(...): {(lower, upper): (|D|, σ_D)} of the ticked rows of
+    # "Published matrix elements"; each such line takes this value ahead of NIST and the literature (a precision line excepted)
+    published: Mapping = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -456,7 +459,19 @@ def _line_row(t, c: _Context) -> TransitionA | str:
     _J_lo  = t.get('lower_J') or parse_J_label(ll) or default_lower_J(ll_char)
     _term_up = parse_term_from_label(ul) if _is_ion else None
     _term_lo = parse_term_from_label(ll) if _is_ion else None
-    if (nist_fosc_jt or nist_fosc_j or nist_fosc) and not c.orca_only:
+    # Priority 0: a published J-resolved matrix element (ticked in "Published matrix elements"), the same one
+    # Polarizability uses; never over a precision line. f_lu = (2/3) ΔE D² / (2J_lower + 1).
+    _pub = c.sources.published.get((ll, ul)) if c.sources.published and not c.orca_only and not _is_ion else None
+    if _pub and nist_acc_j.get((_ll_nl, _ul_nl, _J_up)) != 'precision' and dE:
+        _D, _sD = _pub
+        _gJ_l = J_degeneracy(_J_lo) or g_lower
+        fosc        = 2.0 / 3.0 * abs(dE) * EV_TO_HARTREE * _D * _D / _gJ_l
+        fosc_source = 'literature'
+        fosc_acc    = 'published'
+        fosc_delta  = 2.0 * _sD / _D if _D else 0.20
+        g_upper = J_degeneracy(_J_up or default_lower_J(lu_char)) or g_upper
+        g_lower = _gJ_l
+    if fosc is None and (nist_fosc_jt or nist_fosc_j or nist_fosc) and not c.orca_only:
         _f = None
         if _is_ion and nist_fosc_jt and _J_up and _term_up:
             # Exact (term_lo, term_up) key; if lower has no term (e.g. '2p'), unique-match on (nl,nl,*,term_up,J).

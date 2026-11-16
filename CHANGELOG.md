@@ -4,7 +4,31 @@ Short notes on what changed in Qali (called LiNaK until November 2026). Newest f
 
 ## Latest
 
+### Added
+- **"Published matrix elements"** in *Preferences > Tables and variables*: one row per published J-resolved matrix element (`f_values/<El>_published_anchors.json`; 74 lines for K, Rb, Cs, Fr), with an Override tick. A ticked line uses the published |D| in both Polarizability and Lifetimes. An unticked line goes back, in both, to NIST's value where NIST has the line (36 of the 74: all of K, 3 each for Rb and Cs), else to the literature multiplet average. A precision D line keeps first place either way.
+  - The columns are **NIST** (NIST's f for the line as |D|, or — with the fallback in the hover) and **Published** (editable; the hover gives the reference and σ). For Fr the literature average equals the published value, so unticking a Fr line changes nothing.
+  - **Add...** takes a line of your own: element, the two levels (7s, 6p1/2, 5d5/2), |D|, an optional uncertainty (10 % of |D| if empty) and a source. Levels and E1 rules (Δl = 1, ΔJ ≤ 1) are checked, and a line already in the table, either way round, is refused. Added lines start ticked and reach both stages.
+  - Every row starts ticked. For Cs the published 6p–5d values agree with the 6p Stark shifts and with the newest 5d₅/₂ lifetime, 1353(5) ns (Pucher et al., PRA 101, 042510 (2020)); NIST's f comes from the older 5d lifetimes.
+  - Ticking or unticking a row shows a short note on the effect, which can be switched off.
+  - The lifetimes and polarizability JSON record which lines used the published value (`published_lines`: `published` and `unticked`).
+  - Bundled lifetimes that move (with the lines ticked):
+
+    | | before | now | measured |
+    |---|---|---|---|
+    | Cs 5d₃/₂ | 907.7 ns | 957.4 ns | 909(15) (DiBerardino 1998) |
+    | Cs 5d₅/₂ | 1281.2 ns | 1339.0 ns | 1353(5) (Pucher 2020); 1281(9) (DiBerardino 1998) |
+    | Cs 6d₃/₂ / 6d₅/₂ | 57.9 / 62.6 ns | 61.0 / 60.6 ns | |
+    | Rb 4d₃/₂ / 4d₅/₂ | 83.7 / 88.9 ns | 83.0 / 89.3 ns | |
+
+    Other K, Rb and Cs nd levels move by 1–5 %. Polarizabilities do not change: they used the published lines already.
+
 ### Fixed
+- **Splash screen and About showed version "0+unknown".** The version came from git tags through installed package metadata, which a stale install or a frozen build does not have. It is now set in one place, `src/qali/_version.py` (3.0.0), which `pyproject.toml` reads; bump it before tagging a release.
+- **Cs excited-state polarizabilities 5–8 % high.** α(6p₁/₂) came out 1433 a.u. against the measured 1328.4(6), and α(6p₃/₂) 1717 against 1641(2) (Stark shifts; Arora, Safronova & Clark 2007). Two causes:
+  - The published matrix elements (`f_values/<El>_published_anchors.json`, Safronova et al. 2016 for Cs) reached the networks only as multiplet averages, spread over 6p₁/₂ and 6p₃/₂ in the LS ratio. For Cs the two differ well beyond that ratio (|D(6p₁/₂–7s)| = 4.24 against 6.48 for 6p₃/₂), so 6p₁/₂ → 7s was 5 % and 6p₁/₂ → 6d₃/₂ 8 % too strong.
+  - NIST's f for 6p₁/₂ → 5d₃/₂ (0.268) comes from 5d lifetimes that are inconsistent with the 6p Stark shifts (Safronova & Clark, PRA 69, 040501 (2004)); the published value gives 0.254.
+  - Each published line now enters as its own J-resolved f, ahead of NIST and the multiplet rows (the precision D-line f-values keep first place). α(6p₁/₂) = 1353.9 (+1.9 %, within the ±2.8 % from σ(D) = 0.1 on the 5d line), α(6p₃/₂) = 1665.3 (+1.5 %). K, Rb and Fr move by under 0.5 %; ground states do not change.
+  - Lifetimes now uses the same published lines (see "Published matrix elements" under Added).
 - **Polarizabilities left out the valence photoionization continuum.** The sums over bound np lines (to n = 50) miss the oscillator strength that goes to the continuum: 0.24 for Li 2s, 0.01–0.05 for Na–Fr. Li α(0) came out 0.8 % low and C₆ 2.6 % low.
   - New `physics/valence_continuum.py`: the bound state and the energy-normalised continuum εl′ in the same Marinescu model potential as the orbital page, df/dε from the j-resolved E1 matrix element, integrated from threshold to 20 Hartree plus an ε^−7/2 tail, as pseudo-lines (`source: continuum`, 10 % uncertainty). Checked against the bound series: df/dε at threshold equals the limit of f_n n*³ to 2 %.
   - Used by Polarizability, Tweezer and the Blackbody ground and excited networks. Neutral Li–Fr only; Fr p → εd is left out (Fr d is not fitted).

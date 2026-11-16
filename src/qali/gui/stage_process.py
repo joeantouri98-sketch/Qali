@@ -132,16 +132,21 @@ def windows_process_image_path(pid: int) -> str | None:
     finally:
         kernel32.CloseHandle(handle)
 
-def stage_env_values(root: Path) -> dict[str, str]:
+def stage_env_values(root: Path, orca: str = "") -> dict[str, str]:
     """Environment for a pipeline-stage subprocess.
 
     ``QALI_PROJECT_ROOT`` is always set, so the stage writes into the
-    GUI's folder whatever folder that is.
+    GUI's folder whatever folder that is. *orca*, the ORCA program chosen in
+    Preferences, goes in as ``ORCA_EXE``; empty keeps the user's own
+    ``ORCA_EXE`` or PATH.
     """
-    return {
+    env = {
         "PYTHONUTF8": "1",
         "PYTHONIOENCODING": "utf-8",
         # Unbuffered, so the Console tab follows a long run live.
         "PYTHONUNBUFFERED": "1",
         PROJECT_ROOT_ENV: str(root),
     }
+    if orca:
+        env["ORCA_EXE"] = orca
+    return env

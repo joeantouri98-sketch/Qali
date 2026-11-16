@@ -23,6 +23,7 @@ def fake_bundle(tmp_path, monkeypatch) -> Path:
     bundle = tmp_path / "bundle"
     for relative, text in {
         "data_json/Na_rydberg.json": '{"n": 1}',
+        "data_json/Rb_feshbach.json": '{"resonances": [1, 2, 3, 4, 5, 6, 7]}',
         "data_json/arc/Na_rydberg.json": '{"arc": 1}',
         "plots/Na/Na_feshbach.html": "<html></html>",
         "orca_outputs/Na/Na_gs.out": "ORCA TERMINATED NORMALLY",
@@ -139,3 +140,64 @@ def test_gui_switches_folder_and_remembers_it(window, tmp_path):
     _wait_for_seeding(win)
     assert win.root != chosen
     assert window().root == win.root, "going back to the default forgets the choice"
+
+
+def test_an_untouched_copy_follows_a_newer_bundle(tmp_path, fake_bundle):
+    import os
+
+    ws = Workspace(root=tmp_path / "out")
+    seed_bundled_data(ws)
+    copy = ws.data_json_dir / "Na_rydberg.json"
+    newer = fake_bundle / "data_json" / "Na_rydberg.json"
+    newer.write_text('{"n": 2, "channels": 7}', encoding="utf-8")
+    os.utime(newer, ns=(newer.stat().st_mtime_ns + 10**9,) * 2)
+    seed_bundled_data(ws)
+    assert copy.read_text(encoding="utf-8") == '{"n": 2, "channels": 7}'
+
+
+def test_an_edited_copy_is_kept_when_the_bundle_changes(tmp_path, fake_bundle):
+    import os
+
+    ws = Workspace(root=tmp_path / "out")
+    seed_bundled_data(ws)
+    copy = ws.data_json_dir / "Na_rydberg.json"
+    copy.write_text("my edit", encoding="utf-8")
+    newer = fake_bundle / "data_json" / "Na_rydberg.json"
+    newer.write_text('{"n": 3}', encoding="utf-8")
+    os.utime(newer, ns=(newer.stat().st_mtime_ns + 10**9,) * 2)
+    seed_bundled_data(ws)
+    assert copy.read_text(encoding="utf-8") == "my edit"
+
+
+def test_a_copy_from_before_the_record_is_adopted_only_if_identical(tmp_path, fake_bundle):
+    import os
+
+    ws = Workspace(root=tmp_path / "out")
+    old = ws.data_json_dir / "Na_rydberg.json"
+    old.parent.mkdir(parents=True)
+    old.write_text('{"n": 1}', encoding="utf-8")                  # same bytes as the bundle
+    other = ws.data_json_dir / "arc" / "Na_rydberg.json"
+    other.parent.mkdir(parents=True)
+    other.write_text("older bundle", encoding="utf-8")
+    seed_bundled_data(ws)
+    newer = fake_bundle / "data_json" / "Na_rydberg.json"
+    newer.write_text('{"n": 4}', encoding="utf-8")
+    os.utime(newer, ns=(newer.stat().st_mtime_ns + 10**9,) * 2)
+    seed_bundled_data(ws)
+    assert old.read_text(encoding="utf-8") == '{"n": 4}'
+    assert other.read_text(encoding="utf-8") == "older bundle"
+
+
+def test_an_old_input_file_from_before_the_record_is_replaced_and_kept_aside(tmp_path, fake_bundle):
+    from qali.core.workspace import PREVIOUS_DIR
+
+    ws = Workspace(root=tmp_path / "out")
+    old = ws.data_json_dir / "Rb_feshbach.json"
+    old.parent.mkdir(parents=True)
+    old.write_text('{"resonances": [1, 2, 3, 4]}', encoding="utf-8")       # an older Qali's copy
+    result = ws.data_json_dir / "Na_rydberg.json"
+    result.write_text("my own run", encoding="utf-8")                         # a stage output
+    seed_bundled_data(ws)
+    assert old.read_text(encoding="utf-8") == '{"resonances": [1, 2, 3, 4, 5, 6, 7]}'
+    assert (ws.data_json_dir / PREVIOUS_DIR / "Rb_feshbach.json").read_text(encoding="utf-8").count(",") == 3
+    assert result.read_text(encoding="utf-8") == "my own run"

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import tempfile
 from collections.abc import Callable
@@ -43,6 +44,12 @@ _EXAMPLE_TREES = {"plots": "plots_dir", "orca_outputs": "orca_outputs_dir"}
 SPECIES_TREES = ("data_json", "plots", "orca_outputs", "tables")
 # Remembers species the user removed from this folder (see mark_removed).
 REMOVED_SPECIES_FILE = "removed_species.json"
+# Per seeded tree: which files are untouched copies of the bundle, so a newer bundle can replace them.
+SEEDED_FILE = ".qali_seeded.json"
+# Where an older copy of a bundled input file goes when the bundle's replaces it.
+PREVIOUS_DIR = ".qali_previous"
+# data_json files that are inputs: no stage writes them, they come from the bundle (literature data).
+_INPUT_FILE = re.compile(r"(^|/)([^/]+_(feshbach|hf_constants|feshbach_table|nist)\.json|nuclear_data\.json)$")
 
 
 @dataclass(frozen=True)
@@ -224,7 +231,13 @@ def _seed_skip(workspace: Workspace, tree: str) -> Callable[[Path], bool]:
 
 
 def seed_bundled_data(workspace: Workspace, *, include_examples: bool = False) -> None:
-    """Copy the bundled data into *workspace*; existing files are never touched.
+    """Copy the bundled data into *workspace*; files the user or a stage changed are never touched.
+
+    A copy that is still exactly as seeded is replaced when the bundled file changes (a new Qali
+    version), so a folder never keeps an old input file. Each tree keeps a small record
+    (``.qali_seeded.json``) of the copies it made. A file from before that record is adopted if it
+    matches the bundle; an input file (literature data no stage writes) that does not is replaced,
+    the old one kept in ``.qali_previous``; anything else is left alone.
 
     Pipeline inputs (``data_json``) are always copied. With
     *include_examples* the shipped example results (``plots``,
@@ -236,11 +249,31 @@ def seed_bundled_data(workspace: Workspace, *, include_examples: bool = False) -
         trees.update(_EXAMPLE_TREES)
     for tree, attribute in trees.items():
         _copy_missing(reference_path(tree), getattr(workspace, attribute),
-                      _seed_skip(workspace, tree))
+                      _seed_skip(workspace, tree), is_input=_INPUT_FILE.search if tree == "data_json" else None)
 
 
-def _copy_missing(source: Path, target: Path, skip: Callable[[Path], bool]) -> None:
-    """Copy every file under *source* that *target* lacks, except *skip* ones.
+def _stamp(path: Path) -> list[int]:
+    st = path.stat()
+    return [st.st_size, st.st_mtime_ns]
+
+
+def _same_bytes(a: Path, b: Path) -> bool:
+    try:
+        if a.stat().st_size != b.stat().st_size:
+            return False
+        with a.open("rb") as fa, b.open("rb") as fb:
+            while True:
+                x, y = fa.read(1 << 20), fb.read(1 << 20)
+                if x != y:
+                    return False
+                if not x:
+                    return True
+    except OSError:
+        return False
+
+
+def _copy_missing(source: Path, target: Path, skip: Callable[[Path], bool], is_input=None) -> None:
+    """Copy every file under *source* that *target* lacks, except *skip* ones, and refresh untouched copies.
 
     Each file is copied under a temporary name and renamed into place, so an
     interrupted seed never leaves a truncated file that later runs would
@@ -248,23 +281,82 @@ def _copy_missing(source: Path, target: Path, skip: Callable[[Path], bool]) -> N
     """
     if not source.is_dir():
         return
+    record_path = target / SEEDED_FILE
+    try:
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+        if not isinstance(record, dict):
+            record = {}
+    except (OSError, ValueError):
+        record = {}
+    changed = False
     for path in source.rglob("*"):
         if not path.is_file():
             continue
         relative = path.relative_to(source)
-        destination = target / relative
-        if destination.exists() or skip(relative):
+        if skip(relative):
             continue
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        handle, temp_name = tempfile.mkstemp(
-            prefix=f".{destination.name}.", suffix=".part", dir=destination.parent
-        )
-        os.close(handle)
-        try:
-            shutil.copy2(path, temp_name)
-            os.replace(temp_name, destination)
-        except OSError:
-            Path(temp_name).unlink(missing_ok=True)
-            # A concurrent seeder (e.g. a stage run) may have won the race.
-            if not destination.exists():
-                raise
+        key = relative.as_posix()
+        destination = target / relative
+        if destination.exists():
+            entry = record.get(key)
+            try:
+                mine, bundled = _stamp(destination), _stamp(path)
+            except OSError:
+                continue
+            if entry is None:
+                if _same_bytes(path, destination):           # a copy from before the record: adopt it
+                    record[key] = {"bundle": bundled, "copy": mine}
+                    changed = True
+                    continue
+                if not (is_input and is_input(key)) or not _keep_previous(destination, target / PREVIOUS_DIR / key):
+                    continue                                 # results and unknown files stay as they are
+            elif entry.get("copy") != mine:                  # edited, or rewritten by a stage: not ours now
+                del record[key]
+                changed = True
+                continue
+            elif entry.get("bundle") == bundled:
+                continue                                     # bundle unchanged
+        if _copy_into(path, destination):
+            record[key] = {"bundle": _stamp(path), "copy": _stamp(destination)}
+            changed = True
+    if changed:
+        _write_record(record_path, record)
+
+
+def _keep_previous(destination: Path, aside: Path) -> bool:
+    """Move an older input file out of the way before the bundled one replaces it."""
+    try:
+        aside.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(destination, aside)
+        return True
+    except OSError:
+        return False
+
+
+def _copy_into(path: Path, destination: Path) -> bool:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    handle, temp_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.", suffix=".part", dir=destination.parent
+    )
+    os.close(handle)
+    try:
+        shutil.copy2(path, temp_name)
+        os.replace(temp_name, destination)
+        return True
+    except OSError:
+        Path(temp_name).unlink(missing_ok=True)
+        # A concurrent seeder (e.g. a stage run) may have won the race.
+        if not destination.exists():
+            raise
+        return False
+
+
+def _write_record(record_path: Path, record: dict) -> None:
+    try:
+        record_path.parent.mkdir(parents=True, exist_ok=True)
+        handle, temp_name = tempfile.mkstemp(prefix=".seeded.", suffix=".part", dir=record_path.parent)
+        with os.fdopen(handle, "w", encoding="utf-8") as fh:
+            json.dump(record, fh)
+        os.replace(temp_name, record_path)
+    except OSError:
+        pass                                                 # only a lost chance to refresh later
