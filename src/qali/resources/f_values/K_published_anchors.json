@@ -1,6 +1,6 @@
 {
  "element": "K",
- "note": "Published reduced electric-dipole matrix elements |D| (a.u.) between the first excited np level and ns/nd levels, transcribed from the cited tables. Used by tools/make_arc_fvalues.py to write PUBLISHED literature rows and to scale the ARC model-potential tail. Edit/add rows here when new values appear.",
+ "note": "Published reduced electric-dipole matrix elements |D| (a.u.) between the first excited np level and ns/nd levels (and a few 5p lines), transcribed from the cited tables. Used by tools/make_arc_fvalues.py to write PUBLISHED literature rows and to scale the ARC model-potential tail. Edit/add rows here when new values appear.",
  "transitions": [
   {
    "lower": "4p1/2",
@@ -211,6 +211,76 @@
    "D": 0.25357,
    "D_unc": null,
    "ref": "Safronova & Safronova, Phys. Rev. A 78, 052504 (2008), Table IV (all-order, line strength S = |D|^2)"
+  },
+  {
+   "lower": "5p1/2",
+   "upper": "6s",
+   "D": 8.79,
+   "D_unc": 0.02,
+   "ref": "Safronova, Safronova & Clark, Phys. Rev. A 87 (2013), arXiv:1301.3181, Table I (recommended, all-order)"
+  },
+  {
+   "lower": "5p3/2",
+   "upper": "6s",
+   "D": 12.5,
+   "D_unc": 0.02,
+   "ref": "Safronova, Safronova & Clark, Phys. Rev. A 87 (2013), arXiv:1301.3181, Table I (recommended, all-order) (NIST lists gA = 9.910e6 s^-1, i.e. |D| = 15.50, against 6.45e6 for this value; its 5p1/2-6s row matches the same source, and 15.50 breaks the ~2:1 line-strength ratio of the pair)"
+  },
+  {
+   "lower": "5p1/2",
+   "upper": "7s",
+   "D": 1.801,
+   "D_unc": 0.008,
+   "ref": "Safronova, Safronova & Clark, Phys. Rev. A 87 (2013), arXiv:1301.3181, Table I (recommended, all-order)"
+  },
+  {
+   "lower": "5p3/2",
+   "upper": "7s",
+   "D": 2.54,
+   "D_unc": 0.01,
+   "ref": "Safronova, Safronova & Clark, Phys. Rev. A 87 (2013), arXiv:1301.3181, Table I (recommended, all-order)"
+  },
+  {
+   "lower": "5p1/2",
+   "upper": "4d3/2",
+   "D": 17.04,
+   "D_unc": 0.06,
+   "ref": "Safronova, Safronova & Clark, Phys. Rev. A 87 (2013), arXiv:1301.3181, Table I (recommended, all-order)"
+  },
+  {
+   "lower": "5p3/2",
+   "upper": "4d3/2",
+   "D": 7.64,
+   "D_unc": 0.03,
+   "ref": "Safronova, Safronova & Clark, Phys. Rev. A 87 (2013), arXiv:1301.3181, Table I (recommended, all-order)"
+  },
+  {
+   "lower": "5p3/2",
+   "upper": "4d5/2",
+   "D": 22.93,
+   "D_unc": 0.08,
+   "ref": "Safronova, Safronova & Clark, Phys. Rev. A 87 (2013), arXiv:1301.3181, Table I (recommended, all-order)"
+  },
+  {
+   "lower": "5p1/2",
+   "upper": "5d3/2",
+   "D": 0.931,
+   "D_unc": 0.035,
+   "ref": "Safronova, Safronova & Clark, Phys. Rev. A 87 (2013), arXiv:1301.3181, Table I (recommended, all-order)"
+  },
+  {
+   "lower": "5p3/2",
+   "upper": "5d3/2",
+   "D": 0.398,
+   "D_unc": 0.016,
+   "ref": "Safronova, Safronova & Clark, Phys. Rev. A 87 (2013), arXiv:1301.3181, Table I (recommended, all-order)"
+  },
+  {
+   "lower": "5p3/2",
+   "upper": "5d5/2",
+   "D": 1.19,
+   "D_unc": 0.04,
+   "ref": "Safronova, Safronova & Clark, Phys. Rev. A 87 (2013), arXiv:1301.3181, Table I (recommended, all-order)"
   }
  ]
 }

@@ -91,6 +91,7 @@ from qali.physics.polarizability_core import (
     alpha_sigma,
     c6_sigma,
     alpha_real,
+    alpha_real_vectorized,
     build_transitions_for_state,
     get_available_elements,
     kWcm2_to_Wm2,
@@ -239,103 +240,109 @@ def find_magic_wavelengths(trans_ground, trans_excited,
     Find magic wavelengths where α_ground(ω) = α_excited(ω).
 
     Strategy:
-      1. Scan Δα = α_ground - α_excited on a dense grid.
-      2. Find sign changes (NaN-safe).
-      3. Bisect each bracket to find the root.
+      1. Split [wl_min, wl_max] at every resonance of either state: between two neighbouring resonances
+         Δα = α_ground − α_excited is continuous, so each sign change there is a real crossing and a pole can
+         never pass for one (a fixed grid could step over a resonance narrower than its spacing).
+      2. Scan each interval (no guard bands: the interval holds no pole) and bisect each sign change.
+      3. Drop roots inside a resonance guard band (|ΔE² − ω²| < 1e-4 ΔE), where α is not shown: these are the
+         crossings pressed against weak Rydberg lines, of no practical use.
       4. Record the slope dΔα/dλ at the root (robustness metric).
+    *n_scan* sets the scan density: about n_scan points over the whole range, at least 16 per interval.
 
     Returns list of dicts with keys:
         wl_nm, alpha_au, delta_alpha_slope_au_per_nm,
         nearby_resonance_nm, nearby_resonance_label, source
     """
-    # Collect all resonance wavelengths (avoid plotting through them)
-    all_res = []
-    for tr in trans_ground + trans_excited:
-        dE = abs(tr['delta_E_au'])
-        if dE > 0 and tr.get('source') not in ('core', 'continuum'):
-            wl_r = nm_from_omega_au(dE)
-            if wl_min_nm < wl_r < wl_max_nm:
-                all_res.append(wl_r)
+    lines = [t for t in trans_ground + trans_excited
+             if abs(t['delta_E_au']) > 0 and t.get('source') not in ('core', 'continuum')]
+    all_res = sorted({nm_from_omega_au(abs(t['delta_E_au'])) for t in lines
+                      if wl_min_nm < nm_from_omega_au(abs(t['delta_E_au'])) < wl_max_nm})
+    dE_all = np.array([abs(t['delta_E_au']) for t in lines])
 
-    # Dense scan grid
-    wl_scan = np.linspace(wl_min_nm, wl_max_nm, n_scan)
+    def delta_alpha_vec(wls):
+        out = np.empty(len(wls))
+        for k in range(0, len(wls), 2000):                    # bounded memory: points x lines
+            om = omega_au_from_nm(np.asarray(wls[k:k + 2000], dtype=float))
+            out[k:k + 2000] = (alpha_real_vectorized(om, trans_ground, guard=0.0)
+                               - alpha_real_vectorized(om, trans_excited, guard=0.0))
+        return out
 
     def delta_alpha(wl):
+        return float(delta_alpha_vec([wl])[0])
+
+    def in_guard(wl):
         om = omega_au_from_nm(wl)
-        ag = alpha_real(om, trans_ground)
-        ae = alpha_real(om, trans_excited)
-        if math.isnan(ag) or math.isnan(ae):
-            return float('nan')
-        return ag - ae
+        return bool(len(dE_all)) and bool(np.any(np.abs(dE_all ** 2 - om ** 2) < 1e-4 * dE_all))
 
-    da_arr = np.array([delta_alpha(wl) for wl in wl_scan])
-
+    step = (wl_max_nm - wl_min_nm) / max(n_scan, 1)
+    edges = [wl_min_nm, *all_res, wl_max_nm]
     magic = []
-
-    for i in range(len(wl_scan) - 1):
-        a0, a1 = da_arr[i], da_arr[i+1]
-        if math.isnan(a0) or math.isnan(a1):
+    for a, b in itertools.pairwise(edges):
+        if b - a < 1e-9:
             continue
-        if a0 * a1 >= 0:
-            continue  # no sign change
+        n = int(min(max((b - a) / step, 16), 20000))
+        # Uniform points plus log-spaced ones toward both ends: the crossing next to a resonance can sit closer to
+        # it than the uniform spacing. Open interval: never on a pole.
+        half = 0.5 * (b - a)
+        near = np.logspace(math.log10(min(1e-4, 0.1 * half)), math.log10(half), 40)
+        wls = np.unique(np.concatenate([np.linspace(a, b, n + 2)[1:-1], a + near, b - near]))
+        wls = wls[(wls > a) & (wls < b)]
+        vals = delta_alpha_vec(wls)
+        for i in range(len(wls) - 1):
+            v0, v1 = vals[i], vals[i + 1]
+            if not (np.isfinite(v0) and np.isfinite(v1)) or v0 * v1 >= 0:
+                continue
+            lo, hi, a0 = wls[i], wls[i + 1], v0
+            for _ in range(60):
+                mid = 0.5 * (lo + hi)
+                a_mid = delta_alpha(mid)
+                if a_mid == 0.0:
+                    lo = hi = mid
+                    break
+                if a0 * a_mid < 0:
+                    hi = mid
+                else:
+                    lo, a0 = mid, a_mid
+            wl_magic = 0.5 * (lo + hi)
+            if in_guard(wl_magic):
+                continue
 
-        # Bisect
-        lo, hi = wl_scan[i], wl_scan[i+1]
-        for _ in range(60):
-            mid   = 0.5*(lo + hi)
-            a_mid = delta_alpha(mid)
-            if math.isnan(a_mid):
-                break
-            if a_mid == 0.0:
-                lo = hi = mid
-                break
-            if a0 * a_mid < 0:
-                hi = mid
+            om_magic = omega_au_from_nm(wl_magic)
+            ag_magic = alpha_real(om_magic, trans_ground)
+            ae_magic = alpha_real(om_magic, trans_excited)
+            alpha_at_magic = 0.5*(ag_magic + ae_magic) if not (math.isnan(ag_magic) or math.isnan(ae_magic)) else float('nan')
+
+            # Slope dΔα/dλ (numerical) — steeper = more laser-noise sensitive; the step stays inside the interval
+            dlam = min(0.01, 0.25 * (wl_magic - a), 0.25 * (b - wl_magic))
+            slope = (delta_alpha(wl_magic + dlam) - delta_alpha(wl_magic - dlam)) / (2*dlam)
+
+            # Nearest resonance
+            if all_res:
+                nearest_res = min(all_res, key=lambda r: abs(r - wl_magic))
+                nearest_res_tr = min(
+                    [t for t in trans_ground + trans_excited if t.get('source') not in ('core', 'continuum')],
+                    key=lambda tr: abs(nm_from_omega_au(abs(tr['delta_E_au'])) - nearest_res)
+                    if abs(tr['delta_E_au']) > 0 else float('inf')
+                )
+                nearest_label = nearest_res_tr.get('other_label', '?')
             else:
-                lo = mid
-                a0 = a_mid
-        else:
-            mid = 0.5*(lo + hi)
+                nearest_res   = float('nan')
+                nearest_label = '?'
 
-        wl_magic = mid
+            magic.append(dict(
+                wl_nm                     = round(wl_magic, 4),
+                alpha_au                  = round(alpha_at_magic, 4) if not math.isnan(alpha_at_magic) else None,
+                delta_alpha_slope_au_per_nm = round(slope, 4) if not math.isnan(slope) else None,
+                nearby_resonance_nm       = round(nearest_res, 3) if not math.isnan(nearest_res) else None,
+                nearby_resonance_label    = nearest_label,
+                robustness                = 'robust' if slope is not None and abs(slope) < 50 else
+                                            'sensitive' if abs(slope) < 200 else 'very sensitive',
+            ))
 
-        # Evaluate α at magic wavelength
-        om_magic = omega_au_from_nm(wl_magic)
-        ag_magic = alpha_real(om_magic, trans_ground)
-        ae_magic = alpha_real(om_magic, trans_excited)
-        alpha_at_magic = 0.5*(ag_magic + ae_magic) if not (math.isnan(ag_magic) or math.isnan(ae_magic)) else float('nan')
-
-        # Slope dΔα/dλ (numerical) — steeper = more laser-noise sensitive
-        dlam   = 0.01   # nm
-        slope  = (delta_alpha(wl_magic + dlam) - delta_alpha(wl_magic - dlam)) / (2*dlam)
-
-        # Nearest resonance
-        if all_res:
-            nearest_res = min(all_res, key=lambda r: abs(r - wl_magic))
-            nearest_res_tr = min(
-                [t for t in trans_ground + trans_excited if t.get('source') not in ('core', 'continuum')],
-                key=lambda tr: abs(nm_from_omega_au(abs(tr['delta_E_au'])) - nearest_res)
-                if abs(tr['delta_E_au']) > 0 else float('inf')
-            )
-            nearest_label = nearest_res_tr.get('other_label', '?')
-        else:
-            nearest_res   = float('nan')
-            nearest_label = '?'
-
-        magic.append(dict(
-            wl_nm                     = round(wl_magic, 4),
-            alpha_au                  = round(alpha_at_magic, 4) if not math.isnan(alpha_at_magic) else None,
-            delta_alpha_slope_au_per_nm = round(slope, 4) if not math.isnan(slope) else None,
-            nearby_resonance_nm       = round(nearest_res, 3) if not math.isnan(nearest_res) else None,
-            nearby_resonance_label    = nearest_label,
-            robustness                = 'robust' if slope is not None and abs(slope) < 50 else
-                                        'sensitive' if abs(slope) < 200 else 'very sensitive',
-        ))
-
-    # Deduplicate (sometimes the scan finds the same root twice)
+    # Deduplicate (a root found from both sides of a grid point)
     deduped = []
     for m in sorted(magic, key=lambda x: x['wl_nm']):
-        if not deduped or abs(m['wl_nm'] - deduped[-1]['wl_nm']) > 0.5:
+        if not deduped or abs(m['wl_nm'] - deduped[-1]['wl_nm']) > 1e-3:
             deduped.append(m)
 
     return deduped
@@ -446,9 +453,13 @@ def run_element(element, excited_label=None,
         print(f"\n  Excited state {excited_label}: {len(trans_ex)} transitions")
         print(f"    NIST: {n_ex_nist}   Coulomb: {n_ex_coulomb}")
 
-        print(f"  Searching for magic wavelengths ({wl_min:.0f}–{wl_max:.0f} nm)...")
+        # No magic wavelength past the excited state's photoionization threshold: a sum over bound lines does not
+        # give Re α there. The continuum pseudo-lines make α NaN above it, but not every state has them (Fr 7p).
+        E_ex = data['state_energy_au'].get(excited_label)
+        wl_magic_min = max(wl_min, nm_from_omega_au(-E_ex)) if E_ex is not None and E_ex < 0 else wl_min
+        print(f"  Searching for magic wavelengths ({wl_magic_min:.0f}–{wl_max:.0f} nm)...")
         magic_results = find_magic_wavelengths(
-            trans_gs, trans_ex, wl_min, wl_max)
+            trans_gs, trans_ex, wl_magic_min, wl_max)
         print(f"  Found {len(magic_results)} magic wavelengths")
         for m in magic_results:
             slope_str = f"{m['delta_alpha_slope_au_per_nm']:+.1f}" \

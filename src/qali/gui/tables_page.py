@@ -51,7 +51,7 @@ def _fallback_text(el: str, line: str, D_alt: float | None, src_alt: str | None)
         return "Unticked, the line has no value from another source."
     if src_alt in ("NIST", "precision"):
         return f"Unticked, it uses NIST's value, |D| = {D_alt:.4g}."
-    what = "the literature multiplet average" if src_alt == "literature" else f"the {src_alt} value"
+    what = "the literature multiplet average" if src_alt == "literature" else f"the {src_alt} model value"
     same = abs(D_alt - PUBLISHED_LINES.get(el, {}).get(line, 0.0)) < 1e-3
     return f"Unticked, it uses {what}, |D| = {D_alt:.4g}" + (", the same as the published value." if same else ".")
 
@@ -530,13 +530,15 @@ class TablesPage(QWidget):
                 text = f"{what} now uses NIST's value {stages}, in place of the published one."
             elif srcs[0] == "literature":
                 text = f"NIST has no value for {what}: unticked, it uses the literature multiplet average {stages}."
+            elif srcs[0]:
+                text = f"NIST has no value for {what}: unticked, it uses the {srcs[0]} model value {stages}."
             else:
                 text = f"{what} is no longer used: {stages} take this line from their other sources, if any."
         elif on:
             text = f"These {len(keys)} lines now use the published matrix elements {stages}."
         else:
             text = (f"These {len(keys)} lines now use NIST's value {stages} where NIST has one ({n_nist} of them), "
-                    "else the literature multiplet average.")
+                    "else the literature multiplet average or a model value.")
         if not on and any(k.startswith("Cs / 6p") and "-5d" in k for k in keys):
             text += ("\n\nFor Cs 6p-5d, NIST's value puts the 6p polarizabilities 5-8 % above the Stark-shift"
                      " measurements and the 5d5/2 lifetime 5 % below the 2020 measurement.")

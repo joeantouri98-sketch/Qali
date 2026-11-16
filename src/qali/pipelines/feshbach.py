@@ -109,7 +109,8 @@ def build_parser() -> argparse.ArgumentParser:
         parser.add_argument(f'--no-tab-{TAB_FLAGS[t]}', action='store_true',
                             help=f'Leave out the {TAB_FLAGS[t]} tab')
     parser.add_argument('--isotope', type=int, default=None,
-                        help='Mass number A (default: from feshbach JSON)')
+                        help='Mass number A (default: from feshbach JSON; an isotope listed under "isotopes" '
+                             'there uses its own resonances, e.g. Rb 85)')
     return parser
 
 # ============================================================================
@@ -193,10 +194,23 @@ def load_mass_amu(element, isotope_A, data_dir):
     raise ValueError(f'No mass for {element}')
 
 
+def isotope_params(params, A):
+    """The parameter set of isotope *A*: the file's own (``isotope_A``), or its entry under ``"isotopes"``
+    (``{"85": {note, a_bg_default_a0, a_bg_ref, resonances, ...}}``) laid over the file's other keys."""
+    blk = (params.get('isotopes') or {}).get(str(A)) if A is not None else None
+    own = params.get('isotope_A')
+    if not blk or (own is not None and int(own) == int(A)):
+        return params
+    base = {k: v for k, v in params.items() if k not in ('isotopes', 'curves', 'resonances', 'note')}
+    return {**base, **blk, 'isotope_A': int(A)}
+
+
 def load_inputs(element, data_dir, isotope_A=None):
     """The literature table, C₆ and mass for *element*."""
     params = load_feshbach_params(element, data_dir)
     A = isotope_A or params.get('isotope_A') or default_isotope_A(element)
+    params = isotope_params(params, A)
+    validate_feshbach_params(params, f'{element}_feshbach.json, isotope {A}')
     json_A = params.get('isotope_A')
     if isotope_A and json_A and int(isotope_A) != int(json_A):
         print(f"  WARNING: {element}_feshbach.json holds a_bg / B0 / Delta for {element}-{json_A}, "

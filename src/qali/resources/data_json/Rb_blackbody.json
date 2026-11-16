@@ -3,14 +3,14 @@
   "gs_label": "5s",
   "excited_label": "5p1/2",
   "alpha0_gs_au": 318.7964,
-  "alpha0_ex_au": 818.5986,
+  "alpha0_ex_au": 813.5305,
   "T_K": 300.0,
   "shift_gs_hz_at_T": -2.744932,
-  "shift_ex_hz_at_T": -7.048378,
-  "shift_diff_hz_at_T": -4.303446,
+  "shift_ex_hz_at_T": -7.004741,
+  "shift_diff_hz_at_T": -4.259808,
   "dyn_gs_hz_at_T": -2.758766,
-  "dyn_ex_hz_at_T": -7.178315,
-  "dyn_diff_hz_at_T": -4.419549,
+  "dyn_ex_hz_at_T": -7.134478,
+  "dyn_diff_hz_at_T": -4.375712,
   "note": "shift_*_hz_at_T = static (leading-order) term only. dyn_*_hz_at_T = full static+dynamic term via Planck-spectrum integral of alpha(omega), validated against the Itano <E^2>_T formula and the Farley-Wing high-n closed form (Beloy et al. 2025, arXiv:2507.00948, Sec. II). rates = bound-bound BBR depopulation from lifetimes.json; tau_eff includes Gamma_PI when continuum block is present. continuum = Beterov eq.27 PI (A_L + QD phases) + optional SFI (--field) + multi-step mixing (eq.35; --no-mix to skip); Gamma_quench = Gamma_BBR + Gamma_PI. rydberg_shifts = static Itano + principal-value Planck dyn with TRK/tail/Kramers continuum completion (Farley-Wing asymptote); for high-n labels (no dynamic integral).",
   "rates": {
     "T_K": 300.0,
@@ -33,27 +33,27 @@
       },
       {
         "state": "5p3/2",
-        "Gamma_BBR_s": 4.5259975400126385e-07,
+        "Gamma_BBR_s": 4.5259975400126115e-07,
         "Gamma_rad_s": 38119144.96980008,
-        "Gamma_BBR_over_rad": 1.1873292393096339e-14
+        "Gamma_BBR_over_rad": 1.187329239309627e-14
       },
       {
         "state": "5p1/2",
-        "Gamma_BBR_s": 1.5772790863261366e-07,
+        "Gamma_BBR_s": 1.5772790863261286e-07,
         "Gamma_rad_s": 36138434.853625916,
-        "Gamma_BBR_over_rad": 4.364547310127577e-15
+        "Gamma_BBR_over_rad": 4.364547310127555e-15
       },
       {
         "state": "5d5/2",
-        "Gamma_BBR_s": 2707.878368597911,
-        "Gamma_rad_s": 5448432.650984529,
-        "Gamma_BBR_over_rad": 0.0004970013473707156
+        "Gamma_BBR_s": 2699.191024723609,
+        "Gamma_rad_s": 4267474.952214888,
+        "Gamma_BBR_over_rad": 0.0006325030738194926
       },
       {
         "state": "5d3/2",
-        "Gamma_BBR_s": 2655.7481373927017,
-        "Gamma_rad_s": 5270261.118748076,
-        "Gamma_BBR_over_rad": 0.0005039120600581478
+        "Gamma_BBR_s": 2650.778317616599,
+        "Gamma_rad_s": 4188280.302741912,
+        "Gamma_BBR_over_rad": 0.0006329037519005671
       },
       {
         "state": "5g9/2",

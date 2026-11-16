@@ -10,11 +10,27 @@
   "C6_expt_au": 5256.0,
   "magic_wavelengths": [
     {
+      "wl_nm": 504.3896,
+      "alpha_au": -215.0288,
+      "delta_alpha_slope_au_per_nm": 273.4957,
+      "nearby_resonance_nm": 504.03,
+      "nearby_resonance_label": "17s",
+      "robustness": "very sensitive"
+    },
+    {
       "wl_nm": 508.3386,
       "alpha_au": -222.6486,
       "delta_alpha_slope_au_per_nm": 209.9504,
       "nearby_resonance_nm": 507.811,
       "nearby_resonance_label": "16s",
+      "robustness": "very sensitive"
+    },
+    {
+      "wl_nm": 512.5822,
+      "alpha_au": -231.1107,
+      "delta_alpha_slope_au_per_nm": 288.1054,
+      "nearby_resonance_nm": 512.879,
+      "nearby_resonance_label": "15s",
       "robustness": "very sensitive"
     },
     {
@@ -26,12 +42,28 @@
       "robustness": "sensitive"
     },
     {
+      "wl_nm": 519.5527,
+      "alpha_au": -245.6852,
+      "delta_alpha_slope_au_per_nm": 273.9317,
+      "nearby_resonance_nm": 519.911,
+      "nearby_resonance_label": "14s",
+      "robustness": "very sensitive"
+    },
+    {
       "wl_nm": 521.1527,
       "alpha_au": -249.1581,
       "delta_alpha_slope_au_per_nm": 126.396,
       "nearby_resonance_nm": 519.911,
       "nearby_resonance_label": "14s",
       "robustness": "sensitive"
+    },
+    {
+      "wl_nm": 529.664,
+      "alpha_au": -268.5111,
+      "delta_alpha_slope_au_per_nm": 267.1896,
+      "nearby_resonance_nm": 530.107,
+      "nearby_resonance_label": "13s",
+      "robustness": "very sensitive"
     },
     {
       "wl_nm": 532.1591,

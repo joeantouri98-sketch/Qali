@@ -18,12 +18,20 @@
       "robustness": "sensitive"
     },
     {
-      "wl_nm": 356.8114,
-      "alpha_au": null,
-      "delta_alpha_slope_au_per_nm": null,
-      "nearby_resonance_nm": 356.844,
-      "nearby_resonance_label": "14d",
-      "robustness": "very sensitive"
+      "wl_nm": 360.2752,
+      "alpha_au": -61.7583,
+      "delta_alpha_slope_au_per_nm": 176.7355,
+      "nearby_resonance_nm": 360.127,
+      "nearby_resonance_label": "12s",
+      "robustness": "sensitive"
+    },
+    {
+      "wl_nm": 362.0471,
+      "alpha_au": -62.732,
+      "delta_alpha_slope_au_per_nm": 175.405,
+      "nearby_resonance_nm": 362.229,
+      "nearby_resonance_label": "11s",
+      "robustness": "sensitive"
     },
     {
       "wl_nm": 362.4321,
@@ -50,12 +58,12 @@
       "robustness": "sensitive"
     },
     {
-      "wl_nm": 367.2535,
-      "alpha_au": null,
-      "delta_alpha_slope_au_per_nm": null,
-      "nearby_resonance_nm": 367.273,
-      "nearby_resonance_label": "9d3/2",
-      "robustness": "very sensitive"
+      "wl_nm": 368.6846,
+      "alpha_au": -66.4503,
+      "delta_alpha_slope_au_per_nm": 104.0313,
+      "nearby_resonance_nm": 369.008,
+      "nearby_resonance_label": "9s",
+      "robustness": "sensitive"
     },
     {
       "wl_nm": 369.4443,
@@ -63,6 +71,14 @@
       "delta_alpha_slope_au_per_nm": 64.8857,
       "nearby_resonance_nm": 369.008,
       "nearby_resonance_label": "9s",
+      "robustness": "sensitive"
+    },
+    {
+      "wl_nm": 374.3059,
+      "alpha_au": -69.7043,
+      "delta_alpha_slope_au_per_nm": 77.4449,
+      "nearby_resonance_nm": 374.765,
+      "nearby_resonance_label": "8s",
       "robustness": "sensitive"
     },
     {

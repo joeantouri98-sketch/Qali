@@ -195,7 +195,9 @@ def main_scaled(a, el, cfg, arc, ac):
     atom.getRadialMatrixElement = functools.partial(atom.getRadialMatrixElement, useLiterature=False)
     nist = ac.load_nist_fvalues(el, a.f_values_dir, verbose=False)
     apath = os.path.join(a.f_values_dir, f'{el}_published_anchors.json')
-    anchors = _read_json(apath)['transitions']
+    # Only the lines from the first excited np level feed the np -> ns/nd series; other anchors (Rb 6p-5d) are
+    # used by the stages directly.
+    anchors = [t for t in _read_json(apath)['transitions'] if t['lower'].startswith(lo_p)]
     HA_EV = 27.211386245988
     LET = {0: 's', 2: 'd'}
     PJ = {'1/2': 0.5, '3/2': 1.5, '5/2': 2.5}

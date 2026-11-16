@@ -136,7 +136,7 @@ def test_nist_alternative_of_each_line():
     for el in ('K', 'Rb', 'Cs', 'Fr'):
         for _k, (_D, s) in P.published_line_alternatives(el).items():
             by_src[s] = by_src.get(s, 0) + 1
-    assert by_src == {'NIST': 36, 'literature': 38}
+    assert by_src == {'NIST': 46, 'literature': 38, 'Numerov': 3}         # Rb 6p-5d: a model value when unticked
 
 
 def test_line_rows_are_checked():
@@ -165,3 +165,30 @@ def test_an_added_line_reaches_both_stages(tables):
     assert t['source'] == 'literature' and t['fosc'] == pytest.approx(2 / 3 * t['delta_E_au'] * 36 / 2, rel=1e-3)
     tables.save_additions({})
     tables.reload("published.lines")
+
+
+@pytest.mark.parametrize('state,expt,tol', [('5d3/2', 246.3, 0.04), ('5d5/2', 238.5, 0.03),
+                                            ('6d3/2', 256.0, 0.02), ('6d5/2', 249.0, 0.02)])
+def test_rb_nd_lifetimes(state, expt, tol):
+    """Sheng et al., PRA 78, 062506 (2008) (5d); 6d values as quoted by Safronova & Safronova, PRA 83, 052508 (2011).
+    They were 13-23 % short with the unscaled 2004 5p-nd matrix elements."""
+    import json
+
+    doc = json.loads(reference_path('data_json', 'Rb_lifetimes.json').read_text(encoding='utf-8'))
+    tau = {lt['state']: lt['lifetime_ns'] for lt in doc['lifetimes']}
+    assert tau[state] == pytest.approx(expt, rel=tol)
+
+
+def test_k_6s_lifetime_and_the_nist_5p3_6s_row():
+    """K 6s: 81.3 ns all-order (Safronova & Safronova, PRA 78, 052504 (2008), Table V). NIST's 5p3/2-6s gA (9.91e6)
+    gives |D| = 15.5 against the recommended 12.50(2) (arXiv:1301.3181); with it 6s came out 71.3 ns."""
+    import json
+
+    from qali.physics import polarizability_core as P
+
+    D_nist, src = P.published_line_alternatives('K')['5p3/2-6s']
+    assert src == 'NIST' and D_nist == pytest.approx(15.5, abs=0.05)
+    assert P.PUBLISHED_LINES['K']['5p3/2-6s'] == 12.50
+    doc = json.loads(reference_path('data_json', 'K_lifetimes.json').read_text(encoding='utf-8'))
+    tau = {lt['state']: lt['lifetime_ns'] for lt in doc['lifetimes']}
+    assert tau['6s'] == pytest.approx(81.3, rel=0.01)

@@ -205,3 +205,41 @@ def test_rb87_lists_the_mixed_spin_channels():
     assert '|1,+1> + |1,+1>' in chans and '|1,+1> + |2,-1>' in chans and len(chans) == 7
     erhard = next(r for r in d['resonances'] if r['channel'] == '|1,+1> + |2,-1>')
     assert erhard['B0_G'] == pytest.approx(9.1047) and erhard['gamma_G'] > erhard['Delta_G']
+
+
+def test_rb85_uses_its_own_resonances(data_dir):
+    """Rb_feshbach.json holds 87Rb; isotope 85 takes the "isotopes" block (Blackley et al. 2013, Claussen et al. 2003)."""
+    from qali.pipelines.feshbach import load_inputs
+    from qali.physics.feshbach import multi_resonance_a
+
+    r87 = load_inputs('Rb', str(data_dir))
+    assert r87.isotope_A == 87 and len(r87.resonances) == 17
+    r85 = load_inputs('Rb', str(data_dir), isotope_A=85)
+    assert r85.isotope_A == 85 and len(r85.resonances) == 9
+    assert r85.mass_amu == pytest.approx(84.91179, abs=1e-4) and r85.a_bg_default_a0 == -443
+    assert '85Rb' in r85.note
+    ee = [r for r in r85.resonances if r.channel == '|2,-2> + |2,-2>']
+    broad = next(r for r in ee if abs(r.B0_G - 155.041) < 1e-6)
+    assert broad.Delta_G == pytest.approx(10.71)
+    # the zero crossing of the 155 G resonance is B0 + Δ = 165.75 G (a > 0 between B0 and the crossing)
+    near = [r for r in ee if r.B0_G < 200]
+    a = multi_resonance_a(np.array([160.0, 165.751, 170.0]), near, -443.0)
+    assert a[0] > 0 and abs(a[1]) < 1.0 and a[2] < 0
+
+
+def test_rb85_has_no_isotope_warning(tmp_path):
+    import shutil
+
+    from qali.core.paths import reference_path
+    from qali.gui.stages import isotope_prerequisite_issues
+
+    data = tmp_path / "data"
+    data.mkdir()
+    for name in ("Rb_feshbach.json", "nuclear_data.json"):
+        src = reference_path('data_json', name)
+        if src.exists():
+            shutil.copy(src, data)
+    texts = [t for _sev, t in isotope_prerequisite_issues(tmp_path, "feshbach", "Rb", 85)]
+    assert not any("NOT those of" in t for t in texts)
+    texts = [t for _sev, t in isotope_prerequisite_issues(tmp_path, "feshbach", "Rb", 86)]   # no block: still warned
+    assert any("NOT those of" in t for t in texts)

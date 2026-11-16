@@ -1,7 +1,7 @@
 {
   "element": "Rb",
   "isotope_A": 87,
-  "note": "Literature magnetic Feshbach parameters for 87Rb. |1,+1>+|1,+1> (aa): positions Bexp and theoretical elastic widths Δ from Marte et al., PRL 89, 283202 (2002) [arXiv:cond-mat/0210651] Table I: the four s-wave (l=0) rows and the d-wave (l=2) rows with Δ ≥ 0.2 mG; d-wave rows with Δ < 0.1 mG are omitted. a_bg≈100 a0 from Chin RMP Table IV. Marte Δ is listed in mG and converted to G here. Mixed |1,mF>+|2,mF'> channels near 9 G and 18 G: Kaufman et al., PRA 80, 050701(R) (2009) Table I, with the inelastic decay width γB (a = a_bg[1 − Δ/(B − B0 − iγ/2)]); the 17.821 G a+e line has no fitted width and is omitted. Marte Table II lists further resonances in |1,0>+|1,+1>, |1,0>+|1,0> and |1,-1>+|1,+1> without widths; they are not included. 85Rb has a separate broad resonance near 155 G (Claussen/Chin; not this isotope).",
+  "note": "Literature magnetic Feshbach parameters for 87Rb. |1,+1>+|1,+1> (aa): positions Bexp and theoretical elastic widths Δ from Marte et al., PRL 89, 283202 (2002) [arXiv:cond-mat/0210651] Table I: the four s-wave (l=0) rows and the d-wave (l=2) rows with Δ ≥ 0.2 mG; d-wave rows with Δ < 0.1 mG are omitted. a_bg≈100 a0 from Chin RMP Table IV. Marte Δ is listed in mG and converted to G here. Mixed |1,mF>+|2,mF'> channels near 9 G and 18 G: Kaufman et al., PRA 80, 050701(R) (2009) Table I, with the inelastic decay width γB (a = a_bg[1 − Δ/(B − B0 − iγ/2)]); the 17.821 G a+e line has no fitted width and is omitted. Marte Table II lists further resonances in |1,0>+|1,+1>, |1,0>+|1,0> and |1,-1>+|1,+1> without widths, and no later source gives them; they are not included. 85Rb: see \"isotopes\" (run with isotope 85).",
   "a_bg_default_a0": 100,
   "a_bg_ref": "Chin et al., Rev. Mod. Phys. 82, 1225 (2010) Table IV — 87Rb aa a_bg=100 a0",
   "resonances": [
@@ -168,12 +168,94 @@
       "ref": "Kaufman et al., PRA 80, 050701(R) (2009), Table I (coupled-channel fit; B0 measured) — B0=18.1707 G, ΔB=1.4 mG, γB=15.5 mG, a_bg=98.3 a0; bound state (cf) in a=|1,+1>, b=|1,0>, c=|1,-1>, d..h=|2,-2>..|2,+2>."
     }
   ],
-  "_85Rb_note": {
-    "isotope_A": 85,
-    "channel": "ee (highest F=2 stretched)",
-    "B0_G": 155.04,
-    "Delta_G": 10.7,
-    "a_bg_a0": -443,
-    "ref": "Chin RMP Table IV / Claussen et al. (2003). Not loaded; use a separate file if 85Rb plots are needed"
+  "isotopes": {
+    "85": {
+      "note": "Literature magnetic Feshbach parameters for 85Rb. (2,−2)+(2,−2) and (2,+2)+(2,+2) (the lowest state at high field): the observed resonances of Blackley et al., PRA 87, 033611 (2013) Tables 1–2 with their coupled-channel widths, all s-wave rows and d-wave rows with |Δ| ≥ 0.2 mG (as for 87Rb); rows without a theoretical width (382.36, 924.52 G) are omitted. The 155 G resonance uses the precision values of Claussen et al. (2003). The 532 G resonance is dominated by inelastic loss, for which no width is given. Background scattering lengths differ per resonance (−380 to −474 a0).",
+      "a_bg_default_a0": -443,
+      "a_bg_ref": "Claussen et al., PRA 67, 060701(R) (2003) — 85Rb (2,−2) a_bg = −443(3) a0",
+      "resonances": [
+        {
+          "label": "s-wave 155.041 G",
+          "channel": "|2,-2> + |2,-2>",
+          "partial_wave": "s",
+          "B0_G": 155.041,
+          "Delta_G": 10.71,
+          "a_bg_a0": -443,
+          "ref": "Claussen et al., PRA 67, 060701(R) (2003): B0 = 155.041(18) G, Δ = 10.71(2) G (zero crossing B0 + Δ), a_bg = −443(3) a0. Blackley Table 2: Bexp 156(1) G, Δ_th 10.9 G, a_bg −441 a0"
+        },
+        {
+          "label": "s-wave 219.58 G",
+          "channel": "|2,-2> + |2,-2>",
+          "partial_wave": "s",
+          "B0_G": 219.58,
+          "Delta_G": 0.0091,
+          "a_bg_a0": -379,
+          "ref": "Blackley et al., PRA 87, 033611 (2013) [arXiv:1212.5446] Table 2 — Bexp 219.58(1) G, B_th 219.9 G, Δ_th 9.1 mG, a_bg −379 a0, L = 0"
+        },
+        {
+          "label": "d-wave 232.25 G",
+          "channel": "|2,-2> + |2,-2>",
+          "partial_wave": "d",
+          "B0_G": 232.25,
+          "Delta_G": 0.002,
+          "a_bg_a0": -393,
+          "ref": "Blackley et al., PRA 87, 033611 (2013) [arXiv:1212.5446] Table 2 — Bexp 232.25(1) G, B_th 232.5 G, Δ_th 2.0 mG, a_bg −393 a0, L = 2"
+        },
+        {
+          "label": "d-wave 248.64 G",
+          "channel": "|2,-2> + |2,-2>",
+          "partial_wave": "d",
+          "B0_G": 248.64,
+          "Delta_G": 0.0029,
+          "a_bg_a0": -406,
+          "ref": "Blackley et al., PRA 87, 033611 (2013) [arXiv:1212.5446] Table 2 — Bexp 248.64(1) G, B_th 248.9 G, Δ_th 2.9 mG, a_bg −406 a0, L = 2"
+        },
+        {
+          "label": "d-wave 297.42 G",
+          "channel": "|2,-2> + |2,-2>",
+          "partial_wave": "d",
+          "B0_G": 297.42,
+          "Delta_G": 0.0018,
+          "a_bg_a0": -432,
+          "ref": "Blackley et al., PRA 87, 033611 (2013) [arXiv:1212.5446] Table 2 — Bexp 297.42(1) G, B_th 297.7 G, Δ_th 1.8 mG, a_bg −432 a0, L = 2"
+        },
+        {
+          "label": "s-wave 532.3 G",
+          "channel": "|2,-2> + |2,-2>",
+          "partial_wave": "s",
+          "B0_G": 532.3,
+          "Delta_G": 2.3,
+          "a_bg_a0": -474,
+          "ref": "Blackley et al., PRA 87, 033611 (2013) [arXiv:1212.5446] Table 2 — Bexp 532.3(3) G, B_th 532.9 G, Δ_th 2300 mG, a_bg −474 a0, L = 0; inelastically dominated (no decay width given)"
+        },
+        {
+          "label": "d-wave 770.81 G",
+          "channel": "|2,+2> + |2,+2>",
+          "partial_wave": "d",
+          "B0_G": 770.81,
+          "Delta_G": -0.0005,
+          "a_bg_a0": -390,
+          "ref": "Blackley et al., PRA 87, 033611 (2013) [arXiv:1212.5446] Table 1 — Bexp 770.81(1) G, B_th 770.7 G, Δ_th −0.5 mG, a_bg −390 a0, L = 2"
+        },
+        {
+          "label": "d-wave 819.8 G",
+          "channel": "|2,+2> + |2,+2>",
+          "partial_wave": "d",
+          "B0_G": 819.8,
+          "Delta_G": -0.0054,
+          "a_bg_a0": -380,
+          "ref": "Blackley et al., PRA 87, 033611 (2013) [arXiv:1212.5446] Table 1 — Bexp 819.8(2) G, B_th 819.0 G, Δ_th −5.4 mG, a_bg −380 a0, L = 2"
+        },
+        {
+          "label": "s-wave 852.3 G",
+          "channel": "|2,+2> + |2,+2>",
+          "partial_wave": "s",
+          "B0_G": 852.3,
+          "Delta_G": -1.199,
+          "a_bg_a0": -393,
+          "ref": "Blackley et al., PRA 87, 033611 (2013) [arXiv:1212.5446] Table 1 — Bexp 852.3(3) G, B_th 851.3 G, Δ_th −1199 mG, a_bg −393 a0, L = 0"
+        }
+      ]
+    }
   }
 }

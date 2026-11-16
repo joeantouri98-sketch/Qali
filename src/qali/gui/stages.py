@@ -398,7 +398,7 @@ PIPELINE = [
              dict(name="--channel", kind="str", label="Entrance channel", default="",
                   help="e.g. '|1,+1> + |1,+1>'. Blank: the channel with the most resonances."),
              dict(name="--isotope", kind="int", label="Isotope mass number A", default="",
-                  help="Default: isotope_A from the feshbach JSON."),
+                  help="Default: isotope_A from the feshbach JSON. Rb 85 has its own resonances."),
              dict(name="--all", kind="flag", label="Run all available elements",
                   help="Process every element with a valid *_feshbach.json file."),
              dict(name="--data-dir", kind="path", browse="dir", label="Data directory", default=workspace_data_dir),
@@ -910,7 +910,7 @@ def isotope_prerequisite_issues(root: Path, stage_id: str, element: str, A: int)
             issues.append(("error", f"{element}_feshbach.json is missing."))
         else:
             jA = fp.get("isotope_A")
-            if jA and int(jA) != A:
+            if jA and int(jA) != A and str(A) not in (fp.get("isotopes") or {}):
                 issues.append(("warning", f"{element}_feshbach.json holds a_bg / B0 / Delta for {element}-{jA}. "
                                           f"Resonances are isotope-specific, so those parameters are NOT those of "
                                           f"{element}-{A}; only the mass-dependent quantities change."))
