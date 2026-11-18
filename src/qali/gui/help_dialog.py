@@ -156,13 +156,59 @@ class HelpDialog(QDialog):
         or PDF on a light background, or the matching transitions as CSV.
         ORCA markers are drawn at their exact energy, in the column of the
         nearest NIST multiplet.</p>
+        <h3>File properties and versions</h3>
+        <p>Every output a stage writes records the Qali version and stage
+        that made it. Right-click a file in the <i>Plots</i>, <i>Data</i> or
+        <i>Shared</i> list and choose <i>Properties...</i> to see it with the
+        file's dates. &#9888; marks an output that is out of date: its stage
+        has changed since, or a stage it was built from was rerun. An output
+        made before these records existed says so in its tooltip; rerun its
+        stage to be sure it is current.</p>
+        <h3>Figures</h3>
+        <p>The <i>Figures</i> tab (in the viewer and the bottom panel) draws
+        publication figures with matplotlib from the current results: Grotrian
+        diagram, quantum defects, scaling laws, theory vs experiment,
+        &alpha;(&lambda;), &alpha;<sub>0</sub> and C<sub>6</sub> by line
+        (with convergence and uncertainty budget), decay branching and
+        cascades,
+        df/d&epsilon; across the ionization limit, blackbody shifts and
+        rates, Breit&ndash;Rabi diagrams, Feshbach a(B), radial
+        wavefunctions, spectra (absorption, emission, D lines), trap depth and
+        scattering against wavelength, and a plot builder for any table in the
+        stage outputs or any JSON file. The builder can put a series on a
+        right-hand axis or in an inset, draw heat maps and contours of a z
+        column, and break an axis. For a Grotrian diagram, <i>Levels and lines...</i> chooses
+        the levels and then the lines between them. <i>Input</i> picks which
+        result each figure reads: the usual output, a run saved under a name
+        (<i>Save as</i>), or another file of that stage.</p>
+        <p>On the figure, the mouse wheel zooms (Shift: x only, Alt: y only),
+        dragging pans, right-dragging zooms to a box and a double-click shows
+        the full view. The ranges appear under <i>Axes</i>, and the export,
+        script and recipe use the same view. Ctrl + wheel magnifies the whole
+        figure instead (Ctrl + 0 fits it).</p>
+        <h3>Plot windows</h3>
+        <p>The &#8599; button beside a panel's tabs opens its plot in a window of
+        its own; each press opens another. Ctrl + wheel magnifies the whole plot
+        in the viewer and in these windows.</p>
+        <p>Size and style follow a journal (APS, Nature, thesis, slides) or a
+        custom size. <i>Export</i> saves PDF, SVG, EPS, PNG or TIFF;
+        <i>Script</i> writes a Python script that redraws the figure;
+        <i>Data</i> saves the plotted numbers as CSV; <i>Save</i> keeps a
+        recipe (<code>.qfig</code>) that <code>qali --pipeline figure</code>
+        redraws after a stage changes. LaTeX text needs <code>latex</code>,
+        <code>dvipng</code> and the cm-super fonts. <i>Edit &gt; Preferences
+        &gt; Plots</i> sets what new figures start with.</p>
         <h3>Extrapolated f-values</h3>
         <p>For the supported alkalis the Lifetimes stage can extrapolate the
         ns&rarr;np oscillator strengths to high n (<code>--extrapolation</code>,
-        set up in <i>Edit &gt; Preferences &gt; Extrapolator</i>). <i>Show</i>
-        records them next to the measured values; <i>Use</i> fills the gaps,
-        tagged <code>extrapolated</code>, and the polarizability and blackbody
-        stages follow. Run the later stages with the same setting.</p>
+        set up in <i>Edit &gt; Preferences &gt; Extrapolator</i>). Ground
+        ns&rarr;np lines with no measured, published or NIST-series value take
+        the calibrated model (core-polarized dipole) in every stage, not QDT
+        Numerov; with <i>Off</i> that is the model alone. <i>Show</i> also
+        records the anchored fit next to the measured values; <i>Use</i> fills
+        the gaps with the fit, tagged <code>extrapolated</code>, and the
+        polarizability and blackbody stages follow. Run the later stages with
+        the same setting.</p>
         <h3>Tables and variables</h3>
         <p><i>Edit &gt; Preferences &gt; Tables and variables</i> lists the
         built-in constants and data files. Edits are kept in the

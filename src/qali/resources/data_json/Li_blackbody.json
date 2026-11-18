@@ -1,16 +1,23 @@
 {
+  "_qali": {
+    "version": "3.0.0",
+    "stage": "blackbody",
+    "revision": 3,
+    "command": "qali --pipeline blackbody --all --field 100",
+    "generated_utc": "2026-11-18T09:37:55+00:00"
+  },
   "element": "Li",
   "gs_label": "2s",
   "excited_label": "2p1/2",
-  "alpha0_gs_au": 164.0909,
-  "alpha0_ex_au": 127.0643,
+  "alpha0_gs_au": 164.1176,
+  "alpha0_ex_au": 127.0031,
   "T_K": 300.0,
-  "shift_gs_hz_at_T": -1.412872,
-  "shift_ex_hz_at_T": -1.094061,
-  "shift_diff_hz_at_T": 0.31881,
-  "dyn_gs_hz_at_T": -1.418199,
-  "dyn_ex_hz_at_T": -1.097495,
-  "dyn_diff_hz_at_T": 0.320704,
+  "shift_gs_hz_at_T": -1.413102,
+  "shift_ex_hz_at_T": -1.093535,
+  "shift_diff_hz_at_T": 0.319567,
+  "dyn_gs_hz_at_T": -1.418429,
+  "dyn_ex_hz_at_T": -1.096968,
+  "dyn_diff_hz_at_T": 0.321461,
   "note": "shift_*_hz_at_T = static (leading-order) term only. dyn_*_hz_at_T = full static+dynamic term via Planck-spectrum integral of alpha(omega), validated against the Itano <E^2>_T formula and the Farley-Wing high-n closed form (Beloy et al. 2025, arXiv:2507.00948, Sec. II). rates = bound-bound BBR depopulation from lifetimes.json; tau_eff includes Gamma_PI when continuum block is present. continuum = Beterov eq.27 PI (A_L + QD phases) + optional SFI (--field) + multi-step mixing (eq.35; --no-mix to skip); Gamma_quench = Gamma_BBR + Gamma_PI. rydberg_shifts = static Itano + principal-value Planck dyn with TRK/tail/Kramers continuum completion (Farley-Wing asymptote); for high-n labels (no dynamic integral).",
   "rates": {
     "T_K": 300.0,
@@ -21018,7 +21025,7 @@
         "l": "p",
         "alpha0_au": 2103790000.0,
         "shift_stat_hz": -18114200.0,
-        "shift_dyn_hz": 1575.670606,
+        "shift_dyn_hz": 1575.670305,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21026,10 +21033,11 @@
         "n_transitions": 97,
         "min_dE_au": 1.70331e-05,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
-        "f_cont": 0.127844,
+        "f_cont": 0.127845,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -21039,7 +21047,7 @@
         "l": "p",
         "alpha0_au": 2103790000.0,
         "shift_stat_hz": -18114200.0,
-        "shift_dyn_hz": 1575.670607,
+        "shift_dyn_hz": 1575.670308,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21047,10 +21055,11 @@
         "n_transitions": 104,
         "min_dE_au": 1.70331e-05,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
-        "f_cont": 0.127844,
+        "f_cont": 0.127845,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -21146,7 +21155,7 @@
         "l": "p",
         "alpha0_au": 2129360000.0,
         "shift_stat_hz": -18334400.0,
-        "shift_dyn_hz": 1691.090262,
+        "shift_dyn_hz": 1691.090081,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21154,10 +21163,11 @@
         "n_transitions": 97,
         "min_dE_au": 1.73172e-05,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
-        "f_cont": 0.122934,
+        "f_cont": 0.122935,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -21167,7 +21177,7 @@
         "l": "p",
         "alpha0_au": 2129360000.0,
         "shift_stat_hz": -18334400.0,
-        "shift_dyn_hz": 1691.090263,
+        "shift_dyn_hz": 1691.090083,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21175,10 +21185,11 @@
         "n_transitions": 104,
         "min_dE_au": 1.73172e-05,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
-        "f_cont": 0.122934,
+        "f_cont": 0.122935,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -21274,7 +21285,7 @@
         "l": "p",
         "alpha0_au": 3553920000.0,
         "shift_stat_hz": -30600300.0,
-        "shift_dyn_hz": 1804.666295,
+        "shift_dyn_hz": 1804.666216,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21282,10 +21293,11 @@
         "n_transitions": 97,
         "min_dE_au": 1.38819e-05,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
-        "f_cont": 0.118536,
+        "f_cont": 0.118537,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -21295,7 +21307,7 @@
         "l": "p",
         "alpha0_au": 3553920000.0,
         "shift_stat_hz": -30600300.0,
-        "shift_dyn_hz": 1804.666296,
+        "shift_dyn_hz": 1804.666217,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21303,10 +21315,11 @@
         "n_transitions": 104,
         "min_dE_au": 1.38819e-05,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
-        "f_cont": 0.118536,
+        "f_cont": 0.118537,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -21402,7 +21415,7 @@
         "l": "p",
         "alpha0_au": 9713790000.0,
         "shift_stat_hz": -83638600.0,
-        "shift_dyn_hz": 1909.102706,
+        "shift_dyn_hz": 1909.102709,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21410,7 +21423,8 @@
         "n_transitions": 97,
         "min_dE_au": 8.78324e-06,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
         "f_cont": 0.114574,
@@ -21423,7 +21437,7 @@
         "l": "p",
         "alpha0_au": 9713790000.0,
         "shift_stat_hz": -83638600.0,
-        "shift_dyn_hz": 1909.102707,
+        "shift_dyn_hz": 1909.10271,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21431,7 +21445,8 @@
         "n_transitions": 104,
         "min_dE_au": 8.78324e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.114574,
@@ -21530,7 +21545,7 @@
         "l": "p",
         "alpha0_au": 19173100000.0,
         "shift_stat_hz": -165087000.0,
-        "shift_dyn_hz": 1986.700612,
+        "shift_dyn_hz": 1986.700677,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21538,7 +21553,8 @@
         "n_transitions": 97,
         "min_dE_au": 6.46216e-06,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
         "f_cont": 0.110998,
@@ -21551,7 +21567,7 @@
         "l": "p",
         "alpha0_au": 19173100000.0,
         "shift_stat_hz": -165087000.0,
-        "shift_dyn_hz": 1986.700613,
+        "shift_dyn_hz": 1986.700677,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21559,7 +21575,8 @@
         "n_transitions": 104,
         "min_dE_au": 6.46216e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.110998,
@@ -21658,7 +21675,7 @@
         "l": "p",
         "alpha0_au": 25760900000.0,
         "shift_stat_hz": -221809000.0,
-        "shift_dyn_hz": 2045.990994,
+        "shift_dyn_hz": 2045.991103,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21666,7 +21683,8 @@
         "n_transitions": 97,
         "min_dE_au": 5.72425e-06,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
         "f_cont": 0.107739,
@@ -21679,7 +21697,7 @@
         "l": "p",
         "alpha0_au": 25760900000.0,
         "shift_stat_hz": -221809000.0,
-        "shift_dyn_hz": 2045.990994,
+        "shift_dyn_hz": 2045.991102,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21687,7 +21705,8 @@
         "n_transitions": 104,
         "min_dE_au": 5.72425e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.107739,
@@ -21786,7 +21805,7 @@
         "l": "p",
         "alpha0_au": 23161300000.0,
         "shift_stat_hz": -199425000.0,
-        "shift_dyn_hz": 2091.264965,
+        "shift_dyn_hz": 2091.265104,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21794,10 +21813,11 @@
         "n_transitions": 97,
         "min_dE_au": 6.14379e-06,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
-        "f_cont": 0.104768,
+        "f_cont": 0.104769,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -21807,7 +21827,7 @@
         "l": "p",
         "alpha0_au": 23161300000.0,
         "shift_stat_hz": -199425000.0,
-        "shift_dyn_hz": 2091.264966,
+        "shift_dyn_hz": 2091.265104,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21815,10 +21835,11 @@
         "n_transitions": 104,
         "min_dE_au": 6.14379e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
-        "f_cont": 0.104768,
+        "f_cont": 0.104769,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -21914,7 +21935,7 @@
         "l": "p",
         "alpha0_au": 37487700000.0,
         "shift_stat_hz": -322780000.0,
-        "shift_dyn_hz": 2135.694937,
+        "shift_dyn_hz": 2135.695096,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21922,7 +21943,8 @@
         "n_transitions": 97,
         "min_dE_au": 4.96495e-06,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
         "f_cont": 0.102047,
@@ -21935,7 +21957,7 @@
         "l": "p",
         "alpha0_au": 37487700000.0,
         "shift_stat_hz": -322780000.0,
-        "shift_dyn_hz": 2135.694937,
+        "shift_dyn_hz": 2135.695095,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -21943,7 +21965,8 @@
         "n_transitions": 104,
         "min_dE_au": 4.96495e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.102047,
@@ -22042,7 +22065,7 @@
         "l": "p",
         "alpha0_au": 30261700000.0,
         "shift_stat_hz": -260562000.0,
-        "shift_dyn_hz": 2166.732384,
+        "shift_dyn_hz": 2166.732555,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -22050,10 +22073,11 @@
         "n_transitions": 97,
         "min_dE_au": 5.56995e-06,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
-        "f_cont": 0.099541,
+        "f_cont": 0.099542,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -22063,7 +22087,7 @@
         "l": "p",
         "alpha0_au": 30261700000.0,
         "shift_stat_hz": -260562000.0,
-        "shift_dyn_hz": 2166.732384,
+        "shift_dyn_hz": 2166.732553,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -22071,10 +22095,11 @@
         "n_transitions": 104,
         "min_dE_au": 5.56995e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
-        "f_cont": 0.099541,
+        "f_cont": 0.099542,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -22170,7 +22195,7 @@
         "l": "p",
         "alpha0_au": 102035000000.0,
         "shift_stat_hz": -878550000.0,
-        "shift_dyn_hz": 2204.163418,
+        "shift_dyn_hz": 2204.163594,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -22178,7 +22203,8 @@
         "n_transitions": 97,
         "min_dE_au": 3.16976e-06,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
         "f_cont": 0.09724,
@@ -22191,7 +22217,7 @@
         "l": "p",
         "alpha0_au": 102035000000.0,
         "shift_stat_hz": -878550000.0,
-        "shift_dyn_hz": 2204.163418,
+        "shift_dyn_hz": 2204.163593,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -22199,7 +22225,8 @@
         "n_transitions": 104,
         "min_dE_au": 3.16976e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.09724,
@@ -22298,7 +22325,7 @@
         "l": "p",
         "alpha0_au": 171064000000.0,
         "shift_stat_hz": -1472910000.0,
-        "shift_dyn_hz": 2230.449693,
+        "shift_dyn_hz": 2230.44987,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 0.3 x gap: perturbation theory fails",
@@ -22306,7 +22333,8 @@
         "n_transitions": 97,
         "min_dE_au": 2.50752e-06,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
         "f_cont": 0.095105,
@@ -22319,7 +22347,7 @@
         "l": "p",
         "alpha0_au": 171064000000.0,
         "shift_stat_hz": -1472910000.0,
-        "shift_dyn_hz": 2230.449693,
+        "shift_dyn_hz": 2230.449869,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 0.3 x gap: perturbation theory fails",
@@ -22327,7 +22355,8 @@
         "n_transitions": 104,
         "min_dE_au": 2.50752e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.095105,
@@ -22426,7 +22455,7 @@
         "l": "p",
         "alpha0_au": 9576710000000.0,
         "shift_stat_hz": -82458400000.0,
-        "shift_dyn_hz": 2258.3178,
+        "shift_dyn_hz": 2258.317976,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 6 x gap: perturbation theory fails",
@@ -22434,7 +22463,8 @@
         "n_transitions": 97,
         "min_dE_au": 3.451e-07,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
         "f_cont": 0.093124,
@@ -22447,7 +22477,7 @@
         "l": "p",
         "alpha0_au": 9576710000000.0,
         "shift_stat_hz": -82458400000.0,
-        "shift_dyn_hz": 2258.3178,
+        "shift_dyn_hz": 2258.317975,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 6 x gap: perturbation theory fails",
@@ -22455,7 +22485,8 @@
         "n_transitions": 104,
         "min_dE_au": 3.451e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.093124,
@@ -22554,7 +22585,7 @@
         "l": "p",
         "alpha0_au": -3682890000.0,
         "shift_stat_hz": 31710800.0,
-        "shift_dyn_hz": 589.484094,
+        "shift_dyn_hz": 589.484265,
         "dyn_reliable": false,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -22562,7 +22593,8 @@
         "n_transitions": 96,
         "min_dE_au": 2.33742e-05,
         "fosc_sources": {
-          "Numerov": 96
+          "literature": 1,
+          "Numerov": 95
         },
         "trk_scale": 1.0,
         "f_cont": 1.278239,
@@ -22575,7 +22607,7 @@
         "l": "p",
         "alpha0_au": -3682890000.0,
         "shift_stat_hz": 31710800.0,
-        "shift_dyn_hz": 589.484094,
+        "shift_dyn_hz": 589.484263,
         "dyn_reliable": false,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -22583,7 +22615,8 @@
         "n_transitions": 103,
         "min_dE_au": 2.33742e-05,
         "fosc_sources": {
-          "Numerov": 103
+          "literature": 1,
+          "Numerov": 102
         },
         "trk_scale": 1.0,
         "f_cont": 1.278239,
@@ -22682,7 +22715,7 @@
         "l": "p",
         "alpha0_au": 1985130000000.0,
         "shift_stat_hz": -17092600000.0,
-        "shift_dyn_hz": 2288.665275,
+        "shift_dyn_hz": 2288.66544,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 1.8 x gap: perturbation theory fails",
@@ -22690,7 +22723,8 @@
         "n_transitions": 97,
         "min_dE_au": 7.86946e-07,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
         "f_cont": 0.089564,
@@ -22703,7 +22737,7 @@
         "l": "p",
         "alpha0_au": 1985130000000.0,
         "shift_stat_hz": -17092600000.0,
-        "shift_dyn_hz": 2288.665275,
+        "shift_dyn_hz": 2288.665439,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 1.8 x gap: perturbation theory fails",
@@ -22711,7 +22745,8 @@
         "n_transitions": 104,
         "min_dE_au": 7.86946e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.089564,
@@ -22810,7 +22845,7 @@
         "l": "p",
         "alpha0_au": 96744200000.0,
         "shift_stat_hz": -832996000.0,
-        "shift_dyn_hz": 2293.026648,
+        "shift_dyn_hz": 2293.026805,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -22818,10 +22853,11 @@
         "n_transitions": 97,
         "min_dE_au": 3.41312e-06,
         "fosc_sources": {
-          "Numerov": 97
+          "literature": 1,
+          "Numerov": 96
         },
         "trk_scale": 1.0,
-        "f_cont": 0.087965,
+        "f_cont": 0.087966,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -22831,7 +22867,7 @@
         "l": "p",
         "alpha0_au": 96744200000.0,
         "shift_stat_hz": -832996000.0,
-        "shift_dyn_hz": 2293.026648,
+        "shift_dyn_hz": 2293.026804,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "100% of alpha(0) from partners below k_BT: not static, use the dynamic shift",
@@ -22839,10 +22875,11 @@
         "n_transitions": 104,
         "min_dE_au": 3.41312e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
-        "f_cont": 0.087965,
+        "f_cont": 0.087966,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -22938,7 +22975,7 @@
         "l": "p",
         "alpha0_au": 358735000000.0,
         "shift_stat_hz": -3088820000.0,
-        "shift_dyn_hz": 2308.915951,
+        "shift_dyn_hz": 2308.9161,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 0.51 x gap: perturbation theory fails",
@@ -22946,10 +22983,11 @@
         "n_transitions": 104,
         "min_dE_au": 1.88789e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
-        "f_cont": 0.086462,
+        "f_cont": 0.086463,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -23045,7 +23083,7 @@
         "l": "p",
         "alpha0_au": 454895000000.0,
         "shift_stat_hz": -3916780000.0,
-        "shift_dyn_hz": 2319.046775,
+        "shift_dyn_hz": 2319.046917,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 0.6 x gap: perturbation theory fails",
@@ -23053,7 +23091,8 @@
         "n_transitions": 104,
         "min_dE_au": 1.70527e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.085056,
@@ -23152,7 +23191,7 @@
         "l": "p",
         "alpha0_au": 572348000000.0,
         "shift_stat_hz": -4928090000.0,
-        "shift_dyn_hz": 2327.836986,
+        "shift_dyn_hz": 2327.837121,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 0.71 x gap: perturbation theory fails",
@@ -23160,7 +23199,8 @@
         "n_transitions": 104,
         "min_dE_au": 1.54546e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.083732,
@@ -23259,7 +23299,7 @@
         "l": "p",
         "alpha0_au": 714886000000.0,
         "shift_stat_hz": -6155380000.0,
-        "shift_dyn_hz": 2335.485604,
+        "shift_dyn_hz": 2335.485731,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 0.83 x gap: perturbation theory fails",
@@ -23267,7 +23307,8 @@
         "n_transitions": 104,
         "min_dE_au": 1.405e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.082485,
@@ -23366,7 +23407,7 @@
         "l": "p",
         "alpha0_au": 886822000000.0,
         "shift_stat_hz": -7635810000.0,
-        "shift_dyn_hz": 2342.162001,
+        "shift_dyn_hz": 2342.162121,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 0.97 x gap: perturbation theory fails",
@@ -23374,10 +23415,11 @@
         "n_transitions": 104,
         "min_dE_au": 1.28107e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
-        "f_cont": 0.08131,
+        "f_cont": 0.081311,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -23473,7 +23515,7 @@
         "l": "p",
         "alpha0_au": 1093050000000.0,
         "shift_stat_hz": -9411450000.0,
-        "shift_dyn_hz": 2348.014272,
+        "shift_dyn_hz": 2348.014386,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 1.1 x gap: perturbation theory fails",
@@ -23481,10 +23523,11 @@
         "n_transitions": 104,
         "min_dE_au": 1.17129e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
-        "f_cont": 0.080195,
+        "f_cont": 0.080196,
         "n_tail": 300,
         "n_cont": 80
       },
@@ -23580,7 +23623,7 @@
         "l": "p",
         "alpha0_au": 1339070000000.0,
         "shift_stat_hz": -11529800000.0,
-        "shift_dyn_hz": 2353.156275,
+        "shift_dyn_hz": 2353.156381,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 1.3 x gap: perturbation theory fails",
@@ -23588,7 +23631,8 @@
         "n_transitions": 104,
         "min_dE_au": 1.0737e-06,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.07914,
@@ -23687,7 +23731,7 @@
         "l": "p",
         "alpha0_au": 1631110000000.0,
         "shift_stat_hz": -14044300000.0,
-        "shift_dyn_hz": 2357.69514,
+        "shift_dyn_hz": 2357.695241,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 1.5 x gap: perturbation theory fails",
@@ -23695,7 +23739,8 @@
         "n_transitions": 104,
         "min_dE_au": 9.86656e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.07813,
@@ -23794,7 +23839,7 @@
         "l": "p",
         "alpha0_au": 1976110000000.0,
         "shift_stat_hz": -17014900000.0,
-        "shift_dyn_hz": 2361.71174,
+        "shift_dyn_hz": 2361.711835,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 1.7 x gap: perturbation theory fails",
@@ -23802,7 +23847,8 @@
         "n_transitions": 104,
         "min_dE_au": 9.08773e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.077165,
@@ -23901,7 +23947,7 @@
         "l": "p",
         "alpha0_au": 2381850000000.0,
         "shift_stat_hz": -20508500000.0,
-        "shift_dyn_hz": 2365.281794,
+        "shift_dyn_hz": 2365.281883,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 2 x gap: perturbation theory fails",
@@ -23909,7 +23955,8 @@
         "n_transitions": 104,
         "min_dE_au": 8.38876e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.076235,
@@ -24008,7 +24055,7 @@
         "l": "p",
         "alpha0_au": 2856990000000.0,
         "shift_stat_hz": -24599600000.0,
-        "shift_dyn_hz": 2368.470315,
+        "shift_dyn_hz": 2368.470398,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 2.2 x gap: perturbation theory fails",
@@ -24016,7 +24063,8 @@
         "n_transitions": 104,
         "min_dE_au": 7.75966e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.075328,
@@ -24115,7 +24163,7 @@
         "l": "p",
         "alpha0_au": 3411160000000.0,
         "shift_stat_hz": -29371100000.0,
-        "shift_dyn_hz": 2371.330407,
+        "shift_dyn_hz": 2371.330486,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 2.5 x gap: perturbation theory fails",
@@ -24123,7 +24171,8 @@
         "n_transitions": 104,
         "min_dE_au": 7.19193e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.074439,
@@ -24222,7 +24271,7 @@
         "l": "p",
         "alpha0_au": 4055000000000.0,
         "shift_stat_hz": -34914800000.0,
-        "shift_dyn_hz": 2373.769833,
+        "shift_dyn_hz": 2373.769907,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 2.9 x gap: perturbation theory fails",
@@ -24230,7 +24279,8 @@
         "n_transitions": 104,
         "min_dE_au": 6.67825e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.073773,
@@ -24329,7 +24379,7 @@
         "l": "p",
         "alpha0_au": 4800310000000.0,
         "shift_stat_hz": -41332100000.0,
-        "shift_dyn_hz": 2376.009254,
+        "shift_dyn_hz": 2376.009324,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 3.2 x gap: perturbation theory fails",
@@ -24337,7 +24387,8 @@
         "n_transitions": 104,
         "min_dE_au": 6.21234e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.073052,
@@ -24436,7 +24487,7 @@
         "l": "p",
         "alpha0_au": 5660070000000.0,
         "shift_stat_hz": -48734900000.0,
-        "shift_dyn_hz": 2377.969265,
+        "shift_dyn_hz": 2377.969332,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 3.6 x gap: perturbation theory fails",
@@ -24444,7 +24495,8 @@
         "n_transitions": 104,
         "min_dE_au": 5.78878e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.07245,
@@ -24543,7 +24595,7 @@
         "l": "p",
         "alpha0_au": 6648560000000.0,
         "shift_stat_hz": -57246100000.0,
-        "shift_dyn_hz": 2379.775582,
+        "shift_dyn_hz": 2379.775644,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 4.1 x gap: perturbation theory fails",
@@ -24551,7 +24603,8 @@
         "n_transitions": 104,
         "min_dE_au": 5.40287e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.071803,
@@ -24650,7 +24703,7 @@
         "l": "p",
         "alpha0_au": 7781440000000.0,
         "shift_stat_hz": -67000500000.0,
-        "shift_dyn_hz": 2381.364567,
+        "shift_dyn_hz": 2381.364627,
         "dyn_reliable": true,
         "static_valid": false,
         "static_note": "coupling 4.6 x gap: perturbation theory fails",
@@ -24658,7 +24711,8 @@
         "n_transitions": 104,
         "min_dE_au": 5.05051e-07,
         "fosc_sources": {
-          "Numerov": 104
+          "literature": 1,
+          "Numerov": 103
         },
         "trk_scale": 1.0,
         "f_cont": 0.071258,

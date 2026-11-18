@@ -26,7 +26,7 @@ FIELDS: list[dict] = [
      "tip": "Scale of the core polarization correction; 1 is the unscaled physical value."},
     {"key": "wcore_eV", "label": "Core frequency ω_core (eV)", "html": "Core frequency ω<sub>core</sub> (eV)", "lo": 0.0, "hi": 60.0, "step": 0.1, "dec": 2,
      "tip": "Dynamic core factor 1/(1−(ω/ω_core)²). 0 switches it off."},
-    {"key": "so_scale", "label": "Spin-orbit scale", "html": "Spin-orbit scale", "lo": 0.0, "hi": 4.0, "step": 0.01, "dec": 3,
+    {"key": "so_scale", "label": "Spin-orbit scale", "html": "Spin-orbit scale", "lo": 0.0, "hi": 4.0, "step": 0.01, "dec": 4,
      "tip": "Scale of the screened spin-orbit term of the np states."},
 ]
 _BY_KEY = {f["key"]: f for f in FIELDS}

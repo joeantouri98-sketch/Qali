@@ -1,4 +1,11 @@
 {
+  "_qali": {
+    "version": "3.0.0",
+    "stage": "lifetimes",
+    "revision": 2,
+    "command": "qali --pipeline lifetimes Fr",
+    "generated_utc": "2026-11-18T09:35:52+00:00"
+  },
   "species_id": "Fr",
   "element": "Fr",
   "label": "Fr",
@@ -353944,6 +353951,11 @@
         "median_ratio": 0.9340230499615825
       }
     }
+  },
+  "ground_model": {
+    "n_lines": 0,
+    "source": "calibrated model",
+    "note": "ground ns->np lines with no measured, published or NIST-series value: the Extrapolator model without the anchor fit, in place of Numerov"
   },
   "dropped_transitions": {
     "n_total": 0,

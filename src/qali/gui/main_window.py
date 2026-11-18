@@ -795,6 +795,9 @@ class MainWindow(QMainWindow):
             self.web_view = QWebEngineView()
             attach_web_downloads(self.web_view, self)
             self.web_view.loadFinished.connect(lambda ok: ok and self._sync_page_theme())
+            from .popout import enable_web_zoom
+
+            enable_web_zoom(self.web_view)                 # Ctrl + wheel / Ctrl + = − 0: the whole page
             self.viewer_stack.addWidget(self.web_view)
         else:
             self.web_view = None
@@ -846,6 +849,16 @@ class MainWindow(QMainWindow):
 
         self.overview_view = SpeciesOverviewWidget()
         self.center_tabs.addTab(self.overview_view, "Overview")
+        from .figures_tab import FiguresTab
+
+        self.figures_view = FiguresTab()                 # publication figures (Matplotlib)
+        self.center_tabs.addTab(self.figures_view, "Figures")
+        self._popouts: list[QWidget] = []                 # plot windows; each press opens another
+        self.popout_center_btn = QToolButton()
+        self.popout_center_btn.setText("\u2197")
+        self.popout_center_btn.setToolTip("Open this plot in a new window")
+        self.popout_center_btn.clicked.connect(lambda: self._popout(self.center_tabs))
+        self.center_tabs.setCornerWidget(self.popout_center_btn)
 
         self.console = QPlainTextEdit()
         self.console.setObjectName("console")
@@ -856,11 +869,23 @@ class MainWindow(QMainWindow):
         self.bottom_tabs.setDocumentMode(True)
         self.bottom_tabs.addTab(self.console, "Console")
         self.bottom_tabs.addTab(self.bottom_overview, "Overview")
+        self.bottom_figures = FiguresTab()
+        self.bottom_tabs.addTab(self.bottom_figures, "Figures")
         self.move_panel_btn = QToolButton()
         self.move_panel_btn.setText("\u21c5")
         self.move_panel_btn.clicked.connect(
             lambda: self._set_console_panel_on_top(not self._console_panel_on_top()))
-        self.bottom_tabs.setCornerWidget(self.move_panel_btn)
+        self.popout_bottom_btn = QToolButton()
+        self.popout_bottom_btn.setText("\u2197")
+        self.popout_bottom_btn.setToolTip("Open this plot in a new window")
+        self.popout_bottom_btn.clicked.connect(lambda: self._popout(self.bottom_tabs))
+        corner = QWidget()
+        corner_lay = QHBoxLayout(corner)
+        corner_lay.setContentsMargins(0, 0, 0, 0)
+        corner_lay.setSpacing(2)
+        corner_lay.addWidget(self.popout_bottom_btn)
+        corner_lay.addWidget(self.move_panel_btn)
+        self.bottom_tabs.setCornerWidget(corner)
         self.bottom_tabs.tabBar().setToolTip(
             "Drag up or down to move this panel above or below the viewer")
         self.bottom_tabs.tabBar().installEventFilter(self)
@@ -880,6 +905,10 @@ class MainWindow(QMainWindow):
         self._stale_overviews = set()
         self.center_tabs.currentChanged.connect(self._refresh_shown_overviews)
         self.bottom_tabs.currentChanged.connect(self._refresh_shown_overviews)
+        for sig in (self.center_tabs.currentChanged, self.bottom_tabs.currentChanged,
+                    self.viewer_stack.currentChanged):
+            sig.connect(self._sync_popout_buttons)
+        self._sync_popout_buttons()
 
         self.center_splitter = QSplitter(Qt.Vertical)
         self.center_splitter.setObjectName("centerSplitter")
@@ -1016,6 +1045,65 @@ class MainWindow(QMainWindow):
     def _show_console(self) -> None:
         self.bottom_action.setChecked(True)
         self.bottom_tabs.setCurrentWidget(self.console)
+
+    # ---- plot windows -------------------------------------------------------------------------------------
+    def _popout_source(self, tabs):
+        """What the ↗ button of *tabs* would open: ('web' | 'text' | 'compare' | 'figure', widget), or None."""
+        from .figures_tab import FiguresTab
+
+        w = tabs.currentWidget()
+        if isinstance(w, FiguresTab):
+            return ("figure", w) if w.spec is not None else None
+        if w is self.viewer_stack:
+            i = self.viewer_stack.currentIndex()
+            if i == 0 and self.web_view is not None and not self.web_view.url().isEmpty():
+                return "web", self.web_view
+            if i == 1:
+                return "text", self.json_view
+            if i == 4 and getattr(self, "_shown_path", None) is not None:
+                return "compare", self.compare_view
+        return None
+
+    def _sync_popout_buttons(self, *_a) -> None:
+        """↗ is available on the panels that show plots (Viewer, Figures), not on the Console or Overview."""
+        from .figures_tab import FiguresTab
+
+        for btn, tabs in ((self.popout_center_btn, self.center_tabs), (self.popout_bottom_btn, self.bottom_tabs)):
+            w = tabs.currentWidget()
+            btn.setEnabled(w is self.viewer_stack or isinstance(w, FiguresTab))
+
+    def _popout(self, tabs) -> None:
+        """Open the plot *tabs* shows in a new window (a copy: the panel carries on as before)."""
+        from . import popout as P
+
+        src = self._popout_source(tabs)
+        if src is None:
+            self.statusBar().showMessage("Nothing to open in a window here.", 4000)
+            return
+        kind, w = src
+        sp = self.current_species or ""
+        shown = getattr(self, "_shown_path", None)
+        if kind == "web":
+            title = w.title() or (shown.name if shown else "Plot")
+            theme_js = self._PAGE_THEME_JS % json.dumps("dark" if is_dark(self.theme_name) else "light")
+            win = P.web_popout(self, w, f"Qali – {title}", on_load=lambda v: v.page().runJavaScript(theme_js))
+        elif kind == "figure":
+            from qali.figures import templates as T
+
+            label = T.TEMPLATES.get(w.recipe.get("template"), ("Figure",))[0]
+            win = P.figure_popout(self, w.spec, f"Qali – {w.recipe.get('species') or sp} – {label}")
+        elif kind == "compare":
+            if shown is None:
+                return
+            view = CompareTableView()
+            view.load(shown)
+            win = P.PopoutWindow(self, f"Qali – {shown.name}", view)
+            win.show()
+        else:
+            name = shown.name if shown else "data"
+            win = P.text_popout(self, w.toPlainText(), f"Qali – {name}", font=mono_font())
+        self._popouts.append(win)
+        win.destroyed.connect(lambda *_a, w_=win: self._popouts.remove(w_) if w_ in self._popouts else None)
 
     def _console_panel_on_top(self) -> bool:
         return self.center_splitter.indexOf(self.bottom_panel) == 0
@@ -1884,6 +1972,7 @@ class MainWindow(QMainWindow):
         for path, kind in species_outputs(self.root, self.current_species):
             item = QListWidgetItem(path.name)
             item.setData(Qt.UserRole, (str(path), kind))
+            self._mark_output_item(item, path)
 
             if kind == "PLOT":
                 self.species_html_list.addItem(item)
@@ -1911,7 +2000,22 @@ class MainWindow(QMainWindow):
         for path, kind in shared_outputs(self.root):
             item = QListWidgetItem(f"[{kind}]  {path.name}")
             item.setData(Qt.UserRole, (str(path), kind))
+            self._mark_output_item(item, path)
             self.shared_outputs_list.addItem(item)
+
+    @staticmethod
+    def _mark_output_item(item: QListWidgetItem, path: Path) -> None:
+        """⚠ before an outdated output; the tooltip says why (or which Qali made it)."""
+        from .file_properties import status_mark
+
+        try:
+            prefix, tip, _unstamped = status_mark(path)
+        except OSError:
+            return
+        if prefix:
+            item.setText(prefix + item.text())
+        if tip:
+            item.setToolTip(tip)
 
     def _refresh_species_list(self):
         found = workspace_species(self.root)
@@ -1940,6 +2044,9 @@ class MainWindow(QMainWindow):
     def _refresh_overview(self):
         self._stale_overviews.update(view for _tabs, view in self._overview_places)
         self._refresh_shown_overviews()
+        data_dir = str(Workspace(root=self.root).data_json_dir)
+        for view in (self.figures_view, self.bottom_figures):
+            view.set_context(data_dir, self.current_species)
 
     def _refresh_shown_overviews(self, *_index) -> None:
         """Refresh the Overviews on show; a hidden one waits, as reading is slow."""
@@ -1983,13 +2090,18 @@ class MainWindow(QMainWindow):
         edit_action.setEnabled(actions["edit"])
         if not actions["edit"]:
             edit_action.setToolTip("Only JSON and CSV files can be edited.")
+        props_action = menu.addAction("Properties...")
         delete_action = menu.addAction(f"Delete {path.name}...")
         delete_action.setEnabled(actions["delete"])
         if not actions["delete"]:
             delete_action.setText("Delete (protected)")
             delete_action.setToolTip(f"{path.name} is {actions['protected_reason']}.")
         chosen = menu.exec(output_list.viewport().mapToGlobal(position))
-        if chosen is edit_action:
+        if chosen is props_action:
+            from .file_properties import FilePropertiesDialog
+
+            FilePropertiesDialog(path, self).exec()
+        elif chosen is edit_action:
             self._open_existing_dataset(path)
             self._refresh_all()
         elif chosen is delete_action:

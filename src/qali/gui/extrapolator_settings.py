@@ -44,6 +44,9 @@ from qali.physics.extrapolation.exact import Cancelled, ExactBackendUnavailable
 from qali.physics.extrapolation.stage import rebuild_tables, table_state
 from qali.physics.extrapolation.params import model_params, supported_species
 
+SPIN_DECIMALS = 6      # digits a value may carry; shipped defaults such as Fr's spin-orbit scale 1.2965 need 4
+
+
 class _Spin(QDoubleSpinBox):
     """A type-in value field: no arrow buttons and the mouse wheel does not change it, so scrolling never edits a value."""
 
@@ -53,6 +56,12 @@ class _Spin(QDoubleSpinBox):
 
     def wheelEvent(self, event):
         event.ignore()
+
+    def textFromValue(self, value: float) -> str:
+        """As many digits as the value has (up to the field's cap), no trailing zeros: 1.2965 stays 1.2965,
+        0.05 is not shown as 0.050000."""
+        text = f"{value:.{self.decimals()}f}"
+        return text.rstrip("0").rstrip(".") if "." in text else text
 
     def flat(self):
         """For use inside a table cell: no frame of its own, so the cell does not hold a box inside a box."""
@@ -193,7 +202,7 @@ class ExtrapolatorSettingsPage(QWidget):
             label.setToolTip(spec["tip"])
             spin = _Spin()
             spin.setRange(spec["lo"], spec["hi"])
-            spin.setDecimals(spec["dec"])
+            spin.setDecimals(max(spec["dec"], SPIN_DECIMALS))
             spin.setSingleStep(spec["step"])
             spin.setValue(saved.get(spec["key"], self._defaults[spec["key"]]))
             spin.setToolTip(spec["tip"])
@@ -466,7 +475,7 @@ class ExtrapolatorSettingsPage(QWidget):
             self.model_labels[spec["key"]] = item
             spin = _Spin()
             spin.setRange(spec["lo"], spec["hi"])
-            spin.setDecimals(spec["dec"])
+            spin.setDecimals(max(spec["dec"], SPIN_DECIMALS))
             spin.setSingleStep(spec["step"])
             spin.setValue(mine.get(spec["key"], 0.0))
             spin.setToolTip(tip)

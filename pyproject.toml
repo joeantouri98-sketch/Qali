@@ -10,6 +10,7 @@ authors = [
     { name = "Youssef Antoury", email = "Joeantouri98@gmail.com" },
 ]
 dependencies = [
+    "matplotlib>=3.8",
     "numpy>=2.0",
     "plotly>=5.0",
     "pyside6>=6.5",
@@ -22,6 +23,7 @@ dev = [
     "mypy>=1.11,<2",
     "nuitka==4.1.1",
     "pytest>=7.0",
+    "pytest-xdist>=3.5",
     "ruff==0.17.1",
 ]
 

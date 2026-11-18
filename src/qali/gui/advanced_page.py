@@ -17,7 +17,8 @@ from PySide6.QtWidgets import (
 from .extrapolator_settings import set_match
 
 # Kept on this computer only: paths and window sizes mean nothing on another one.
-LOCAL_KEYS = ("root_path", "orca/executable", "startup/last_species", "preferences/size", "preferences/page")
+LOCAL_KEYS = ("root_path", "orca/executable", "startup/last_species", "preferences/size", "preferences/page",
+              "figures/last_dir")
 
 
 def portable_keys(settings) -> list[str]:
@@ -76,7 +77,7 @@ class AdvancedPage(QWidget):
         page.setSpacing(14)
 
         card, lay, self.move_title = _card("Move to another computer")
-        note = QLabel("Theme, colours, units and start-up options. Folders and the ORCA path stay on this computer.")
+        note = QLabel("Theme, colours, units and start-up options.")
         note.setObjectName("muted")
         note.setWordWrap(True)
         lay.addWidget(note)
@@ -92,8 +93,7 @@ class AdvancedPage(QWidget):
         page.addWidget(card)
 
         card, lay, self.reset_title = _card("Start over")
-        note = QLabel("Every page back to its defaults, including the extrapolator settings and edited tables. "
-                      "Nothing changes until OK; Cancel keeps everything.")
+        note = QLabel("Every page back to its defaults.")
         note.setObjectName("muted")
         note.setWordWrap(True)
         lay.addWidget(note)

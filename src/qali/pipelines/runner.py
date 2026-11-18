@@ -45,6 +45,7 @@ IMPLEMENTATIONS = {
     "orbital3d": "qali.pipelines.orbital3d",
     "compare_elements": "qali.pipelines.compare_elements",
     "scattering_rate": "qali.pipelines.scattering_rate",
+    "figure": "qali.pipelines.figure",
 }
 
 
@@ -103,7 +104,10 @@ def run(module: str, argv: list[str] | None = None) -> int:
                     f"Implementation {IMPLEMENTATIONS[module_name]!r} for "
                     f"pipeline {module_name!r} has no main() entry point"
                 )
-            result = main_fn(argv)
+            from qali.core.stamps import stamping
+
+            with stamping(module_name, argv):        # every output written by the run carries this
+                result = main_fn(argv)
             if result is None:
                 return 0
             if not isinstance(result, int):

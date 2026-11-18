@@ -298,7 +298,7 @@ def bbr_static_shift_hz(alpha0_au, T_K):
         ΔE = -(1/2) α(0) <E^2>_T                          [Hartree]
         Δν = ΔE * (Eh/h)                                    [Hz]
     Dominant contribution to the BBR shift (>98% typically) for alkali-like
-    atoms at T ~ 300 K; bbr_total_shift_hz adds the dynamic correction.
+    atoms at T ~ 300 K; bbr_total_shift_pv_hz adds the dynamic correction.
     """
     E2_au = mean_E_squared_au(T_K)
     dE_au = -0.5 * alpha0_au * E2_au
@@ -323,7 +323,9 @@ def bbr_total_shift_hz(transitions_list, T_K, n_pts=4000, omega_max_factor=40):
     the Planck factor suppresses the integrand exponentially well before
     this for any alkali D-line-scale resonance at T <~ 1000 K. n_pts=4000
     was checked to be converged to 6 significant figures against
-    n_pts=20000 on real Na data.
+    n_pts=20000 on real Na data. That holds only while every partner lies far
+    above k_B T; with one inside the thermal spectrum the grid samples its pole
+    at random, so the stages use bbr_total_shift_pv_hz.
     """
     if not transitions_list:
         return 0.0
@@ -427,12 +429,12 @@ def compute_shifts(trans_gs: Sequence[dict], trans_ex: Sequence[dict] | None,
     shift_ex_arr = (np.array([bbr_static_shift_hz(alpha0_ex, T) for T in T_arr])
                     if alpha0_ex is not None else None)
 
-    # T-sweep: full dynamic-corrected term (numerical integral; coarser
-    # grid than the static sweep since each point costs a full integration,
-    # but n_pts=4000 per point converges to 6 s.f. so 60 T-points is ample)
-    T_dyn_arr = np.linspace(10, 1000, 60)
-    dyn_gs_arr = np.array([bbr_total_shift_hz(trans_gs, T) for T in T_dyn_arr])
-    dyn_ex_arr = (np.array([bbr_total_shift_hz(trans_ex, T) for T in T_dyn_arr])
+    # T-sweep with the dynamic correction: each channel integrated against the Planck spectrum as a
+    # principal value. A grid over ω samples the partners inside the thermal spectrum (Cs 6p1/2 → 5d,
+    # 3 µm) at random, which made the curves zig-zag above ~600 K.
+    T_dyn_arr = np.linspace(10, 1000, 200)
+    dyn_gs_arr = np.array([bbr_total_shift_pv_hz(trans_gs, T) for T in T_dyn_arr])
+    dyn_ex_arr = (np.array([bbr_total_shift_pv_hz(trans_ex, T) for T in T_dyn_arr])
                   if trans_ex else None)
 
     return Shifts(
@@ -441,8 +443,8 @@ def compute_shifts(trans_gs: Sequence[dict], trans_ex: Sequence[dict] | None,
         alpha0_ex_au=alpha0_ex,
         stat_gs_hz=bbr_static_shift_hz(alpha0_gs, T_K),
         stat_ex_hz=bbr_static_shift_hz(alpha0_ex, T_K) if alpha0_ex is not None else None,
-        dyn_gs_hz=bbr_total_shift_hz(trans_gs, T_K),
-        dyn_ex_hz=bbr_total_shift_hz(trans_ex, T_K) if trans_ex else None,
+        dyn_gs_hz=bbr_total_shift_pv_hz(trans_gs, T_K),
+        dyn_ex_hz=bbr_total_shift_pv_hz(trans_ex, T_K) if trans_ex else None,
         T_stat_K=T_arr,
         stat_gs_curve_hz=shift_gs_arr,
         stat_ex_curve_hz=shift_ex_arr,

@@ -50,7 +50,9 @@ Data sources:
   data_json/<element>_rydberg.json     → state energies, quantum defects, IE
   data_json/<element>_transitions.json → complete E1 transition network
   f_values/<element>_lines.*           → NIST experimental f-values
-  (The lifetimes output is not read: both stages build their f-values from the same sources.)
+  data_json/<element>_lifetimes.json   → state decay rates: the line widths behind the photon scattering at
+                                         each magic wavelength (its f-values are not read: both stages
+                                         build them from the same sources)
 
 Outputs:
   data_json/<element>_polarizability.json
@@ -73,7 +75,9 @@ __version__ = '2.1'   # Shared α(ω) core in physics/polarizability_core.py; CL
 import argparse
 import itertools
 import math
+import json
 import os
+import re
 
 import numpy as np
 from qali.core.fileio import write_json
@@ -92,7 +96,13 @@ from qali.physics.polarizability_core import (
     c6_sigma,
     alpha_real,
     alpha_real_vectorized,
+    MAGIC_HEATING_MIN_S,
+    default_magic_n_range,
+    magic_window_ghz,
+    TrapScattering,
+    state_decay_rates,
     build_transitions_for_state,
+    parse_state_nl,
     get_available_elements,
     kWcm2_to_Wm2,
     load_element,
@@ -232,10 +242,42 @@ def tune_out_wavelengths(transitions_list, wl_min_nm=200.0, wl_max_nm=2000.0):
     return sorted(out, reverse=True)
 
 
+def _principal_n(label):
+    """n of a level label (``12d3/2`` → 12), or None."""
+    m = re.match(r'^(\d+)', label or '')
+    return int(m.group(1)) if m else None
+
+
+def in_n_range(m, n_range):
+    """Whether magic wavelength *m* sits next to an excited-state line with n in *n_range* (inclusive)."""
+    n = m.get('line_n')
+    return n is None or n_range is None or (n_range[0] <= n <= n_range[1])
+
+
+def _trapped_mass(element, isotope_A=None):
+    """(isotope A or None, mass in u): the isotope trapped (default the most abundant), else the atomic weight."""
+    iso_A = isotope_A if isotope_A is not None else default_isotope_A(element)
+    mass_amu = ISOTOPE_MASS_AMU.get((element, iso_A)) if iso_A is not None else None
+    if mass_amu is None:
+        return None, ATOMIC_MASS_AMU.get(element)
+    return iso_A, mass_amu
+
+
+def _load_lifetimes(element, data_dir):
+    """The Lifetimes stage output, or None."""
+    path = os.path.join(data_dir, f"{element}_lifetimes.json")
+    try:
+        with open(path, encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
 # MAGIC WAVELENGTH FINDER
 
 def find_magic_wavelengths(trans_ground, trans_excited,
-                            wl_min_nm, wl_max_nm, n_scan=5000):
+                            wl_min_nm, wl_max_nm, n_scan=5000,
+                            scattering=None, heating_min=MAGIC_HEATING_MIN_S, excite_max=None, window_min=None):
     """
     Find magic wavelengths where α_ground(ω) = α_excited(ω).
 
@@ -244,20 +286,27 @@ def find_magic_wavelengths(trans_ground, trans_excited,
          Δα = α_ground − α_excited is continuous, so each sign change there is a real crossing and a pole can
          never pass for one (a fixed grid could step over a resonance narrower than its spacing).
       2. Scan each interval (no guard bands: the interval holds no pole) and bisect each sign change.
-      3. Drop roots inside a resonance guard band (|ΔE² − ω²| < 1e-4 ΔE), where α is not shown: these are the
-         crossings pressed against weak Rydberg lines, of no practical use.
-      4. Record the slope dΔα/dλ at the root (robustness metric).
+      3. Keep every root: each one is a magic wavelength. Next to almost every excited-state line there is one.
+      4. Record the slope dΔα/dλ at the root (robustness metric) and, with *scattering* (a TrapScattering), the
+         ground state's photons/s in a 1 mK deep trap, the time photon recoil takes to heat atoms out of the trap
+         (the same at any depth) and the trap photons the excited state absorbs per natural decay.
+         Also the magic window: the laser-frequency range (GHz) over which |Δα| stays within 1 % of α.
+         *practical*: heating time at least *heating_min* s and, when given, at most *excite_max* absorptions per
+         decay and a window of at least *window_min* GHz. Without *scattering* only the window limit applies.
     *n_scan* sets the scan density: about n_scan points over the whole range, at least 16 per interval.
 
     Returns list of dicts with keys:
-        wl_nm, alpha_au, delta_alpha_slope_au_per_nm,
-        nearby_resonance_nm, nearby_resonance_label, source
+        wl_nm, alpha_au, delta_alpha_slope_au_per_nm, nearby_resonance_nm, nearby_resonance_label,
+        detuning_nm, line_label, line_n, robustness, window_ghz, scatter_ground_1mK_s, heating_time_s,
+        excite_per_decay, practical
+    (line_label / line_n: the excited state's line next to the root, the pole that makes it: one root per line)
     """
     lines = [t for t in trans_ground + trans_excited
              if abs(t['delta_E_au']) > 0 and t.get('source') not in ('core', 'continuum')]
+    ex_lines = [(nm_from_omega_au(abs(t['delta_E_au'])), t.get('other_label', '?')) for t in trans_excited
+                if abs(t['delta_E_au']) > 0 and t.get('source') not in ('core', 'continuum')]
     all_res = sorted({nm_from_omega_au(abs(t['delta_E_au'])) for t in lines
                       if wl_min_nm < nm_from_omega_au(abs(t['delta_E_au'])) < wl_max_nm})
-    dE_all = np.array([abs(t['delta_E_au']) for t in lines])
 
     def delta_alpha_vec(wls):
         out = np.empty(len(wls))
@@ -269,10 +318,6 @@ def find_magic_wavelengths(trans_ground, trans_excited,
 
     def delta_alpha(wl):
         return float(delta_alpha_vec([wl])[0])
-
-    def in_guard(wl):
-        om = omega_au_from_nm(wl)
-        return bool(len(dE_all)) and bool(np.any(np.abs(dE_all ** 2 - om ** 2) < 1e-4 * dE_all))
 
     step = (wl_max_nm - wl_min_nm) / max(n_scan, 1)
     edges = [wl_min_nm, *all_res, wl_max_nm]
@@ -304,13 +349,16 @@ def find_magic_wavelengths(trans_ground, trans_excited,
                 else:
                     lo, a0 = mid, a_mid
             wl_magic = 0.5 * (lo + hi)
-            if in_guard(wl_magic):
-                continue
-
             om_magic = omega_au_from_nm(wl_magic)
-            ag_magic = alpha_real(om_magic, trans_ground)
-            ae_magic = alpha_real(om_magic, trans_excited)
-            alpha_at_magic = 0.5*(ag_magic + ae_magic) if not (math.isnan(ag_magic) or math.isnan(ae_magic)) else float('nan')
+            om_arr = np.array([om_magic])
+            ag_magic = float(alpha_real_vectorized(om_arr, trans_ground, guard=0.0)[0])
+            ae_magic = float(alpha_real_vectorized(om_arr, trans_excited, guard=0.0)[0])
+            alpha_at_magic = 0.5 * (ag_magic + ae_magic)
+            rg = th = pe = None
+            if scattering is not None:
+                rg = float(scattering.ground(om_arr, ag_magic)[0])
+                th = float(scattering.heating_time(om_arr, ag_magic)[0])
+                pe = float(scattering.excited_per_decay(om_arr, ae_magic)[0])
 
             # Slope dΔα/dλ (numerical) — steeper = more laser-noise sensitive; the step stays inside the interval
             dlam = min(0.01, 0.25 * (wl_magic - a), 0.25 * (b - wl_magic))
@@ -329,12 +377,26 @@ def find_magic_wavelengths(trans_ground, trans_excited,
                 nearest_res   = float('nan')
                 nearest_label = '?'
 
+            line_label = min(ex_lines, key=lambda x: abs(x[0] - wl_magic))[1] if ex_lines else None
+            line_n = _principal_n(line_label)
+            window = magic_window_ghz(wl_magic, alpha_at_magic, slope) if math.isfinite(slope) else 0.0
+            ok_heat = th is None or math.isnan(th) or th >= heating_min
+            ok_excite = excite_max is None or pe is None or not pe > excite_max
+            ok_window = window_min is None or window >= window_min
             magic.append(dict(
                 wl_nm                     = round(wl_magic, 4),
                 alpha_au                  = round(alpha_at_magic, 4) if not math.isnan(alpha_at_magic) else None,
                 delta_alpha_slope_au_per_nm = round(slope, 4) if not math.isnan(slope) else None,
                 nearby_resonance_nm       = round(nearest_res, 3) if not math.isnan(nearest_res) else None,
                 nearby_resonance_label    = nearest_label,
+                line_label                = line_label,
+                line_n                    = line_n,
+                detuning_nm               = round(wl_magic - nearest_res, 4) if not math.isnan(nearest_res) else None,
+                scatter_ground_1mK_s      = float(f"{rg:.4g}") if rg is not None else None,
+                heating_time_s            = float(f"{th:.4g}") if th is not None and math.isfinite(th) else None,
+                excite_per_decay          = float(f"{pe:.4g}") if pe is not None else None,
+                window_ghz                = float(f"{window:.4g}") if math.isfinite(window) else None,
+                practical                 = ok_heat and ok_excite and ok_window,
                 robustness                = 'robust' if slope is not None and abs(slope) < 50 else
                                             'sensitive' if abs(slope) < 200 else 'very sensitive',
             ))
@@ -355,7 +417,9 @@ def run_element(element, excited_label=None,
                 wl_min=200.0, wl_max=2000.0, n_grid=2000,
                 I_ref_kWcm2=10.0, waist_um=1.0, wl_point=None,
                 data_dir=None, isotope_A=None, extrapolation=None,
-                rydberg_file=None, transitions_file=None, model_f=None, model_file=None):
+                rydberg_file=None, transitions_file=None, model_f=None, model_file=None,
+                magic_heating_min=MAGIC_HEATING_MIN_S, magic_excite_max=None, magic_window_min=None,
+                magic_n_range=None):
     """
     Full polarizability pipeline for one element.
     Returns result dict or None on failure.
@@ -390,6 +454,14 @@ def run_element(element, excited_label=None,
     n_extrap = sum(1 for t in trans_gs if t['source'] == 'extrapolated')
     if n_extrap:
         print(f"    extrapolated (model + anchors, +-20%): {n_extrap}")
+    n_nistx = sum(1 for t in trans_gs if t['source'] == 'NIST-extrap')
+    if n_nistx:
+        print(f"    NIST-series extrapolation (as in Lifetimes): {n_nistx}")
+    _dl = data.get('dhf_lines')
+    continuum_model = (f"{_dl.source} (basis cavity)" if _dl is not None and _dl.continuum_lines(
+        parse_state_nl(gs_label)) else "calibrated model potential")
+    f_cont = sum(t['fosc'] for t in trans_gs if t['source'] == 'continuum')
+    print(f"    continuum: {continuum_model}, f = {f_cont:.4f}")
 
     # Static polarizability 
     alpha0 = alpha_real(0.0, trans_gs)
@@ -423,6 +495,7 @@ def run_element(element, excited_label=None,
 
     # Excited state transitions & magic wavelengths
     magic_results = []
+    magic_search = None
     excited_used  = None
     trans_ex      = []
 
@@ -458,10 +531,26 @@ def run_element(element, excited_label=None,
         E_ex = data['state_energy_au'].get(excited_label)
         wl_magic_min = max(wl_min, nm_from_omega_au(-E_ex)) if E_ex is not None and E_ex < 0 else wl_min
         print(f"  Searching for magic wavelengths ({wl_magic_min:.0f}–{wl_max:.0f} nm)...")
+        magic_search = [round(wl_magic_min, 4), wl_max]
+        rates = state_decay_rates(_load_lifetimes(element, data_dir))
+        if not rates:
+            print("  No lifetimes output: line widths from each line's own A only (run Lifetimes first for "
+                  "the photon scattering at each magic wavelength)")
+        scattering = TrapScattering(trans_gs, gs_label, trans_ex, excited_label, rates,
+                                    mass_amu=_trapped_mass(element, isotope_A)[1])
         magic_results = find_magic_wavelengths(
-            trans_gs, trans_ex, wl_magic_min, wl_max)
-        print(f"  Found {len(magic_results)} magic wavelengths")
-        for m in magic_results:
+            trans_gs, trans_ex, wl_magic_min, wl_max, scattering=scattering,
+            heating_min=magic_heating_min, excite_max=magic_excite_max, window_min=magic_window_min)
+        if magic_n_range is None:
+            magic_n_range = default_magic_n_range(gs_label)
+        shown = [m for m in magic_results if in_n_range(m, magic_n_range)]
+        n_practical = sum(1 for m in shown if m['practical'])
+        extra = f", ≤ {magic_excite_max:g} excited-state absorptions per decay" if magic_excite_max is not None else ""
+        extra += f", window ≥ {magic_window_min:g} GHz" if magic_window_min is not None else ""
+        print(f"  Found {len(magic_results)} magic wavelengths, about one next to each {excited_label} line; "
+              f"{len(shown)} next to lines with n = {magic_n_range[0]}–{magic_n_range[1]}, {n_practical} of them "
+              f"practical (recoil heating out of the trap takes ≥ {magic_heating_min:g} s{extra})")
+        for m in (m for m in shown if m['practical']):
             slope_str = f"{m['delta_alpha_slope_au_per_nm']:+.1f}" \
                         if m['delta_alpha_slope_au_per_nm'] is not None else '?'
             print(f"    λ = {m['wl_nm']:.3f} nm   α = {m['alpha_au']} au   "
@@ -483,26 +572,24 @@ def run_element(element, excited_label=None,
     I_ref_Wm2 = kWcm2_to_Wm2(I_ref_kWcm2)
     # Trap frequencies need the mass of the ISOTOPE actually trapped (default: most abundant
     # natural isotope; --isotope overrides), not the IUPAC average atomic weight.
-    iso_A = isotope_A if isotope_A is not None else default_isotope_A(element)
-    mass_amu = ISOTOPE_MASS_AMU.get((element, iso_A)) if iso_A is not None else None
-    if mass_amu is None:
-        mass_amu = ATOMIC_MASS_AMU.get(element)
-        iso_A = None
+    iso_A, mass_amu = _trapped_mass(element, isotope_A)
     if mass_amu is None:
         print(f"  ⚠  Mass for {element} unknown — trap frequencies will be skipped")
 
     if trans_ex and magic_results:
         print("  AC Stark cross-check at each magic wavelength "
               "(U_ground should equal U_excited, independent of intensity):")
-        for m in magic_results:
+        for m in (m for m in magic_results if m['practical'] and in_n_range(m, magic_n_range)):
             wl_m = m['wl_nm']
             om   = omega_au_from_nm(wl_m)
-            a_gs = alpha_real(om, trans_gs)
-            a_ex = alpha_real(om, trans_ex)
+            a_gs = float(alpha_real_vectorized(np.array([om]), trans_gs, guard=0.0)[0])
+            a_ex = float(alpha_real_vectorized(np.array([om]), trans_ex, guard=0.0)[0])
             if not (math.isnan(a_gs) or math.isnan(a_ex)):
                 U_g = U_to_uK(U_joules(a_gs, I_ref_Wm2))
                 U_e = U_to_uK(U_joules(a_ex, I_ref_Wm2))
-                match = '✅' if abs(U_g - U_e) < 1e-6 * max(abs(U_g), 1) else '⚠'
+                # wl_nm is rounded to 1e-4 nm: allow the Δα that rounding moves along the slope
+                d_alpha = abs(m['delta_alpha_slope_au_per_nm'] or 0.0) * 6e-5
+                match = '✅' if abs(a_gs - a_ex) <= max(1e-6 * abs(a_gs), d_alpha) else '⚠'
                 print(f"    λ = {wl_m:8.3f} nm   U_gs = {U_g:+10.3f} μK   "
                       f"U_ex = {U_e:+10.3f} μK   {match}")
 
@@ -541,9 +628,13 @@ def run_element(element, excited_label=None,
     result = dict(
         element          = element,
         extrapolation    = data.get('extrapolation'),
+        nist_series_extrapolation = ({'file': os.path.basename(data['lifetimes_extrap_file']),
+                                      'lines': len(data['lifetimes_extrap'])}
+                                     if data.get('lifetimes_extrap') else None),
         inputs           = ({k: os.path.basename(v) for k, v in (('rydberg', rydberg_file), ('transitions', transitions_file)) if v}
                             | ({model_f: os.path.basename(model_file or f"{element}_{model_f}.json")} if model_f else {})) or None,
         gs_label         = gs_label,
+        continuum_model  = continuum_model,
         excited_label    = excited_used,
         alpha0_au        = round(alpha0, 4),
         alpha0_expt_au   = alpha0_expt,
@@ -552,6 +643,11 @@ def run_element(element, excited_label=None,
         C6_sigma_au      = round(C6_sigma, 2),
         C6_expt_au       = C6_expt,
         magic_wavelengths = magic_results,
+        magic_heating_min_s = magic_heating_min,
+        magic_excite_max  = magic_excite_max,
+        magic_window_min_ghz = magic_window_min,
+        magic_n_range     = list(magic_n_range) if magic_n_range else None,
+        magic_search_nm   = magic_search,
         transitions_gs   = trans_gs,
         transitions_ex   = trans_ex,
         wl_gs            = wl_gs,
@@ -636,6 +732,12 @@ def save_json(result, data_dir=None):
         C6_sigma_au=result.get('C6_sigma_au'),
         C6_expt_au=result.get('C6_expt_au'),
         magic_wavelengths=result['magic_wavelengths'],
+        magic_heating_min_s=result.get('magic_heating_min_s'),
+        mass_amu=result.get('mass_amu'),
+        magic_excite_max=result.get('magic_excite_max'),
+        magic_window_min_ghz=result.get('magic_window_min_ghz'),
+        magic_n_range=result.get('magic_n_range'),
+        magic_search_nm=result.get('magic_search_nm'),
         n_gs_transitions=len(result['transitions_gs']),
         n_ex_transitions=len(result['transitions_ex']),
         wl_range_nm=[result['wl_min'], result['wl_max']],
@@ -643,6 +745,7 @@ def save_json(result, data_dir=None):
         point_result=result.get('point_result'),
         extrapolation=result.get('extrapolation'),
         **({'inputs': result['inputs']} if result.get('inputs') else {}),
+        continuum_model=result.get('continuum_model'),
         published_lines=_published_choice(el),
         transitions_gs=_trim_transitions(result['transitions_gs']),
         transitions_ex=_trim_transitions(result['transitions_ex']),
@@ -658,6 +761,18 @@ def build_parser() -> argparse.ArgumentParser:
         description='Dynamic polarizability, C₆, magic wavelengths, and AC Stark / trap depth')
     parser.add_argument('element', nargs='?', default=None)
     parser.add_argument('--excited', default=None)
+    parser.add_argument('--magic-heating-min', type=float, default=MAGIC_HEATING_MIN_S, metavar='SECONDS',
+                        help='Practical magic wavelengths: photon recoil takes at least this long to heat atoms out '
+                             f'of the trap, at any depth (default {MAGIC_HEATING_MIN_S:g} s)')
+    parser.add_argument('--magic-excite-max', type=float, default=None, metavar='P',
+                        help='Also require at most this many trap photons absorbed by the excited state per '
+                             'natural decay, in a 1 mK deep trap (default: no limit)')
+    parser.add_argument('--magic-n', type=int, nargs=2, default=None, metavar=('N_MIN', 'N_MAX'),
+                        help='List the magic wavelengths next to excited-state lines with n in this range (every one '
+                             'is still found and saved; default 1 to n_ground + 5)')
+    parser.add_argument('--magic-window-min', type=float, default=None, metavar='GHZ',
+                        help='Also require a magic window (|Δα| within 1 %% of α) at least this wide in laser '
+                             'frequency (default: no limit)')
     parser.add_argument('--wl-min', type=float, default=200.0)
     parser.add_argument('--wl-max', type=float, default=2000.0)
     parser.add_argument('--all', action='store_true')
@@ -758,6 +873,10 @@ def main(argv=None) -> int:
                 transitions_file=resolve_data_file(args.transitions_file, el, data_dir, "Transitions"),
                 model_f=model_f,
                 model_file=resolve_data_file(model_spec, el, data_dir, "model"),
+                magic_heating_min=args.magic_heating_min,
+                magic_excite_max=args.magic_excite_max,
+                magic_window_min=args.magic_window_min,
+                magic_n_range=tuple(args.magic_n) if args.magic_n else None,
             )
         except MissingDataError as exc:
             if not args.all:

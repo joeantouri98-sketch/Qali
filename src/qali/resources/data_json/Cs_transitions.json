@@ -1,4 +1,11 @@
 {
+  "_qali": {
+    "version": "3.0.0",
+    "stage": "transitions",
+    "revision": 1,
+    "command": "qali --pipeline transitions Cs",
+    "generated_utc": "2026-11-18T09:35:39+00:00"
+  },
   "species_id": "Cs",
   "element": "Cs",
   "label": "Cs",

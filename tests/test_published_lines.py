@@ -1,6 +1,8 @@
 """Published J-resolved matrix elements in the polarizability networks (load_published_lines)."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from qali.core.paths import reference_path
@@ -192,3 +194,33 @@ def test_k_6s_lifetime_and_the_nist_5p3_6s_row():
     doc = json.loads(reference_path('data_json', 'K_lifetimes.json').read_text(encoding='utf-8'))
     tau = {lt['state']: lt['lifetime_ns'] for lt in doc['lifetimes']}
     assert tau['6s'] == pytest.approx(81.3, rel=0.01)
+
+
+def test_polarizability_takes_lifetimes_nist_series_extrapolation(data_dir):
+    """Lines Lifetimes fills from its NIST-series fit carry the same f (and relative σ) in Polarizability."""
+    import json
+
+    d = load_element("Rb", str(data_dir), verbose=False)
+    lt = json.loads(Path(data_dir, "Rb_lifetimes.json").read_text(encoding="utf-8"))
+    ext = {(t["lower_label"], t["upper_label"]): t for t in lt["transitions"] if t["fosc_source"] == "NIST-extrap"}
+    tg = {t["other_label"]: t for t in build_transitions_for_state("5s", d, d["transitions"])}
+    hits = [k for k in ext if k[0] == "5s"]
+    assert len(hits) > 20
+    for lo, up in hits:
+        row = tg[up]
+        assert row["source"] == "NIST-extrap"
+        assert row["fosc"] == pytest.approx(ext[(lo, up)]["fosc"], rel=1e-12)
+        assert row["sigma_f"] == pytest.approx(row["fosc"] * ext[(lo, up)]["fosc_delta"], rel=1e-12)
+    assert not any(t["source"] == "Numerov" for t in tg.values())
+
+
+def test_polarizability_without_lifetimes_takes_the_calibrated_model(data_dir, tmp_path):
+    """No Lifetimes output: ground 5s->np beyond NIST come from the calibrated model, not Numerov."""
+    import shutil
+
+    for stage in ("rydberg", "transitions"):
+        shutil.copy(Path(data_dir, f"Rb_{stage}.json"), tmp_path / f"Rb_{stage}.json")
+    d = load_element("Rb", str(tmp_path), verbose=False)
+    assert d["lifetimes_extrap"] == {} and d["lifetimes_extrap_file"] is None
+    srcs = {t["source"] for t in build_transitions_for_state("5s", d, d["transitions"])}
+    assert "calibrated model" in srcs and not srcs & {"Numerov", "NIST-extrap"}

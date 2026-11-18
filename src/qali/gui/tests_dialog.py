@@ -87,6 +87,14 @@ class TestsDialog(QDialog):
         self.only_failed = QCheckBox("Failed only")
         self.only_failed.toggled.connect(self._apply_filter)
         top.addWidget(self.only_failed)
+        self.parallel = QCheckBox("Parallel")
+        self.parallel.setToolTip("Run on all cores (needs pytest-xdist: uv sync --group dev)")
+        self.parallel.setEnabled(R.parallel_available())
+        self.parallel.setChecked(R.parallel_available())
+        top.addWidget(self.parallel)
+        self.skip_slow = QCheckBox("Skip slow")
+        self.skip_slow.setToolTip("Leave out the whole DHF / Brueckner calculations")
+        top.addWidget(self.skip_slow)
         top.addWidget(self.refresh_btn)
         lay.addLayout(top)
 
@@ -188,7 +196,8 @@ class TestsDialog(QDialog):
         self.bar.setValue(0)
         self._t0 = time.monotonic()
         self.state.setText(f"Running {len(run_ids)} test{'s' if len(run_ids) != 1 else ''}...")
-        self._proc = self._new_process(R.run_args(targets))
+        self._skipped_slow = self.skip_slow.isChecked()
+        self._proc = self._new_process(R.run_args(targets, self.parallel.isChecked(), self._skipped_slow))
         self._proc.readyReadStandardOutput.connect(self._read)
         self._proc.finished.connect(self._finished)
         self._proc.start()
@@ -245,6 +254,12 @@ class TestsDialog(QDialog):
             summary = R.parse_summary(text)
             stopped = code not in (0, 1) and not summary
             self.state.setText("Stopped." if stopped else (summary or f"Finished (exit code {code})."))
+            if not stopped and getattr(self, "_skipped_slow", False):
+                for tid in self._run_ids:                       # left out by "Skip slow"
+                    if tid not in self._status:
+                        item = self._items.get(tid)
+                        if item is not None:
+                            item.setText(1, "– not run (slow)")
             if not stopped:
                 self.bar.setValue(self.bar.maximum())
             self._refresh_counts()

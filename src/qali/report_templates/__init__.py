@@ -220,6 +220,9 @@ def write_offline_report(out_path: str | Path, html: str) -> Path:
             body = inject_head(body, PLOTLY_JS_TAG)
         else:
             body = PLOTLY_JS_TAG + body
+    from qali.core.stamps import stamp_html
+
+    body = stamp_html(body)                 # inside a stage run: the run's version stamp
     ensure_offline_plotlyjs(out_path.parent)
     with out_path.open("w", encoding="utf-8", newline="") as fh:
         fh.write(body)

@@ -690,14 +690,18 @@ STAGE_PHYSICS = {
         "lifetime tau = 1/sum(A). Oscillator strengths are taken from NIST "
         "first, then literature, then QD Numerov radial integrals "
         "(NIST-overlap scaled), with the Bates-Damgaard Coulomb approximation "
-        "as a last resort."
+        "as a last resort. Ground ns->np lines beyond the measured ones take "
+        "the Extrapolator's calibrated model instead of Numerov."
     ),
     "polarizability": (
         "Sums the dynamic polarizability alpha(omega) over the transition "
         "network (second-order perturbation theory), integrates it at "
         "imaginary frequency for the van der Waals C6 coefficient, and finds "
         "magic wavelengths where two states experience the same AC Stark "
-        "shift."
+        "shift. Lines with no measured f-value take the value Lifetimes "
+        "extrapolated from the measured series where it has one (run "
+        "Lifetimes first); ground ns->np lines then take the calibrated "
+        "model, other lines the Numerov model."
     ),
     "blackbody": (
         "Computes the energy shift a thermal photon bath induces on a state "

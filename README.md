@@ -18,6 +18,7 @@ Pick an atom, run the calculations you need, and browse the results as interacti
 - Extrapolated ns→np oscillator strengths for high Rydberg levels (including Fr)
 - Hyperfine structure and Zeeman diagrams
 - Feshbach resonances: a(B) from published tables and fits, collisions and loss, dimer energies, thresholds
+- Publication figures (PDF, SVG, EPS, PNG, TIFF) with matplotlib: Grotrian diagrams, quantum defects, scaling laws, theory vs experiment, α(λ), line-by-line α₀ and C₆ (contributions, convergence, uncertainty budget), decay branching, df/dε across the ionization limit, blackbody shifts and rates, Breit–Rabi diagrams, Feshbach a(B), radial wavefunctions, and plots of any table in your results
 - Grotrian diagrams, absorption and emission spectra (vapour cells, hyperfine D lines, saturated absorption), orbital pages (3D, slices, model-potential radial functions, ⟨r⟩ and core penetration) and element comparisons
 
 Reference data from the NIST Atomic Spectra Database is included. You can also add results from the [ORCA](https://www.faccts.de/orca/) quantum chemistry program if you have it installed.
@@ -70,12 +71,17 @@ Work through the Pipeline list from top to bottom, because later stages use the 
 - **Icon colours:** each species has its own colour on its icons. Change it under right-click > **Properties...** > **Icon colour**.
 - **More room for plots:** drag a side panel or the Console panel to the window edge to collapse it, or use the shortcuts below.
 - **Move the Console panel:** drag its tab bar or press its ⇅ button to place it above or below the viewer.
+- **Plot windows:** the ↗ button beside a panel's tabs opens its plot in a window of its own. Each press opens another, so you can keep several side by side.
+- **Whole-view zoom:** Ctrl + wheel (or Ctrl + = / − / 0) magnifies the whole plot in the viewer, the Figures tab and plot windows.
 - **Delete a species:** right-click it and choose whether to remove it from the list only or delete its data as well. Deleted files go to the Recycle Bin. Type the name again to bring the species back.
+- **Figures:** the **Figures** tab draws publication figures from your results. Pick a figure, a species and a journal size (APS, Nature, thesis, slides or custom), then **Export...** a PDF, SVG, EPS, PNG or TIFF. **Script...** writes a Python script that redraws the figure, **Data...** saves the plotted numbers as CSV, and **Save...** keeps a recipe (`.qfig`) that you can redraw from the command line. For a Grotrian diagram, **Levels and lines...** chooses the levels and then the lines between them. **Input** picks which result each figure reads: the usual output, a run you saved under a name with **Save as**, or any other file of that stage (from another output folder, say). On the figure, the mouse wheel zooms (Shift: x only, Alt: y only), dragging pans, right-dragging zooms to a box and a double-click returns to the full view; the view you leave is what you export. The plot builder plots any table in your results or in any JSON file; x, y and filters can be expressions such as `log10(lifetime_ns)` or `(n > 20) & (n < 40)`, a lower panel can show each series against the first, and a series can go on a right-hand axis or in an inset, or be drawn as a heat map or contours of a z column; an axis can be broken to leave out a range. **Edit > Preferences > Plots** sets the size, style and export format new figures start with. Text in LaTeX needs a LaTeX installation with `dvipng` and the cm-super fonts.
 - **Edit data:** create or open JSON and CSV datasets from the **Edit** menu.
+- **File properties and versions:** right-click a file in the Plots, Data or Shared list and choose **Properties...** for its dates, size and the Qali version and stage that made it. ⚠ marks an output that is out of date (its stage has changed, or an input stage was rerun since); the tooltip says why.
+- **Tests:** **Run > Tests** runs the suite on all cores (**Parallel**, needs `uv sync --group dev`) and can leave out the slow ab initio tests (**Skip slow**; `pytest -m "not slow"`).
 - **Search:** press Ctrl+F in the viewer or the data editor to find text.
 - **Built-in tables:** **Edit > Preferences > Tables and variables** shows the constants and data files that ship with Qali, with units, and lets you change them and add rows (a new lifetime, a new element). Tick **Override** on a known lifetime to use it instead of the computed one. **Published matrix elements** shows each published |D| next to NIST's and chooses, per line, which one Polarizability and Lifetimes use (published by default); you can add lines of your own. Your changes are saved in the `tables/` folder of your output folder, and Restore Defaults brings the originals back.
 - **Species properties:** right-click a species and choose **Properties...** to see, edit or add the built-in values and data files for that element. **Set up missing data...** there opens the same dialog that appears when you set a species Qali has no data for.
-- **Extrapolation:** **Edit > Preferences > Extrapolator** sets the model used for ns→np oscillator strengths.
+- **Extrapolation:** **Edit > Preferences > Extrapolator** sets the model used for ns→np oscillator strengths. Ground ns→np lines with no measured value take this calibrated model in every stage; **Use** in a stage's Extrapolation... replaces it with the fit to the measured lines.
 - **Run the tests:** **Run > Tests...** runs all, selected or failed tests with progress.
 - **Help:** the **Help** menu explains every stage and option.
 
@@ -152,6 +158,8 @@ uv run qali --pipeline feshbach Na
 uv run qali --pipeline plotinteractive Na --plots 1
 uv run qali --pipeline compare_elements          # table JSON + plots/comparison.html
 uv run qali --pipeline scattering_rate --element Na --line D2   # same page, Laser cooling tab
+uv run qali --pipeline figure Rb_grotrian.qfig --out Rb_grotrian.pdf   # redraw a recipe saved in the Figures tab
+uv run qali --pipeline figure Na_tau.qfig --input lifetimes=hot         # ... from a run saved as "hot"
 ```
 
 To see every option for a stage:
@@ -162,7 +170,7 @@ uv run qali --pipeline rydberg --help
 
 All stage names:
 
-`runorca`, `orca_to_json`, `dhf`, `brueckner`, `rydberg`, `transitions`, `lifetimes`, `polarizability`, `tweezer`, `blackbody`, `hyperfine`, `feshbach`, `plotinteractive`, `polarizability_page`, `spectra`, `orbital3d`, `compare_elements`, `scattering_rate`
+`runorca`, `orca_to_json`, `dhf`, `brueckner`, `rydberg`, `transitions`, `lifetimes`, `polarizability`, `tweezer`, `blackbody`, `hyperfine`, `feshbach`, `plotinteractive`, `polarizability_page`, `spectra`, `orbital3d`, `compare_elements`, `scattering_rate`, `figure`
 
 ORCA examples:
 

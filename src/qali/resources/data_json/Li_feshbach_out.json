@@ -1,13 +1,20 @@
 {
+  "_qali": {
+    "version": "3.0.0",
+    "stage": "feshbach",
+    "revision": 2,
+    "command": "qali --pipeline feshbach --all",
+    "generated_utc": "2026-11-18T09:39:07+00:00"
+  },
   "element": "Li",
   "isotope_A": 6,
   "version": "0.2",
   "mass_amu": 6.015122,
   "mass_source": "ISOTOPE_MASS_AMU (A=6)",
-  "C6_au": 1392.99,
+  "C6_au": 1393.72,
   "C6_source": "polarizability.json",
-  "beta6_a0": 62.5156,
-  "a_bar_a0": 29.8817,
+  "beta6_a0": 62.5238,
+  "a_bar_a0": 29.8857,
   "a_bg_default_a0": -1582.0,
   "kT_uK": 1.0,
   "k_a0inv": 0.0001863431284071034,
@@ -22,7 +29,7 @@
       "ref": "Z\u00fcrn et al. PRL 110, 135301 (2013) Table 2 \u2014 |12> Present fit: B0=832.18(8) G, \u0394=\u2212262.3(3) G, a_bg=\u22121582(1) a0; \u03b4\u03bc = 2.0 \u03bcB from Chin et al., RMP 82, 1225 (2010) Table IV",
       "in_s_wave_a": true,
       "dmu_muB": 2.0,
-      "s_res": 57.84,
+      "s_res": 57.85,
       "s_res_source": "\u03b4\u03bc"
     },
     {
@@ -35,7 +42,7 @@
       "ref": "Hazlett et al., PRL 108, 045304 (2012): B0 = 543.286(3) G; Chin et al., RMP 82, 1225 (2010) Table IV: Delta = 0.1 G, a_bg = 60 a0, \u03b4\u03bc = 2.0 \u03bcB (closed-channel dominated, s_res \u2248 0.001)",
       "in_s_wave_a": true,
       "dmu_muB": 2.0,
-      "s_res": 0.0008364,
+      "s_res": 0.0008365,
       "s_res_source": "\u03b4\u03bc"
     },
     {

@@ -54,7 +54,7 @@ from .dataset_editor import DatasetEditorDialog
 
 MODE_LABELS = {"off": "Off", "show": "Show alongside", "use": "Use"}
 MODE_TIPS = {
-    "off": "No extrapolated values.",
+    "off": "No fit: ground ns->np lines with no measured value take the calibrated model.",
     "show": "Add extrapolated values as a separate group that can be toggled in the plots.",
     "use": "Also fill levels that have no measured or published value (tagged 'extrapolated').",
 }
@@ -154,12 +154,17 @@ def user_anchor_path(root: Path, element: str) -> Path:
 
 
 def active_config_path(root: Path, element: str) -> str:
-    """Path to pass as ``--extrapolation`` for *element*, or '' when none is saved or the mode is off."""
+    """Path to pass as ``--extrapolation`` for *element*, or ''. Off still passes it when you edited the model
+    parameters of *element*: the stages then take the calibrated model with your parameters."""
+    from qali.physics.extrapolation import model_settings
+
     path = config_path(root, element)
     try:
-        return str(path) if load_config(path).mode != "off" else ""
+        if load_config(path).mode != "off":
+            return str(path)
     except (OSError, ValueError, KeyError):
-        return ""
+        pass
+    return str(path) if model_settings.load(model_settings.settings_path(path)).get(element) else ""
 
 
 def _read_user_file(path: Path) -> tuple[list[dict], dict | None, str]:

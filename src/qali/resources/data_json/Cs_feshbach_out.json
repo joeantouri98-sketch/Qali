@@ -1,13 +1,20 @@
 {
+  "_qali": {
+    "version": "3.0.0",
+    "stage": "feshbach",
+    "revision": 2,
+    "command": "qali --pipeline feshbach --all",
+    "generated_utc": "2026-11-18T09:39:07+00:00"
+  },
   "element": "Cs",
   "isotope_A": 133,
   "version": "0.2",
   "mass_amu": 132.905452,
   "mass_source": "ISOTOPE_MASS_AMU (A=133)",
-  "C6_au": 6854.7,
+  "C6_au": 6857.36,
   "C6_source": "polarizability.json",
-  "beta6_a0": 201.8706,
-  "a_bar_a0": 96.4919,
+  "beta6_a0": 201.8901,
+  "a_bar_a0": 96.5012,
   "a_bg_default_a0": 1722.0,
   "kT_uK": 1.0,
   "k_a0inv": 0.0008759162039444732,

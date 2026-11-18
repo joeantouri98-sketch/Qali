@@ -161,6 +161,8 @@ tr.sel td{background:var(--hl)}
     </section>
     <section><h2>Magic wavelengths</h2>
       <div class="checks"><label><input type="checkbox" data-rb="robust" checked>Robust</label><label><input type="checkbox" data-rb="sensitive" checked>Sensitive</label><label><input type="checkbox" data-rb="very sensitive" checked>Very sensitive</label></div>
+      <div class="checks"><label title="Photon recoil heats atoms out of the trap slowly enough (Polarizability stage limit)"><input type="checkbox" id="c-pr" checked>Practical only</label></div>
+      <div class="checks" title="Excited-state lines whose magic wavelengths are listed: one crossing per line"><label>Lines n from <input type="number" id="n0" min="1" step="1" style="width:4.5em"></label><label> to <input type="number" id="n1" min="1" step="1" style="width:4.5em"></label></div>
     </section>
     <section><button class="btn" id="reset" style="width:100%">Reset</button></section>
   </aside>
@@ -236,7 +238,8 @@ function base(){const ink=col('--ink'),ink2=col('--ink2'),grid=col('--grid'),bg=
    hoverlabel:{bgcolor:col('--panel'),bordercolor:col('--edge'),font:{color:ink,family:col('--sans'),size:12}},legend:{orientation:'h',x:0,y:1.07,font:{size:12,color:ink2}}}}}
 const cfg={displaylogo:false,responsive:true,modeBarButtonsToRemove:['lasso2d','select2d']};
 const ctl=()=>({gs:$('c-gs').checked,ex:$('c-ex').checked,da:$('c-da').checked,band:$('c-band').checked,res:$('c-res').checked,mg:$('c-magic').checked,
-  I:+$('inten').value||10,wa:+$('waist').value||1,m:+$('mass').value||D.mass,rb:new Set([...document.querySelectorAll('[data-rb]:checked')].map(i=>i.dataset.rb))});
+  I:+$('inten').value||10,wa:+$('waist').value||1,m:+$('mass').value||D.mass,rb:new Set([...document.querySelectorAll('[data-rb]:checked')].map(i=>i.dataset.rb)),pr:$('c-pr').checked,n0:+$('n0').value||1,n1:+$('n1').value||1e9});
+const okM=(m,c)=>c.rb.has(m.robustness)&&(!c.pr||m.practical!==false)&&(m.line_n==null||(m.line_n>=Math.min(c.n0,c.n1)&&m.line_n<=Math.max(c.n0,c.n1)));
 // ---- polarizability tab
 function build1(){const c=ctl(),[lo,hi]=rngOf(),b=base(),f=UN[S.unit].f,tr=[],sh=[];
   const GT=D.gt,ET=D.et;const xs=grid([...GT,...ET],lo,hi);
@@ -250,7 +253,7 @@ function build1(){const c=ctl(),[lo,hi]=rngOf(),b=base(),f=UN[S.unit].f,tr=[],sh
     tr.push({x,y,mode:'lines',name:nm,line:{color,width:1.8,dash},text:arr.map((p,i)=>isFinite(p[0])?hov(nm,p[0],p[1],xs[i]):''),hovertemplate:'%{text}<extra></extra>',connectgaps:false})};
   curve(A,'α ground ('+D.gs+')',cs,'solid',c.gs);curve(B,'α excited ('+D.ex+')',ce,'dash',c.ex);
   if(c.da)curve(A.map((p,i)=>[p[0]-B[i][0],Math.hypot(p[1],B[i][1])]),'Δα',cd,'solid',true);
-  if(c.mg){const m=D.magic.filter(m=>m.wl_nm>=lo&&m.wl_nm<=hi&&c.rb.has(m.robustness));const rc={robust:col('--sel'),sensitive:col('--ov5'),'very sensitive':col('--r-nir')};
+  if(c.mg){const m=D.magic.filter(m=>m.wl_nm>=lo&&m.wl_nm<=hi&&okM(m,c));const rc={robust:col('--sel'),sensitive:col('--ov5'),'very sensitive':col('--r-nir')};
     tr.push({x:m.map(q=>q.wl_nm),y:m.map(q=>yv(q.alpha_au)),mode:'markers',name:'Magic wavelengths',marker:{symbol:m.map(q=>SY[q.robustness]),size:11,color:'rgba(0,0,0,0)',line:{width:2.5,color:m.map(q=>rc[q.robustness])}},
       text:m.map(q=>`<b>Magic ${q.wl_nm.toFixed(2)} nm</b><br>α = ${fmt(q.alpha_au)} ${UN[S.unit].lab}<br>|dΔα/dλ| = ${Math.abs(q.delta_alpha_slope_au_per_nm).toFixed(1)} a.u./nm<br>${q.robustness} · nearest line ${esc(q.nearby_resonance_label)} at ${q.nearby_resonance_nm.toFixed(2)} nm`),hovertemplate:'%{text}<extra></extra>'})}
   sh.push({type:'line',xref:'x',yref:'paper',x0:S.lam,x1:S.lam,y0:0,y1:1,line:{color:col('--sel'),width:1.2,dash:'dot'}});
@@ -277,7 +280,7 @@ function ctable(){const T=S.c==='g'?D.gt:D.et,lam=S.lam,[a,s]=alpha(T,lam),qq=$(
   $('ctab').tBodies[0].innerHTML=rows.slice(cpg*PG,(cpg+1)*PG).map(row).join('')||'<tr><td colspan="6" class="empty">No lines match.</td></tr>'}
 $('csearch').addEventListener('input',()=>{cpg=0;ctable()});$('cprev').onclick=()=>{cpg--;ctable()};$('cnext').onclick=()=>{cpg++;ctable()};
 // ---- magic tab
-function mdata(){const c=ctl();return D.magic.filter(m=>c.rb.has(m.robustness)).map(m=>{const [,sg]=alpha(D.gt,m.wl_nm),[,se]=alpha(D.et,m.wl_nm),sl=Math.abs(m.delta_alpha_slope_au_per_nm);
+function mdata(){const c=ctl();return D.magic.filter(m=>okM(m,c)).map(m=>{const [,sg]=alpha(D.gt,m.wl_nm),[,se]=alpha(D.et,m.wl_nm),sl=Math.abs(m.delta_alpha_slope_au_per_nm);
   return {...m,slope:sl,U:m.alpha_au*UK*c.I,dl:Math.abs(m.wl_nm-m.nearby_resonance_nm),pm:sl?Math.hypot(sg,se)/sl:NaN}})}
 let build2=function(){const c=ctl(),[lo,hi]=rngOf(),b=base(),xs=grid([...D.gt,...D.et],lo,hi),tr=[],md=mdata().filter(m=>m.wl_nm>=lo&&m.wl_nm<=hi);
   const dA=xs.map(x=>{const a=alpha(D.gt,x)[0],e=alpha(D.et,x)[0];return isFinite(a)&&isFinite(e)?a-e:null});
@@ -293,11 +296,11 @@ let build2=function(){const c=ctl(),[lo,hi]=rngOf(),b=base(),xs=grid([...D.gt,..
     yaxis2:{domain:[0,.22],range:[0,420],title:{text:'|dΔα/dλ| (a.u./nm)',font:{color:b.ink2,size:11}},gridcolor:b.grid,tickfont:{color:b.ink2,size:10},linecolor:b.ink2,fixedrange:true},shapes:sh,uirevision:S.scale+S.unit+lo+hi});
   const done=Plotly.react('p2',tr,L,cfg);mtable();return done};
 const MC=[['wl','λ (nm)',m=>m.wl_nm.toFixed(3),m=>m.wl_nm],['pm','±(σ f) nm',m=>isFinite(m.pm)?m.pm.toFixed(3):'–',m=>m.pm],['a','α (au→unit)',m=>fmt(m.alpha_au),m=>m.alpha_au],['sl','|slope| a.u./nm',m=>m.slope.toFixed(1),m=>m.slope],
- ['rb','Robustness',m=>`<span class="cls ${m.robustness==='robust'?'robust':m.robustness==='sensitive'?'sensitive':'very'}">${m.robustness}</span>`,m=>m.slope],['res','Nearest line',m=>esc(m.nearby_resonance_label)+' · '+m.nearby_resonance_nm.toFixed(2)+' nm',m=>m.dl],['dl','Distance (nm)',m=>m.dl.toFixed(1),m=>m.dl],['U','Depth (µK)',m=>m.U.toFixed(1),m=>m.U]];
+ ['rb','Robustness',m=>`<span class="cls ${m.robustness==='robust'?'robust':m.robustness==='sensitive'?'sensitive':'very'}">${m.robustness}</span>`,m=>m.slope],['res','Nearest line',m=>esc(m.nearby_resonance_label)+' · '+m.nearby_resonance_nm.toFixed(2)+' nm',m=>m.dl],['dl','Distance (nm)',m=>m.dl<1?m.dl.toPrecision(2):m.dl.toFixed(1),m=>m.dl],['win','Window (GHz)',m=>m.window_ghz==null?'–':m.window_ghz.toPrecision(2),m=>m.window_ghz??NaN],['sc','Heat-out (s)',m=>m.heating_time_s==null?'–':m.heating_time_s.toPrecision(2),m=>m.heating_time_s??NaN],['U','Depth (µK)',m=>m.U.toFixed(1),m=>m.U]];
 function mtable(){const rows=mdata().sort((a,b)=>{const c=MC.find(x=>x[0]===S.sort.k)||MC[0];return (c[3](a)-c[3](b))*S.sort.d});
   $('minfo').textContent=`${rows.length} of ${D.magic.length} shown · depth at ${ctl().I} kW/cm²`;
   $('mtab').tHead.innerHTML='<tr>'+MC.map(c=>`<th data-k="${c[0]}">${c[1]}${S.sort.k===c[0]?`<span class="arr">${S.sort.d>0?'▲':'▼'}</span>`:''}</th>`).join('')+'</tr>';
-  $('mtab').tBodies[0].innerHTML=rows.map(m=>`<tr class="t${S.mpin===m.wl_nm?' sel':''}" data-w="${m.wl_nm}">`+MC.map((c,i)=>`<td class="${i===0||i===2||i===3||i===6||i===7||i===1?'m':''}">${c[2](m)}</td>`).join('')+'</tr>').join('')||'<tr><td colspan="8" class="empty">No magic wavelengths in the current filters.</td></tr>'}
+  $('mtab').tBodies[0].innerHTML=rows.map(m=>`<tr class="t${S.mpin===m.wl_nm?' sel':''}" data-w="${m.wl_nm}">`+MC.map((c,i)=>`<td class="${i===0||i===2||i===3||i===6||i===7||i===8||i===9||i===1?'m':''}">${c[2](m)}</td>`).join('')+'</tr>').join('')||'<tr><td colspan="10" class="empty">No magic wavelengths in the current filters.</td></tr>'}
 // ---- tweezer tab
 function interp(arr,lam){const w=D.tw.wl;if(lam<w[0]||lam>w[w.length-1])return NaN;let i=0;while(i<w.length-2&&w[i+1]<lam)i++;const t=(lam-w[i])/(w[i+1]-w[i]);return arr[i]>0&&arr[i+1]>0?Math.exp(Math.log(arr[i])*(1-t)+Math.log(arr[i+1])*t):arr[i]}
 function twvals(){const c=ctl(),lam=S.lam,[a]=alpha(D.gt,lam),k=c.I/D.tw.I,U_uK=-a*UK*c.I,U=U_uK*1.380649e-29,m=c.m*1.66053907e-27,w0=c.wa*1e-6,zR=Math.PI*w0*w0/(lam*1e-9);
@@ -323,11 +326,11 @@ function build3(){const c=ctl(),b=base(),T=D.tw,k=c.I/T.I,v=twvals(),tr=[],ink2=
   return done}
 // ---- shell
 function stats(){const g=D.alpha0,e=D.alpha0e;const chip=(k,v,d)=>`<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`;
-  $('stats').innerHTML=chip('α(0) ground',g.toFixed(1)+' a.u.',(e==null?`σ ${D.alpha0s}`:`expt ${e} · ${(100*(g-e)/e).toFixed(1)}% · σ ${D.alpha0s}`))+chip('C₆ ground–ground',D.C6==null?'–':D.C6.toFixed(0)+' a.u.',D.C6==null?'not computed':(D.C6e==null?`σ ${D.C6s}`:`expt ${D.C6e} · ${(100*(D.C6-D.C6e)/D.C6e).toFixed(1)}% · σ ${D.C6s}`))+chip('Magic wavelengths',String(D.magic.length),`${D.magic.filter(m=>m.robustness==='robust').length} robust`)+chip('Lines',`${D.gt.length} + ${D.et.length}`,`${D.gs} and ${D.ex}`)}
+  $('stats').innerHTML=chip('α(0) ground',g.toFixed(1)+' a.u.',(e==null?`σ ${D.alpha0s}`:`expt ${e} · ${(100*(g-e)/e).toFixed(1)}% · σ ${D.alpha0s}`))+chip('C₆ ground–ground',D.C6==null?'–':D.C6.toFixed(0)+' a.u.',D.C6==null?'not computed':(D.C6e==null?`σ ${D.C6s}`:`expt ${D.C6e} · ${(100*(D.C6-D.C6e)/D.C6e).toFixed(1)}% · σ ${D.C6s}`))+chip('Magic wavelengths',String(D.magic.filter(m=>m.practical!==false&&(m.line_n==null||(m.line_n>=D.nr[0]&&m.line_n<=D.nr[1]))).length),`practical, lines n ${D.nr[0]}–${D.nr[1]} · ${D.magic.length} crossings in all`)+chip('Lines',`${D.gt.length} + ${D.et.length}`,`${D.gs} and ${D.ex}`)}
 function draw(){const t=S.tab;$('pane-pol').hidden=t!=='pol';$('pane-mag').hidden=t!=='mag';$('pane-tw').hidden=t!=='tw';document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===t)));
   $('lam').value=S.lam;let p;if(t==='pol'){p=build1();ctable()}else if(t==='mag')p=build2();else p=build3();return p.then(r=>{hook({pol:'p1',mag:'p2',tw:'p3'}[t]);return r})}
 const O=D.opts;S.unit=O.unit;S.scale=O.scale;S.lam=O.lam;
-$('wmin').value=O.wmin;$('wmax').value=O.wmax;$('inten').value=O.I;$('waist').value=O.waist;$('mass').value=D.mass;
+$('n0').value=D.nr[0];$('n1').value=D.nr[1];$('wmin').value=O.wmin;$('wmax').value=O.wmax;$('inten').value=O.I;$('waist').value=O.waist;$('mass').value=D.mass;
 document.querySelectorAll('#scale button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===S.scale)));
 document.querySelectorAll('#units button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.u===S.unit)));
 const TABS=D.tabs.filter(t=>t!=='tw'||D.tw);document.querySelectorAll('.tabs button').forEach(b=>{b.hidden=!TABS.includes(b.dataset.t)});S.tab=TABS[0]||'pol';
@@ -349,7 +352,7 @@ function hook(id){const el=$(id);if(hooked[id]||!el.on)return;hooked[id]=1;
   // a marker click picks it; a click anywhere else on the plot moves the cursor wavelength
   if(id==='p2')el.on('plotly_click',ev=>{const p=ev.points[0];if(p&&p.customdata){S.mpin=p.customdata;S.lam=p.customdata;draw()}});
   clickX(el,x=>{if(!isFinite(x))return;S.lam=Math.round(x*10)/10;draw()})}
-$('reset').onclick=()=>{$('c-gs').checked=$('c-ex').checked=$('c-band').checked=$('c-res').checked=$('c-magic').checked=true;$('c-da').checked=false;$('wmin').value=D.opts.wmin;$('wmax').value=D.opts.wmax;$('inten').value=D.opts.I;$('waist').value=D.opts.waist;$('mass').value=D.mass;S.lam=D.opts.lam;S.mpin=null;srcs.forEach(s=>S.src.add(s));document.querySelectorAll('[data-src],[data-rb]').forEach(i=>i.checked=true);draw()};
+$('reset').onclick=()=>{$('c-gs').checked=$('c-ex').checked=$('c-band').checked=$('c-res').checked=$('c-magic').checked=$('c-pr').checked=true;$('n0').value=D.nr[0];$('n1').value=D.nr[1];$('c-da').checked=false;$('wmin').value=D.opts.wmin;$('wmax').value=D.opts.wmax;$('inten').value=D.opts.I;$('waist').value=D.opts.waist;$('mass').value=D.mass;S.lam=D.opts.lam;S.mpin=null;srcs.forEach(s=>S.src.add(s));document.querySelectorAll('[data-src],[data-rb]').forEach(i=>i.checked=true);draw()};
 $('railbtn').onclick=()=>{S.rail=!S.rail;$('app').classList.toggle('closed',!S.rail);$('railbtn').textContent=S.rail?'Hide controls':'Show controls';$('railbtn').setAttribute('aria-expanded',String(S.rail));setTimeout(()=>Plotly.Plots.resize(document.querySelector('.pane:not([hidden]) .p')),30)};
 $('theme').onclick=()=>{const o=['auto','light','dark'];S.theme=o[(o.indexOf(S.theme)+1)%3];const h=document.documentElement;S.theme==='auto'?h.removeAttribute('data-theme'):h.setAttribute('data-theme',S.theme);$('theme').textContent='Theme: '+S.theme;draw()};
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>draw());

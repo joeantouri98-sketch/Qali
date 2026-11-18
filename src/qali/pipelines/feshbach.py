@@ -150,10 +150,13 @@ def get_available_elements(data_dir):
 def load_feshbach_params(element, data_dir):
     path = os.path.join(data_dir, f'{element}_feshbach.json')
     if not os.path.exists(path):
-        raise FileNotFoundError(
-            f'No literature file {path}\n'
-            f'Create it with resonances: B0_G, Delta_G, a_bg_a0 '
-            f'(see data/Na_feshbach.json).')
+        have = get_available_elements(data_dir)
+        why = (' No Feshbach resonances have been measured in francium.' if element.split('_')[0] == 'Fr'
+               else '')
+        raise MissingDataError(
+            f'No Feshbach data for {element}: {os.path.basename(path)} is not in {data_dir}.{why}\n'
+            f'Species with data: {", ".join(have) or "none"}. To add {element}, write that file with its '
+            f'resonances (B0_G, Delta_G, a_bg_a0), as in Na_feshbach.json.')
     with open(path, encoding='utf-8') as f:
         params = json.load(f)
     validate_feshbach_params(params, path)

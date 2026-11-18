@@ -163,6 +163,9 @@ class DHFResult:
     lifetimes: tuple[Lifetime, ...]
     quantum_defects: dict[str, tuple[tuple[int, float], ...]]
     basis_intruders: dict[str, int] = field(default_factory=dict)   # skipped per core channel (0: none)
+    # Photoionization of the valence level: ((omega_au, f), ...) of the positive-energy states of the
+    # basis cavity (r <= rmax), a discretized continuum: the pseudo-lines are a quadrature of df/de.
+    continuum: tuple[tuple[float, float], ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -526,6 +529,21 @@ def compute(Z: int, ionization_cm: float, alpha_core_au: float, *,
                 tot += d * d * w / (w * w - omega * omega)
         return float(2.0 / (3 * (jv2 + 1)) * tot + alpha_core_au)
 
+    jv2 = kappa_lj(g.kappa)[1]
+    continuum = []
+    for kap in VALENCE_KAPPAS:
+        if reduced_c(kap, g.kappa) == 0.0:
+            continue
+        for s in m.states[kap]:
+            if s.eps <= 0:
+                continue
+            w = s.eps - g.eps
+            d = m.red_d(s, g, reff)
+            f = 2.0 / 3.0 * w * d * d / (jv2 + 1)
+            if f > 0:
+                continuum.append((float(w), float(f)))
+    continuum.sort()
+
     defects = {}
     for kap in VALENCE_KAPPAS:
         defects[kappa_label(0, kap)[1:]] = tuple(
@@ -543,4 +561,5 @@ def compute(Z: int, ionization_cm: float, alpha_core_au: float, *,
         levels=tuple(levels), transitions=tuple(transitions), lifetimes=lifetimes,
         quantum_defects=defects,
         basis_intruders={kappa_label(0, k)[1:]: v for k, v in sorted(m.intruders.items()) if v},
+        continuum=tuple(continuum),
     )

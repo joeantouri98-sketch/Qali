@@ -48,5 +48,8 @@ def atomic_write_text(path: PathLike, text: str, *, encoding: str = "utf-8") -> 
 
 
 def write_json(path: PathLike, payload: Any, *, indent: int | None = 2, **dumps_kwargs: Any) -> None:
-    """Serialise *payload* with ``allow_nan=False`` and write it atomically."""
-    atomic_write_text(path, json.dumps(payload, indent=indent, allow_nan=False, **dumps_kwargs))
+    """Serialise *payload* with ``allow_nan=False`` and write it atomically. Inside a stage run the
+    payload gets the run's version stamp as its first key (:mod:`qali.core.stamps`)."""
+    from qali.core.stamps import stamp_payload
+
+    atomic_write_text(path, json.dumps(stamp_payload(payload), indent=indent, allow_nan=False, **dumps_kwargs))

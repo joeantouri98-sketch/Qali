@@ -1,0 +1,133 @@
+diff --git a/src/qali/gui/advanced_page.py b/src/qali/gui/advanced_page.py
+index 8e05614..868bee6 100644
+--- a/src/qali/gui/advanced_page.py
++++ b/src/qali/gui/advanced_page.py
+@@ -17,7 +17,8 @@ from PySide6.QtWidgets import (
+ from .extrapolator_settings import set_match
+ 
+ # Kept on this computer only: paths and window sizes mean nothing on another one.
+-LOCAL_KEYS = ("root_path", "orca/executable", "startup/last_species", "preferences/size", "preferences/page")
++LOCAL_KEYS = ("root_path", "orca/executable", "startup/last_species", "preferences/size", "preferences/page",
++              "figures/last_dir")
+ 
+ 
+ def portable_keys(settings) -> list[str]:
+@@ -76,7 +77,7 @@ class AdvancedPage(QWidget):
+         page.setSpacing(14)
+ 
+         card, lay, self.move_title = _card("Move to another computer")
+-        note = QLabel("Theme, colours, units and start-up options. Folders and the ORCA path stay on this computer.")
++        note = QLabel("Theme, colours, units and start-up options.")
+         note.setObjectName("muted")
+         note.setWordWrap(True)
+         lay.addWidget(note)
+@@ -92,8 +93,7 @@ class AdvancedPage(QWidget):
+         page.addWidget(card)
+ 
+         card, lay, self.reset_title = _card("Start over")
+-        note = QLabel("Every page back to its defaults, including the extrapolator settings and edited tables. "
+-                      "Nothing changes until OK; Cancel keeps everything.")
++        note = QLabel("Every page back to its defaults.")
+         note.setObjectName("muted")
+         note.setWordWrap(True)
+         lay.addWidget(note)
+diff --git a/src/qali/gui/preferences_dialog.py b/src/qali/gui/preferences_dialog.py
+index 153d78d..03c5c04 100644
+--- a/src/qali/gui/preferences_dialog.py
++++ b/src/qali/gui/preferences_dialog.py
+@@ -37,6 +37,7 @@ from .advanced_page import AdvancedPage
+ from .appearance_extras import AppearanceExtras
+ from .general_page import GeneralPage
+ from .units_page import UnitsPage
++from .plots_page import PlotsPage
+ from .tables_page import TablesPage
+ 
+ KEY = "appearance/colors/{theme}/{token}"
+@@ -48,7 +49,7 @@ SIZE_KEY = "preferences/size"
+ QALI_PRESETS = (("Sage slate", theme.QALI_BASE), ("Ink", "#1f2633"), ("Plum", "#2f2633"),
+                 ("Clay", "#33291f"), ("Moss", "#24301f"), ("Paper", "#e9e4d8"))
+ BADGE_ROLE = Qt.UserRole + 1
+-PAGE_TITLES = {"general": "General", "appearance": "Appearance", "units": "Units and numbers", "advanced": "Advanced", "extrapolator": "Extrapolator", "tables": "Tables and variables"}
++PAGE_TITLES = {"general": "General", "appearance": "Appearance", "units": "Units and numbers", "plots": "Plots", "advanced": "Advanced", "extrapolator": "Extrapolator", "tables": "Tables and variables"}
+ 
+ 
+ def load_overrides(settings) -> None:
+@@ -313,7 +314,7 @@ class PreferencesDialog(QDialog):
+     """General, Appearance (with a live preview), Extrapolator and Tables and variables, with a search over all of them
+     and, beside each page's name, how many of its settings differ from the defaults."""
+ 
+-    TABS = ("general", "appearance", "units", "extrapolator", "tables", "advanced")
++    TABS = ("general", "appearance", "units", "plots", "extrapolator", "tables", "advanced")
+ 
+     def __init__(self, parent, theme_name: str, settings, apply_callback, root=None, species=None, start_tab=None,
+                  set_theme=None, default_root=None, set_root=None, units_changed=None, look_changed=None):
+@@ -371,6 +372,10 @@ class PreferencesDialog(QDialog):
+         self.units = UnitsPage(settings)
+         self._add_page(self._titled(self.units, "Units and numbers"), "units")
+         self.units.changed.connect(self._schedule_counts)
++        self.plots = PlotsPage(settings)
++        self._add_page(self._titled(self.plots, "Plots", "Size, style and export of new publication figures."),
++                       "plots")
++        self.plots.changed.connect(self._schedule_counts)
+         self.extrapolator = None
+         self.tables = None
+         if root is not None:
+@@ -496,6 +501,7 @@ class PreferencesDialog(QDialog):
+         if self.general is not None:
+             counts["general"] = self.general.changed_count()
+         counts["units"] = self.units.changed_count()
++        counts["plots"] = self.plots.changed_count()
+         if self.extrapolator is not None:
+             counts["extrapolator"] = self.extrapolator.changed_count()
+         if self.tables is not None:
+@@ -743,6 +749,7 @@ class PreferencesDialog(QDialog):
+         if self.general is not None:
+             hits["general"] = self.general.highlight(text)
+         hits["units"] = self.units.highlight(text)
++        hits["plots"] = self.plots.highlight(text)
+         hits["advanced"] = self.advanced.highlight(text)
+         if self.extrapolator is not None:
+             hits["extrapolator"] = self.extrapolator.highlight(text)
+@@ -776,6 +783,7 @@ class PreferencesDialog(QDialog):
+         what = {"general": "the output folder, the ORCA program and the start-up options",
+                 "appearance": "the theme colours, the Qali base colour, text sizes and layout",
+                 "units": "the units and number format",
++                "plots": "the size, style and export of new figures",
+                 "extrapolator": "the fit settings and every species' model parameters",
+                 "tables": "the table or file on screen"}[page]
+         if QMessageBox.question(self, "Defaults", f"Restore the defaults of {what}?",
+@@ -788,6 +796,8 @@ class PreferencesDialog(QDialog):
+             self.general.reset_all()
+         elif page == "units":
+             self.units.reset_all()
++        elif page == "plots":
++            self.plots.reset_all()
+         elif page == "extrapolator" and self.extrapolator is not None:
+             self.extrapolator.reset_all()
+         elif page == "tables" and self.tables is not None:
+@@ -802,7 +812,7 @@ class PreferencesDialog(QDialog):
+ 
+     def _reset_everything(self) -> None:
+         """Advanced > Reset all preferences: every page back to its defaults; OK keeps it, Cancel does not."""
+-        for page in (self.general, self.units, self.extrapolator):
++        for page in (self.general, self.units, self.plots, self.extrapolator):
+             if page is not None:
+                 page.reset_all()
+         if self.tables is not None:
+@@ -848,6 +858,7 @@ class PreferencesDialog(QDialog):
+         self.apply_callback()
+         if look and self.look_changed is not None:
+             self.look_changed()
++        self.plots.apply()
+         before = units_mod.current()
+         self.units.apply()
+         if units_mod.current() != before and self.units_changed is not None:
+@@ -900,7 +911,7 @@ class PreferencesDialog(QDialog):
+             self.apply_callback()
+             if undo_look and self.look_changed is not None:
+                 self.look_changed()
+-            for page in (self.extrapolator, self.tables, self.general):
++            for page in (self.extrapolator, self.tables, self.general, self.plots):
+                 if page is not None and page.applied:
+                     page.undo_apply()
+             if self.units.applied:

@@ -87,3 +87,14 @@ class TestPipelineEndToEnd:
         assert result.returncode != 0
         combined = result.stdout + result.stderr
         assert "Invalid species id 'Xx'" in combined
+
+
+def test_feshbach_without_data_is_a_clean_message(workspace) -> None:
+    """Fr has no Feshbach file: one clear message, no traceback."""
+    from helpers import run_pipeline
+
+    result = run_pipeline(["feshbach", "Fr"], workspace)
+    assert result.returncode == 1
+    combined = result.stdout + result.stderr
+    assert "No Feshbach data for Fr" in combined and "francium" in combined
+    assert "Traceback" not in combined

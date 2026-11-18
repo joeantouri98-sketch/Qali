@@ -111,6 +111,8 @@ def test_plotinteractive_runs_twice_in_one_process(tmp_path, monkeypatch):
 
     from helpers import make_workspace
 
+    from qali.core.stamps import strip_stamp
+
     root = make_workspace(tmp_path / "ws")
     monkeypatch.setenv("QALI_PROJECT_ROOT", str(root))
     plotly_ids = re.compile(rb"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
@@ -118,7 +120,7 @@ def test_plotinteractive_runs_twice_in_one_process(tmp_path, monkeypatch):
     for _ in range(2):
         with contextlib.redirect_stdout(io.StringIO()):
             assert run("plotinteractive", ["Na", "--plots", "2"]) == 0
-        runs.append({p.name: plotly_ids.sub(b"", p.read_bytes())
+        runs.append({p.name: plotly_ids.sub(b"", strip_stamp(p.read_bytes()))      # the stamp holds the time
                      for p in sorted((root / ".qali" / "plots" / "Na").glob("*.html"))})
     assert sorted(runs[0]) == ["Na_grotrian.html"]
     assert runs[1] == runs[0]

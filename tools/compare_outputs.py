@@ -56,6 +56,13 @@ CHAIN = [
 ]
 
 _PLOTLY_ID = re.compile(rb"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+# Version stamps (qali.core.stamps) carry the time of the run: left out of the comparison.
+_JSON_STAMP = re.compile(rb'^\{\s*"_qali": \{[^{}]*\},\s*')
+_HTML_STAMP = re.compile(rb'<meta name="qali-stamp" content=\'[^\']*\'>')
+
+
+def strip_stamp(data: bytes) -> bytes:
+    return _HTML_STAMP.sub(b"", _JSON_STAMP.sub(b"{\n  ", data, count=1), count=1)
 
 
 def export_revision(revision: str, dest: Path) -> Path:
@@ -113,7 +120,7 @@ def compare(before: Path, after: Path) -> list[str]:
     problems = [f"missing after: {name}" for name in sorted(old.keys() - new.keys())]
     problems += [f"new after:     {name}" for name in sorted(new.keys() - old.keys())]
     for name in sorted(old.keys() & new.keys()):
-        a, b = old[name].read_bytes(), new[name].read_bytes()
+        a, b = strip_stamp(old[name].read_bytes()), strip_stamp(new[name].read_bytes())   # times differ
         if name.endswith(".html"):
             a, b = _PLOTLY_ID.sub(b"ID", a), _PLOTLY_ID.sub(b"ID", b)
         if a != b:

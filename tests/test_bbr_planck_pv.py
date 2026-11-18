@@ -93,3 +93,16 @@ def test_partner_inside_the_thermal_band_is_finite_and_resolved():
 
 def test_empty_network_has_no_shift():
     assert bbr_total_shift_pv_hz([], 300.0) == 0.0
+
+
+def test_shift_curves_are_smooth_with_a_partner_in_the_thermal_spectrum():
+    """Cs 6p1/2 → 5d3/2 (3 µm) sits inside the spectrum at high T: the T-sweep must not zig-zag."""
+    from qali.physics.blackbody_core import compute_shifts
+
+    delta = 0.0151                                   # Cs 6p1/2 - 5d3/2, hartree
+    net = [_channel(-delta, fosc=0.25), _channel(0.0335, fosc=0.2), _channel(0.07, fosc=0.1)]
+    s = compute_shifts(net, net, 300.0)
+    curve = np.asarray(s.dyn_ex_curve_hz)
+    second = np.diff(curve, 2)
+    assert np.all(np.isfinite(curve))
+    assert np.count_nonzero(np.diff(np.sign(second))) <= 2         # at most a bend or two, no zig-zag

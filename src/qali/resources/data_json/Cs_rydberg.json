@@ -1,4 +1,11 @@
 {
+  "_qali": {
+    "version": "3.0.0",
+    "stage": "rydberg",
+    "revision": 1,
+    "command": "qali --pipeline rydberg Cs --n-max 50",
+    "generated_utc": "2026-11-18T09:35:38+00:00"
+  },
   "species_id": "Cs",
   "element": "Cs",
   "label": "Cs",

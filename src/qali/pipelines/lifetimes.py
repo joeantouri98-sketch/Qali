@@ -72,7 +72,8 @@ KNOWN_LIFETIMES = {
 _user_tables.apply("lifetimes.known", KNOWN_LIFETIMES)
 
 # Dominant-channel sources reliable enough for the line-parameter tables
-_RELIABLE_SOURCES = ('NIST', 'ORCA', 'literature', 'Numerov', 'precision', 'NIST-extrap', 'DHF', 'Brueckner')
+_RELIABLE_SOURCES = ('NIST', 'ORCA', 'literature', 'Numerov', 'precision', 'NIST-extrap', 'DHF', 'Brueckner',
+                     'calibrated model')
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -228,6 +229,15 @@ def main(argv: list[str] | None = None) -> int:
         _lines = load_dhf_lines(element, data_dir, _model_spec, _model)
         sources = dataclasses.replace(sources, dhf=_lines)
         args.inputs[_model] = os.path.basename(_model_spec or f"{element}_{_model}.json")
+
+    if not (args.orca_only or no_qdt):
+        import dataclasses
+
+        from qali.physics.extrapolation.stage import ground_model
+        _gm = ground_model(element, rydberg_data, nist, args.extrapolation)
+        if _gm is not None and _gm.note:
+            print(f"  Ground ns->np model: {_gm.note}")
+        sources = dataclasses.replace(sources, ground_model=_gm)
 
     IE      = rydberg_data['ionization_energy_eV']
     n_start = rydberg_data.get('n_start', 2)
@@ -502,6 +512,9 @@ def output_json(sp, args, IE, n_start, result: LifetimesResult) -> dict:
                                               'median_ratio': float(np.nanmedian(v)) if v else None}
                          for k, v in result.extrap_vs_model.items()},
         },
+        'ground_model': {'n_lines': result.n_ground_model, 'source': 'calibrated model',
+                         'note': 'ground ns->np lines with no measured, published or NIST-series value: '
+                                 'the Extrapolator model without the anchor fit, in place of Numerov'},
         'dropped_transitions': {
             'n_total': sum(drop_counts.values()),
             'by_reason': drop_counts,
@@ -536,6 +549,8 @@ def _print_table_summary(result: LifetimesResult, n_loaded) -> None:
     if result.numerov_calibration is not None:
         print(f"  NIST-extrapolated channels: {result.n_extrapolated} recovered (were dropped), "
               f"{result.n_extrap_replaced} replacing Numerov/Coulomb model values")
+        if result.n_ground_model:
+            print(f"  Ground ns->np from the calibrated model (in place of Numerov): {result.n_ground_model} lines")
         for (lo_, lc_), vals in sorted(result.extrap_vs_model.items()):
             vv = np.array([v for v in vals if np.isfinite(v)])
             if vv.size:

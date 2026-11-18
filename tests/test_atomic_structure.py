@@ -106,6 +106,7 @@ def na_dhf(na_ws):
     return load_json(na_ws / ".qali" / "data" / "Na_dhf.json")
 
 
+@pytest.mark.slow
 def test_na_dhf_matches_nist_and_measured_values(na_dhf):
     levels = {lv["label"]: lv for lv in na_dhf["levels"]}
     # inputs reproduced exactly: the D lines and the 3d pair (inverted fine structure: 5/2 below 3/2)
@@ -128,6 +129,7 @@ def test_na_dhf_matches_nist_and_measured_values(na_dhf):
     assert s_defects[25] == pytest.approx(1.34797, abs=2e-3)
 
 
+@pytest.mark.slow
 def test_na_dhf_json_is_finite_and_records_its_inputs(na_dhf):
     from helpers import assert_json_is_finite
 
@@ -140,6 +142,7 @@ def test_na_dhf_json_is_finite_and_records_its_inputs(na_dhf):
     assert na_dhf["nist_comparison"], "no NIST comparison rows"
 
 
+@pytest.mark.slow
 def test_dhf_runs_without_nist_files_given_ip(tmp_path):
     root = make_workspace(tmp_path / "ws")
     empty = tmp_path / "no_nist"
@@ -208,6 +211,7 @@ def test_dhf_lines_withholds_unreliable_lines():
     assert lines.f_absorption("3s", "3p", [1], [1], 0.0) is None
 
 
+@pytest.mark.slow
 def test_lifetimes_dhf_fills_model_lines_and_keeps_measured_ones(na_ws):
     result = run_pipeline(["lifetimes", "Na", "--model-f", "dhf"], na_ws)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -221,6 +225,7 @@ def test_lifetimes_dhf_fills_model_lines_and_keeps_measured_ones(na_ws):
             assert all(c["fosc_source"] != "DHF" for c in states[st]["channels"])
 
 
+@pytest.mark.slow
 def test_polarizability_dhf_labels_its_lines(na_ws):
     def run(*extra):
         r = run_pipeline(["polarizability", "Na", "--no-plot", *extra], na_ws)
@@ -228,14 +233,60 @@ def test_polarizability_dhf_labels_its_lines(na_ws):
         return load_json(na_ws / ".qali" / "data" / "Na_polarizability.json")
 
     base, dhf = run(), run("--dhf")
-    def by_src(d, src):
-        return {t["other_label"] for t in d["transitions_ex"] if t["source"] == src}
-    assert by_src(dhf, "DHF"), "no DHF lines past NIST's n range"
-    # an ab initio value is never labelled as measured (forbidden-J zero hits used to relabel it NIST)
-    assert by_src(dhf, "NIST") == by_src(base, "NIST")
-    assert by_src(dhf, "DHF") <= by_src(base, "Numerov") | by_src(base, "Coulomb")
-    assert dhf["alpha0_au"] == pytest.approx(base["alpha0_au"])     # ground: measured + Cooper series
+    # ground: measured + Cooper series, only the continuum differs (the DHF model's own)
+    assert dhf["alpha0_au"] == pytest.approx(base["alpha0_au"], rel=5e-4)
+    assert base["continuum_model"] == "calibrated model potential"
+    assert dhf["continuum_model"] == "DHF (basis cavity)"
     assert dhf["inputs"]["dhf"] == "Na_dhf.json"          # --dhf: the old spelling of --model-f dhf
+
+    # the excited level's network without Lifetimes' NIST-series values (they rank above DHF):
+    # DHF fills the lines past NIST's n range, and is never labelled as measured
+    from qali.physics.atomic_structure.dhf_lines import DHFLines
+    from qali.physics.polarizability_core import build_transitions_for_state, load_element
+
+    data = load_element("Na", str(na_ws / ".qali" / "data"), verbose=False)
+    data["lifetimes_extrap"] = {}
+    plain = build_transitions_for_state("3p1/2", data, data["transitions"])
+    data["dhf_lines"] = DHFLines.from_payload(load_json(na_ws / ".qali" / "data" / "Na_dhf.json"))
+    with_dhf = build_transitions_for_state("3p1/2", data, data["transitions"])
+
+    def by_src(rows, src):
+        return {t["other_label"] for t in rows if t["source"] == src}
+    assert by_src(with_dhf, "DHF"), "no DHF lines past NIST's n range"
+    assert by_src(with_dhf, "NIST") == by_src(plain, "NIST")
+    assert by_src(with_dhf, "DHF") <= by_src(plain, "Numerov") | by_src(plain, "Coulomb")
+
+
+@pytest.mark.slow
+def test_dhf_continuum_photoionization(na_dhf):
+    """The positive-energy states of the DHF basis cavity: Na 3s threshold cross-section near the
+    measured 0.117(15) Mb, falling towards the Cooper minimum about 1 eV above, and an oscillator
+    strength comparable to the calibrated model potential's 0.050."""
+    import math
+
+    import numpy as np
+
+    c = np.array(na_dhf["continuum"])
+    assert len(c) > 300 and np.all(c[:, 1] > 0)
+    eps = c[:, 0] - na_dhf["ionization_cm"] / 219474.6313705
+    o = np.argsort(eps)
+    eps, F = eps[o], np.cumsum(c[o, 1])
+    mb = 2 * math.pi ** 2 / 137.035999 * 0.529177210903e-8 ** 2 / 1e-18      # Mb per a.u. of df/de
+
+    def sigma(e_eV, half_eV=0.05):
+        lo, hi = max(e_eV - half_eV, 0.0) / 27.211386, (e_eV + half_eV) / 27.211386
+        return mb * (np.interp(hi, eps, F) - np.interp(lo, eps, F)) / (hi - lo)
+
+    assert 0.06 < sigma(0.02) < 0.14
+    assert sigma(0.7) < 0.15 * sigma(0.02)
+    assert 0.04 < float(F[-1]) < 0.08
+
+
+@pytest.mark.slow
+def test_brueckner_continuum(li_bo):
+    _, data = li_bo
+    f = sum(f for _w, f in data["continuum"])
+    assert 0.2 < f < 0.27                                 # Li 2s: model potential 0.244
 
 
 # ---------------------------------------------------------------------------
@@ -259,6 +310,7 @@ def _ion(ion_ws, species):
     return data, levels, f, tau
 
 
+@pytest.mark.slow
 def test_mg_ion_matches_nist(ion_ws):
     data, levels, f, _ = _ion(ion_ws, "Mg_c1")
     assert data["charge"] == 1 and data["label"] == "Mg+"
@@ -275,6 +327,7 @@ def test_mg_ion_matches_nist(ion_ws):
     assert data["alpha0_au"] == pytest.approx(35.0, rel=1e-2)
 
 
+@pytest.mark.slow
 def test_ion_rydberg_series_converge_on_the_next_limit(ion_ws):
     # with Z_ion = 2 the nonpenetrating f series has a near-zero quantum defect; a neutral
     # scaling (Z_ion = 1) would give n - n/2, i.e. about 10 at n = 20
@@ -284,6 +337,7 @@ def test_ion_rydberg_series_converge_on_the_next_limit(ion_ws):
     assert levels["20f7/2"]["n_star"] == pytest.approx(20.0, abs=0.05)
 
 
+@pytest.mark.slow
 def test_ca_ion_lifetimes_match_precision_measurements(ion_ws):
     data, levels, _, tau = _ion(ion_ws, "Ca_c1")
     # 3d (below 4p, as in NIST) and 4p are inputs.  3d and the nd series can't share one potential
@@ -297,6 +351,7 @@ def test_ca_ion_lifetimes_match_precision_measurements(ion_ws):
     assert data["alpha0_au"] == pytest.approx(75.5, rel=2e-2)
 
 
+@pytest.mark.slow
 def test_dhf_predictive_mode_fits_only_the_lowest_d(tmp_path):
     # --no-fit-p --d-one-level: the resonance lines are predictions again, d fitted to one level
     root = make_workspace(tmp_path / "ws")
@@ -321,6 +376,7 @@ def test_sixj_known_values():
     assert sixj2(1, 1, 4, 1, 1, 0) == 0.0                          # triangle broken
 
 
+@pytest.mark.slow
 def test_sigma2_j_coupled_matches_m_scheme_sum():
     # Li 2s, small basis: <v|Sigma(2)(e_v)|v> from the j-coupled matrices = brute-force E2_v
     from qali.physics.atomic_structure.dhf_cp import _Model
@@ -337,6 +393,7 @@ def test_sigma2_j_coupled_matches_m_scheme_sum():
     assert e2 == pytest.approx(mscheme_second_order_energy(mb, v), rel=1e-10)
 
 
+@pytest.mark.slow
 def test_sigma2_scaled_fits_and_predicts_and_caches():
     from qali.physics.atomic_structure.dhf_sigma import compute_sigma2
 
@@ -353,6 +410,7 @@ def test_sigma2_scaled_fits_and_predicts_and_caches():
     assert compute_sigma2(11, cache=cache, **kw) == res           # cached Sigma: same result
 
 
+@pytest.mark.slow
 def test_sigma2_unscaled_is_pure_ab_initio():
     from qali.physics.atomic_structure.dhf_sigma import compute_sigma2
 
@@ -371,6 +429,7 @@ def test_brueckner_scale_inputs_take_the_lowest_level_of_each_kappa():
     assert scale_inputs(table) == {(3, 1): 1.0, (3, -3): 3.0, (4, -4): 4.0}
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("Z, ref", [(3, 0.1894), (11, 0.9457)])
 def test_rpa_core_polarisability_matches_relativistic_rpa(Z, ref):
     # Johnson, Kolb & Huang (relativistic RPA): Li+ 0.1894, Na+ 0.9457 a.u.
@@ -387,6 +446,7 @@ def test_rpa_core_polarisability_matches_relativistic_rpa(Z, ref):
     assert rpa.alpha_core(False) != pytest.approx(ref, rel=2e-2)     # the dressing matters
 
 
+@pytest.mark.slow
 def test_rpa_dressed_dipole_is_hermitian_and_screened():
     # Na DHF 3s-3p1/2: the core screens the dipole (DHF+RPA < DHF); <3s||D||3p> = <3p||D||3s>
     from qali.physics.atomic_structure.dhf_cp import _Model
@@ -427,6 +487,7 @@ def li_bo(tmp_path_factory):
     return root, load_json(root / ".qali" / "data" / "Li_brueckner.json")
 
 
+@pytest.mark.slow
 def test_brueckner_stage_levels_and_e1(li_bo):
     root, data = li_bo
     assert data["model"] == "brueckner" and data["scaling"] == "fit" and data["lmax"] == 3
@@ -441,6 +502,7 @@ def test_brueckner_stage_levels_and_e1(li_bo):
     assert (root / ".qali" / "data" / "Li_brueckner_cache.npz").is_file()
 
 
+@pytest.mark.slow
 def test_brueckner_lines_carry_their_source_label(li_bo):
     from qali.physics.atomic_structure.dhf_lines import DHFLines
 

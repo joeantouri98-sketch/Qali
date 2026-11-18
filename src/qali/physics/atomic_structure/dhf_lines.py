@@ -58,6 +58,7 @@ class DHFLines:
     ground: str = ''                                      # valence nl, e.g. '3s'
     rejected: frozenset = frozenset()                     # pair keys (both orders) not supplied
     source: str = 'DHF'                                   # 'DHF' or 'Brueckner': the f-value source label
+    continuum: tuple = ()                                 # ((omega_au, f), ...) photoionization of the ground level
 
     @classmethod
     def from_payload(cls, payload: Mapping) -> DHFLines:
@@ -86,7 +87,12 @@ class DHFLines:
             if m:
                 lv.add((m.group(1) + m.group(2), int(m.group(3))))
         source = 'Brueckner' if payload.get('model') == 'brueckner' else 'DHF'
-        return cls(str(payload.get('element', '')), dip, frozenset(lv), ground, frozenset(rejected), source)
+        cont = tuple((float(w), float(f)) for w, f in payload.get('continuum') or () if w > 0 and f > 0)
+        return cls(str(payload.get('element', '')), dip, frozenset(lv), ground, frozenset(rejected), source, cont)
+
+    def continuum_lines(self, state_nl: str):
+        """The model's own photoionization pseudo-lines of *state_nl* (the ground level only), or ()."""
+        return self.continuum if state_nl == self.ground else ()
 
     def f_absorption(self, lo_nl: str, up_nl: str, JL2: Sequence[int], JU2: Sequence[int],
                      dE_au: float) -> float | None:

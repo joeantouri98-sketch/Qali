@@ -33,6 +33,9 @@ from qali.core.constants import (
     H_SI,
     KB_SI,
     AMU_KG,
+    HBAR_SI,
+    AU_TIME_S,
+    ALPHA_FS_INV,
 )
 
 
@@ -1157,6 +1160,32 @@ def _published_f(D, sD, dE_au, lower_J):
 
 # ELEMENT DATA LOADER
 
+def load_lifetimes_extrapolation(element, data_dir, lifetimes_file=None, ground_label=None):
+    """{(lower label, upper label): (f, relative 1σ, source)} of the lines the Lifetimes stage took from its
+    NIST-series extrapolation (``fosc_source == 'NIST-extrap'``) and, for the ground state *ground_label*, from
+    the literature; and the file read. ({}, None) without that output.
+
+    Lifetimes replaces Numerov/Coulomb model values beyond the last NIST point of a series by a fit to that series
+    (``lifetimes_core.extrapolate_nist_series``), and fills ground ns->np lines beyond NIST from published,
+    model-scaled tables (K, Li). Reading its values here keeps both stages on the same f-values where this
+    stage would otherwise fall back to a model. Near threshold the measured series can fall far below the
+    model (Rb 5s->np: Cooper minimum)."""
+    path = lifetimes_file or os.path.join(data_dir, f"{element}_lifetimes.json")
+    try:
+        with open(path, encoding='utf-8') as f:
+            lt = json.load(f)
+    except (OSError, ValueError):
+        return {}, None
+    out = {}
+    for t in lt.get('transitions') or []:
+        src = t.get('fosc_source')
+        if (t.get('fosc') or 0) <= 0:
+            continue
+        if src == 'NIST-extrap' or (src == 'literature' and ground_label and t.get('lower_label') == ground_label):
+            out[(t['lower_label'], t['upper_label'])] = (float(t['fosc']), float(t.get('fosc_delta') or 0.2), src)
+    return out, path
+
+
 def load_element(element, data_dir=None, f_values_dir=None, verbose=True, extrapolation=None,
                  rydberg_file=None, transitions_file=None):
     """
@@ -1240,7 +1269,24 @@ def load_element(element, data_dir=None, f_values_dir=None, verbose=True, extrap
               f"(n_pairs={numerov_cal['n_pairs']}, applied={numerov_cal['applied']}, "
               f"reason={numerov_cal['reason']})")
 
+    lt_extrap, lt_file = load_lifetimes_extrapolation(element, data_dir, ground_label=gs_label)
+    if verbose and lt_extrap:
+        n_lit = sum(1 for v in lt_extrap.values() if v[2] == 'literature')
+        print(f"  {element}: {len(lt_extrap) - n_lit} NIST-series extrapolated lines"
+              + (f" and {n_lit} ground-state literature lines" if n_lit else "")
+              + f" from {os.path.basename(lt_file)} replace model values")
+    from qali.physics.extrapolation.stage import ground_model as _ground_model
+    from qali.core.species import is_ion_id as _is_ion
+    gmodel = None if _is_ion(element) else _ground_model(element, ryd, nist, extrapolation)
+    if verbose and gmodel is not None:
+        print(f"  {element}: ground ns->np beyond the measured values from the calibrated model"
+              + (" (your model parameters)" if gmodel.custom else "")
+              + (f"; {gmodel.note}" if gmodel.note else ""))
+
     return dict(
+        lifetimes_extrap = lt_extrap,
+        lifetimes_extrap_file = lt_file,
+        ground_model    = gmodel,
         element         = element,
         IE_eV           = IE,
         IE_au           = eV_to_au(IE),
@@ -1532,9 +1578,11 @@ def _ls_state_term(t, state_label, data):
     lines = {}
     src_line = None
     dhf_used = False
+    gm_used = False
     # Priority 1 (same as get_fosc): lifetime-derived precision D-line f, per J_upper, s -> p only.
     prec = (data.get('precision_fosc_j') or {}).get((lo_nl, up_nl)) if Ll == 0 else None
     pub_lines = data.get('published_lines') or {}
+    ext = (data.get('lifetimes_extrap') or {}).get((ll, ul))     # Lifetimes' NIST-series extrapolation
     for jl in JL:
         for ju in JU:
             if prec:
@@ -1575,6 +1623,12 @@ def _ls_state_term(t, state_label, data):
                     lines[(jl, ju)] = float(_lit[_jk])
                     src_line = 'extrapolated'
                     continue
+            if ext is not None:
+                # the f Lifetimes used for this record: one line, or the record's multiplet split in LS
+                # (from each J_lower the lines sum to the multiplet f, so the split is exact)
+                lines[(jl, ju)] = ext[0] if (len(JL) == 1 and len(JU) == 1) else ls_line_f(ext[0], Lu, ju, Ll, jl)
+                src_line = ext[2]
+                continue
             _dhf = data.get('dhf_lines')
             if _dhf is not None:
                 # structure model (DHF or Brueckner, opt-in): this line's dipole at its energy
@@ -1595,12 +1649,21 @@ def _ls_state_term(t, state_label, data):
                     data['nist_fosc'], data['qd'], upper_J_str=None,
                     literature_fosc=data.get('literature_fosc') or None,
                     numerov_scale=scale)
+            _gm = data.get('ground_model')
+            if src_mult in ('Numerov', 'Coulomb') and _gm is not None and ll == data.get('gs_label') and Lu == 1:
+                # ground ns -> np with nothing measured (no NIST multiplet either): the calibrated model
+                _fg = _gm.f_j(ul, ju / 2)
+                if _fg:
+                    lines[(jl, ju)] = _fg
+                    gm_used = True
+                    continue
             lines[(jl, ju)] = ls_line_f(f_mult, Lu, ju, Ll, jl) if f_mult else 0.0
     gL = sum(j + 1 for j in JL)
     gU = sum(j + 1 for j in JU)
     # a DHF line labels the term DHF: nist_line_f answers a forbidden |dJ| = 2 component with
     # a zero "NIST" hit, which must not pass an ab initio value off as measured
-    src = src_mult if (f_mult is not None) else (data['dhf_lines'].source if dhf_used else (src_line or 'NIST'))
+    src = GROUND_MODEL_SOURCE if gm_used else src_mult if (f_mult is not None) else (
+        data['dhf_lines'].source if dhf_used else (src_line or 'NIST'))
     if ul == state_label:
         f = sum((jl + 1) / gU * f_line for (jl, ju), f_line in lines.items())
         return f, src, -1
@@ -1615,6 +1678,8 @@ def _ls_state_term(t, state_label, data):
 # NIST's own; the Numerov / Coulomb numbers are the typical spread of those models against
 # NIST-graded A–B lines. The ionic-core term carries no uncertainty (α_core's own error is
 # NOT included in the propagated α and C₆ errors).
+GROUND_MODEL_SOURCE = 'calibrated model'      # = extrapolation.stage.GROUND_MODEL_SOURCE
+
 SOURCE_REL_UNCERTAINTY = {
     'precision': 0.01, 'NIST': 0.10, 'literature': 0.10, 'extrapolated': 0.20, 'ORCA': 0.25,
     'Numerov': 0.20, 'Coulomb': 0.40, 'core': 0.0, 'continuum': 0.10, 'unknown': 0.50,
@@ -1698,6 +1763,9 @@ def build_transitions_for_state(state_label, data, all_transitions):
             f, src, sign = _ls_state_term(t, state_label, data)
             if f <= 0:
                 continue
+            ext = (data.get('lifetimes_extrap') or {}).get((ll, ul)) if src in ('NIST-extrap', 'literature') else None
+            rel = ext[1] if ext and ext[2] == src else (data['ground_model'].sigma(ul)
+                                                         if src == GROUND_MODEL_SOURCE else None)
             result.append(dict(
                 delta_E_au  = dE_au,
                 fosc        = f,
@@ -1705,8 +1773,8 @@ def build_transitions_for_state(state_label, data, all_transitions):
                 other_label = other_label,
                 source      = src,
                 wl_nm       = t['wavelength_nm'],
-                sigma_f     = f * fosc_rel_uncertainty(
-                    src, _transition_acc(src, data, ll, ul, upper_J)),
+                sigma_f     = f * (rel if rel is not None else fosc_rel_uncertainty(
+                    src, _transition_acc(src, data, ll, ul, upper_J))),
             ))
             continue
 
@@ -1737,6 +1805,13 @@ def build_transitions_for_state(state_label, data, all_transitions):
             f, pub_sigma = _published_f(pub[0], pub[1], dE_au, t.get('lower_J'))
             src = 'literature'
 
+        # A line Lifetimes took from its NIST-series extrapolation: the same f here (absorption f, as get_fosc)
+        ext_rel = None
+        if src in ('Numerov', 'Coulomb'):
+            ext = (data.get('lifetimes_extrap') or {}).get((ll, ul))
+            if ext:
+                f, ext_rel, src = ext
+
         dhf_f = None
         if src in ('Numerov', 'Coulomb') and data.get('dhf_lines') is not None:
             # a structure model (DHF or Brueckner, opt-in) replaces the model sources, never a measured value
@@ -1748,6 +1823,13 @@ def build_transitions_for_state(state_label, data, all_transitions):
                 f, src = dhf_f, data['dhf_lines'].source
                 if sign == -1:   # emission: -(g_L/g_U) f with the group degeneracies used above
                     f = f * sum(j + 1 for j in _JL2) / sum(j + 1 for j in _JU2)
+
+        _gm = data.get('ground_model')
+        if src in ('Numerov', 'Coulomb') and _gm is not None and ll == data.get('gs_label') and lu == 'p':
+            # ground ns -> np beyond the measured values: the calibrated model, not Numerov
+            _fg = _gm.f(ul)
+            if _fg:
+                f, src, ext_rel = _fg, GROUND_MODEL_SOURCE, _gm.sigma(ul)
 
         if f <= 0:
             continue
@@ -1773,8 +1855,9 @@ def build_transitions_for_state(state_label, data, all_transitions):
             other_label = other_label,
             source      = src,
             wl_nm       = t['wavelength_nm'],
-            sigma_f     = pub_sigma if pub_sigma is not None else f * fosc_rel_uncertainty(
-                src, _transition_acc(src, data, ll, ul, upper_J)),
+            sigma_f     = pub_sigma if pub_sigma is not None else f * (ext_rel if ext_rel is not None else
+                                                                        fosc_rel_uncertainty(
+                src, _transition_acc(src, data, ll, ul, upper_J))),
         ))
 
     # Photoionization continuum of the valence electron (model potential, neutral Li–Fr), when the
@@ -1784,7 +1867,11 @@ def build_transitions_for_state(state_label, data, all_transitions):
         from qali.physics.valence_continuum import REL_SIGMA, lines_for_state
         charge = int((data.get('ryd') or {}).get('charge') or 0)
         symbol = str(data.get('element', '')).split('_')[0]
-        for w_c, f_c in lines_for_state(symbol, charge, state_label, -E_state_au):
+        # with DHF or Brueckner f-values, the ground level's continuum from the same model (its basis
+        # cavity's positive-energy states); otherwise, and for other levels, the calibrated model potential
+        _model = data.get('dhf_lines')
+        own = _model.continuum_lines(parse_state_nl(state_label)) if _model is not None else ()
+        for w_c, f_c in (own or lines_for_state(symbol, charge, state_label, -E_state_au)):
             result.append(dict(
                 delta_E_au  = w_c,
                 fosc        = f_c,
@@ -1956,6 +2043,143 @@ def alpha_real_vectorized(omega_au_arr, transitions_list, guard=1e-4):
     bad = np.abs(denom) < guard * np.abs(dE)[None, :]
     contrib = sgn[None, :] * f[None, :] / np.where(bad, np.inf, denom)
     return contrib.sum(axis=1)
+
+
+# ============================================================================
+# PHOTON SCATTERING IN A TRAP (which magic wavelengths are usable)
+# ============================================================================
+# A far-detuned trap of depth U scatters photons at R = (2 Im α / |Re α|) · U/ħ (Grimm, Weidemüller &
+# Ovchinnikov, Adv. At. Mol. Opt. Phys. 42, 95 (2000); two-level limit R = (Γ/Δ) U/ħ). Im α needs each
+# line's width: the decay rates of its two states, from the Lifetimes stage.
+
+MK_OVER_HBAR_S = KB_SI * 1e-3 / HBAR_SI          # U/ħ for a 1 mK deep trap (s⁻¹)
+MAGIC_HEATING_MIN_S = 1.0        # practical: photon recoil takes at least this long to heat atoms out of the trap
+MAGIC_N_ABOVE = 5                # default: list magic wavelengths next to excited-state lines up to n_ground + 5
+
+
+def default_magic_n_range(gs_label: str) -> tuple[int, int]:
+    """Lines n = 1 to n_ground + MAGIC_N_ABOVE (Li 7, Na 8, K 9, Rb 10, Cs 11, Fr 12): every magic wavelength
+    in the published tables, none of the pile-up by the Rydberg lines."""
+    m = re.match(r"^(\d+)", gs_label or "")
+    return 1, (int(m.group(1)) if m else 3) + MAGIC_N_ABOVE
+MAGIC_WINDOW_TOL = 0.01          # the magic window: where |α_ground − α_excited| stays below 1 % of α
+
+
+def magic_window_ghz(wl_nm: float, alpha_au: float, slope_au_per_nm: float) -> float:
+    """Width (GHz of laser frequency) over which |Δα| ≤ MAGIC_WINDOW_TOL·|α| around a magic wavelength."""
+    if not slope_au_per_nm:
+        return float("inf")
+    dl_nm = 2.0 * MAGIC_WINDOW_TOL * abs(alpha_au) / abs(slope_au_per_nm)
+    return C_SI * dl_nm * 1e-9 / (wl_nm * 1e-9) ** 2 * 1e-9
+
+
+def state_decay_rates(lifetimes: dict | None) -> dict[str, float]:
+    """Total decay rate (s⁻¹) of each state in a Lifetimes stage output."""
+    return {r["state"]: float(r["A_total_s"]) for r in (lifetimes or {}).get("lifetimes", [])
+            if r.get("state") and r.get("A_total_s")}
+
+
+def _decay_rate(label: str, rates: dict[str, float]) -> float | None:
+    """Rate of *label*; a label without J (``11d``) takes the mean over its J levels."""
+    if label in rates:
+        return rates[label]
+    js = [v for k, v in rates.items() if k.startswith(label) and "/" in k[len(label):]]
+    return sum(js) / len(js) if js else None
+
+
+def _degeneracy(label: str) -> float:
+    m = re.match(r"^\d+([a-z])(\d+)/2$", label or "")
+    if m:
+        return float(int(m.group(2)) + 1)
+    m = re.match(r"^\d+([a-z])$", label or "")
+    return 2.0 * (2 * L_CHAR.get(m.group(1), 0) + 1) if m else 2.0
+
+
+def _line_A(t: dict, own_label: str) -> float:
+    """A (s⁻¹) of one line from its f: the upper of the two states decays to the lower."""
+    om = abs(t["delta_E_au"])
+    g_own, g_other = _degeneracy(own_label), _degeneracy(t.get("other_label", ""))
+    g_lower_over_upper = g_own / g_other if t.get("sign", 1) > 0 else g_other / g_own
+    return 2.0 * om ** 2 * abs(t["fosc"]) * g_lower_over_upper / ALPHA_FS_INV ** 3 / AU_TIME_S
+
+
+def state_rate(label: str, trans: list, rates: dict[str, float]) -> float:
+    """Decay rate (s⁻¹) of *label*: the Lifetimes value, else the sum of A over its lines to lower states."""
+    r = _decay_rate(label, rates)
+    if r is not None:
+        return r
+    return sum(_line_A(t, label) for t in trans
+               if t.get("sign", 1) < 0 and t.get("source") not in ("core", "continuum"))
+
+
+def line_widths_au(trans: list, own_label: str, rates: dict[str, float]) -> np.ndarray:
+    """FWHM (a.u. of angular frequency) of each line of *own_label*: Γ_own + Γ_other.
+
+    A state missing from *rates* that lies above contributes at least the line's own A (from f);
+    one that lies below contributes nothing (as for the ground state)."""
+    own = state_rate(own_label, trans, rates)
+    out = np.empty(len(trans))
+    for i, t in enumerate(trans):
+        other = _decay_rate(t.get("other_label", ""), rates)
+        if other is None and t.get("sign", 1) > 0 and t.get("source") not in ("core", "continuum"):
+            other = _line_A(t, own_label)
+        out[i] = (own + (other or 0.0)) * AU_TIME_S
+    return out
+
+
+def alpha_imag(omega_au_arr, trans: list, widths_au: np.ndarray) -> np.ndarray:
+    """Im α(ω) (a.u.) from the bound lines with their widths; core and continuum terms carry none."""
+    om = np.atleast_1d(np.asarray(omega_au_arr, dtype=float))
+    keep = np.array([t.get("source") not in ("core", "continuum") for t in trans], dtype=bool)
+    if not keep.any():
+        return np.zeros_like(om)
+    dE = np.abs(np.array([t["delta_E_au"] for t in trans]))[keep]
+    f = np.abs(np.array([t["fosc"] for t in trans]))[keep]
+    g = np.asarray(widths_au)[keep]
+    w = om[:, None]
+    return (f * w * g / ((dE ** 2 - w ** 2) ** 2 + (w * g) ** 2)).sum(axis=1)
+
+
+def scatter_per_mK(omega_au_arr, trans: list, widths_au: np.ndarray, re_alpha) -> np.ndarray:
+    """Photons scattered per second by an atom in this state, in a 1 mK deep trap at ω."""
+    im = alpha_imag(omega_au_arr, trans, widths_au)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return 2.0 * im / np.abs(np.asarray(re_alpha, dtype=float)) * MK_OVER_HBAR_S
+
+
+class TrapScattering:
+    """Photon scattering by the trap light at a magic wavelength.
+
+    ground: the ground state's photons/s in a 1 mK deep trap. heating_time: how long photon recoil takes to heat
+    atoms out of the trap, t = U / (k_B dT/dt) with dT/dt = (2/3) (E_rec/k_B) Γ_sc in a 3D harmonic trap (Grimm
+    et al. 2000, Eq. 24); Γ_sc ∝ U, so t = 3ħ |Re α| / (4 E_rec Im α) is the same at any depth. excited_per_decay:
+    trap photons the excited state absorbs per natural decay (the trap light pumping it to higher levels)."""
+
+    def __init__(self, trans_g: list, label_g: str, trans_e: list, label_e: str, rates: dict[str, float],
+                 mass_amu: float | None = None):
+        self.tg, self.te = trans_g, trans_e
+        self.wg = line_widths_au(trans_g, label_g, rates)
+        self.we = line_widths_au(trans_e, label_e, rates)
+        self.gamma_e = state_rate(label_e, trans_e, rates)
+        self.mass_kg = (mass_amu or 0.0) * AMU_KG
+
+    def ground(self, omega_au, re_alpha) -> np.ndarray:
+        return scatter_per_mK(omega_au, self.tg, self.wg, re_alpha)
+
+    def heating_time(self, omega_au, re_alpha) -> np.ndarray:
+        """Seconds for photon recoil to heat ground-state atoms out of the trap (any depth); NaN without a mass."""
+        om = np.atleast_1d(np.asarray(omega_au, dtype=float))
+        if self.mass_kg <= 0:
+            return np.full_like(om, np.nan)
+        k = om / AU_TIME_S / C_SI                                  # photon wavenumber (1/m)
+        e_rec = (HBAR_SI * k) ** 2 / (2.0 * self.mass_kg)
+        r = self.ground(om, re_alpha)                              # photons/s at U = 1 mK
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return 3.0 * (KB_SI * 1e-3) / (2.0 * e_rec * r)
+
+    def excited_per_decay(self, omega_au, re_alpha) -> np.ndarray:
+        r = scatter_per_mK(omega_au, self.te, self.we, re_alpha)
+        return r / self.gamma_e if self.gamma_e > 0 else np.full_like(r, np.nan)
 
 
 # ============================================================================

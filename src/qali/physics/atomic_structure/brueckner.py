@@ -50,6 +50,9 @@ class BruecknerResult:
     transitions: tuple[Transition, ...]
     lifetimes: tuple[Lifetime, ...]
     quantum_defects: dict[str, tuple[tuple[int, float], ...]]
+    # Photoionization of the ground level: ((omega_au, f), ...) of the positive-energy states of the
+    # basis cavity, with RPA-dressed dipoles (a quadrature of df/de); omega up to 50 Ha
+    continuum: tuple[tuple[float, float], ...] = ()
 
 
 def compute_brueckner(Z: int, *, charge: int = 0, mass_number: float | None = None,
@@ -83,6 +86,7 @@ def compute_brueckner(Z: int, *, charge: int = 0, mass_number: float | None = No
 
     transitions: list[Transition] = []
     lifetimes: list[Lifetime] = []
+    cont: list[tuple[float, float]] = []
     alpha_core = alpha_core_dhf = alpha0 = 0.0
     alpha_dyn: dict[str, float] = {}
     if e1:
@@ -127,6 +131,7 @@ def compute_brueckner(Z: int, *, charge: int = 0, mass_number: float | None = No
         say("Polarisability ...")
         g_lv, _, g_orb = orbs[kappa_label(st.nv, -1)]
         terms = []                                          # (omega_s, |D|^2)
+        # cont: positive-energy states of the basis cavity, i.e. the continuum
         for kap in VALENCE_KAPPAS:
             if reduced_c(kap, -1) == 0.0 or kap not in st.nlev:
                 continue
@@ -142,6 +147,8 @@ def compute_brueckner(Z: int, *, charge: int = 0, mass_number: float | None = No
                 _b, d = dressed(kap, s, E, -1, g_orb, g_E, ('a', kap, i), 'ground')
                 V.forget(('a', kap, i))
                 terms.append((E - g_E, d * d))
+                if E > 0:
+                    cont.append((float(E - g_E), float(2.0 / 3.0 * (E - g_E) * d * d / (kappa_lj(-1)[1] + 1))))
         jg = kappa_lj(-1)[1]
 
         def alpha_v(omega):
@@ -157,4 +164,5 @@ def compute_brueckner(Z: int, *, charge: int = 0, mass_number: float | None = No
         lmax=lmax, nodes_au=tuple(st.nodes),
         alpha_core_au=float(alpha_core), alpha_core_dhf_au=float(alpha_core_dhf), alpha0_au=float(alpha0),
         alpha_dynamic_au=alpha_dyn, levels=tuple(levels), transitions=tuple(transitions),
-        lifetimes=tuple(lifetimes), quantum_defects=defects)
+        lifetimes=tuple(lifetimes), quantum_defects=defects,
+        continuum=tuple(sorted(cont)) if e1 else ())

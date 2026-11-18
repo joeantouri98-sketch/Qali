@@ -1,4 +1,11 @@
 {
+  "_qali": {
+    "version": "3.0.0",
+    "stage": "lifetimes",
+    "revision": 2,
+    "command": "qali --pipeline lifetimes Rb",
+    "generated_utc": "2026-11-18T09:35:38+00:00"
+  },
   "species_id": "Rb",
   "element": "Rb",
   "label": "Rb",
@@ -370569,6 +370576,11 @@
       }
     },
     "vs_model": {}
+  },
+  "ground_model": {
+    "n_lines": 0,
+    "source": "calibrated model",
+    "note": "ground ns->np lines with no measured, published or NIST-series value: the Extrapolator model without the anchor fit, in place of Numerov"
   },
   "dropped_transitions": {
     "n_total": 0,

@@ -29,6 +29,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from qali.core.workspace import SEEDED_FILE
+
 ELEMENTS = ['Li', 'Na', 'K', 'Rb', 'Cs', 'Fr']
 
 
@@ -106,6 +108,8 @@ def _copy_back(scratch, before):
     data = scratch / 'data'
     for path in sorted(data.rglob('*')):
         rel = path.relative_to(data)
+        if rel.name == SEEDED_FILE:  # the workspace's own record of what it seeded, not an output
+            continue
         if path.is_file() and before.get(rel) != _digest(path):
             target = bundle / 'data_json' / rel
             target.parent.mkdir(parents=True, exist_ok=True)

@@ -414,7 +414,7 @@ def apply_to_stage(element: str, config_path, nist: dict, literature: dict, rydb
     In 'use' mode ``literature`` comes back with the gap-filling values added (tagged 'extrapolated');
     otherwise it is returned unchanged. Any stage that reads f-values can call this.
     """
-    if not config_path:
+    if not config_path or not Path(config_path).is_file():
         return None, [], literature
     cfg = load_config(config_path)
     if cfg.mode == "off":
@@ -433,6 +433,119 @@ def apply_to_stage(element: str, config_path, nist: dict, literature: dict, rydb
     if cfg.mode == "use":
         literature = overlay_literature(literature, entries)
     return result, entries, literature
+
+
+# ------------------------------------------------------------------------ the calibrated model on its own
+GROUND_MODEL_SOURCE = "calibrated model"
+_P_LABEL = re.compile(r"^(\d+)p(1/2|3/2)?$")
+GROUND_MODEL_SIGMA_FLOOR = 0.25
+
+
+class GroundModel:
+    """The Extrapolator's calibrated ns->np model without the anchor fit (its "Off" setting).
+
+    For ground ns -> np lines that no measured, published or NIST-series value covers, every stage takes
+    this model in place of QDT Numerov, which has no core polarization in the dipole and no Cooper minimum
+    (K and Cs: 10-17x too large above NIST). ``f(label)`` is the absorption f of gs -> label (both J
+    components summed for a label without J); ``sigma(label)`` its relative 1-sigma, from how far the model
+    sits from the highest NIST lines of that J (median |ln(f_NIST / f_model)| of the top three, at least 25 %).
+    """
+
+    def __init__(self, element: str, rydberg: dict, nist: dict | None = None, config_path=None):
+        self.element = element
+        self.gs = f"{species_params(element)['nl']}s"
+        self._model: dict = {}
+        self._tables_dir = None
+        if config_path:
+            self._model = model_settings.load(model_settings.settings_path(config_path))
+            self._tables_dir = model_settings.tables_dir(config_path)
+        self.custom = bool(self._model.get(element))
+        self.note = ""
+        self.nus = _nu_by_label(rydberg)
+        from .exact import ExactBackendUnavailable
+
+        try:
+            with self._context():
+                self._tab = get_model(element)
+                if not hasattr(self._tab, "splines"):          # the exact calculation: check it can run
+                    nu0 = next((v for v in sorted(self.nus.values()) if self._tab.contains(v)), None)
+                    if nu0 is not None:
+                        try:
+                            self._tab.f(nu0, 0.5)
+                        except ValueError:                     # OutOfTableRange: not a reason to fall back
+                            pass
+        except ExactBackendUnavailable:
+            # your parameters need the exact calculation (no rebuilt table) and ARC is missing: shipped model
+            self._model, self._tables_dir, self.custom = {}, None, False
+            self.note = ("your model parameters need rebuilt tables or ARC; the shipped model parameters "
+                         "were used")
+            with self._context():
+                self._tab = get_model(element)
+        self.backend = "exact" if not hasattr(self._tab, "splines") else "table"
+        self._sigma = self._sigma_by_j(nist or {})
+
+    def _context(self):
+        return model_overrides(model_settings.to_overrides(self._model), self._tables_dir)
+
+    def _f_nu(self, nu: float, J: float) -> float | None:
+        from .exact import ExactBackendUnavailable
+        from .tables import OutOfTableRange
+
+        with self._context():
+            try:
+                return float(self._tab.f(nu, J)) if self._tab.contains(nu) else None
+            except (OutOfTableRange, ExactBackendUnavailable):
+                return None
+
+    def f(self, upper_label: str) -> float | None:
+        m = _P_LABEL.match(upper_label or "")
+        nu = self.nus.get(upper_label)
+        if not m or nu is None:
+            return None
+        if m.group(2):
+            return self._f_nu(nu, J_VALUES[m.group(2)])
+        lo, hi = self._f_nu(nu, 0.5), self._f_nu(nu, 1.5)
+        return None if lo is None or hi is None else lo + hi
+
+    def f_j(self, upper_label: str, J: float) -> float | None:
+        """The J component at *upper_label*'s energy (for a label without J: one part of its multiplet)."""
+        nu = self.nus.get(upper_label)
+        return None if nu is None or not _P_LABEL.match(upper_label or "") else self._f_nu(nu, J)
+
+    def _sigma_by_j(self, nist: dict) -> dict[str, float]:
+        ratios: dict[str, list[tuple[int, float]]] = {"1/2": [], "3/2": []}
+        for key, f in (nist.get("fosc_j") or {}).items():
+            if len(key) != 3 or key[0] != self.gs or not f:
+                continue
+            up, jstr = key[1], key[2]
+            m = re.match(r"^(\d+)p$", str(up))
+            fm = self.f(f"{up}{jstr}") if m and jstr in ratios else None
+            if fm:
+                ratios[jstr].append((int(m.group(1)), abs(math.log(float(f) / fm))))  # type: ignore[union-attr]
+        out = {}
+        for jstr, rs in ratios.items():
+            top = sorted(v for _n, v in sorted(rs)[-3:])
+            out[jstr] = max(GROUND_MODEL_SIGMA_FLOOR, top[len(top) // 2]) if top else 0.5
+        return out
+
+    def sigma(self, upper_label: str) -> float:
+        m = _P_LABEL.match(upper_label or "")
+        if m and m.group(2):
+            return self._sigma[m.group(2)]
+        return max(self._sigma.values())
+
+
+def ground_model(element: str, rydberg: dict, nist: dict | None = None, config_path=None) -> GroundModel | None:
+    """The calibrated ground ns->np model of *element* (with the user's model parameters next to
+    *config_path*), or None where the Extrapolator has no model (ions, other elements)."""
+    try:
+        species_params(element)
+    except UnsupportedSpeciesError:
+        return None
+    try:
+        return GroundModel(element, rydberg, nist, config_path)
+    except (OSError, ValueError, KeyError):
+        return None
 
 
 def rebuild_tables(element: str, config_path: str | Path, model: dict | None = None, progress=None, cancelled=None) -> dict:

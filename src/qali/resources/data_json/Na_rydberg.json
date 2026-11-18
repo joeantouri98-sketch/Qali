@@ -1,4 +1,11 @@
 {
+  "_qali": {
+    "version": "3.0.0",
+    "stage": "rydberg",
+    "revision": 1,
+    "command": "qali --pipeline rydberg Na --n-max 50",
+    "generated_utc": "2026-11-18T09:35:10+00:00"
+  },
   "species_id": "Na",
   "element": "Na",
   "label": "Na",

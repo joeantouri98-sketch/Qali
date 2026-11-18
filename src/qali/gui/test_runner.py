@@ -11,6 +11,8 @@ from qali.core.paths import is_frozen_app
 
 OUTCOMES = ("PASSED", "FAILED", "ERROR", "SKIPPED", "XFAIL", "XPASS")
 _RESULT = re.compile(r"^(?P<id>\S.*?::\S.*?) (?P<res>PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS)\b")
+# pytest-xdist (-n) prints "[gw0] [ 12%] PASSED tests/x.py::test_a"
+_RESULT_XDIST = re.compile(r"^\[gw\d+\] \[\s*\d+%\] (?P<res>PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS) (?P<id>\S.*?::\S+)")
 _FAIL_HEAD = re.compile(r"^_{3,} (?P<name>.+?) _{3,}$")
 _SUMMARY = re.compile(r"(?P<body>(?:\d+ \w+(?:, )?)+(?: \(\d+:\d+:\d+\))?) in (?P<secs>[\d.]+)s")
 BASE_ARGS = ("-v", "--tb=short", "--color=no", "-p", "no:cacheprovider", "-o", "addopts=")
@@ -72,14 +74,25 @@ def plan_args(selected: list[str], universe: list[str]) -> list[str]:
     return targets
 
 
-def run_args(targets: list[str]) -> list[str]:
-    return ["-u", "-m", "pytest", *targets, *BASE_ARGS]
+def parallel_available() -> bool:
+    """pytest-xdist is installed (uv sync --group dev), so tests can run on several cores."""
+    return importlib.util.find_spec("xdist") is not None
+
+
+def run_args(targets: list[str], parallel: bool = False, skip_slow: bool = False) -> list[str]:
+    extra: list[str] = []
+    if parallel and parallel_available():
+        extra += ["-n", "auto"]
+    if skip_slow:
+        extra += ["-m", "not slow"]
+    return ["-u", "-m", "pytest", *targets, *BASE_ARGS, *extra]
 
 
 def parse_result(line: str) -> tuple[str, str] | None:
-    """``(node id, outcome)`` from a ``-v`` result line, else None."""
-    m = _RESULT.match(line.strip())
-    return (m.group("id"), m.group("res")) if m else None
+    """``(node id, outcome)`` from a ``-v`` result line (also as pytest-xdist prints it), else None."""
+    line = line.strip()
+    m = _RESULT.match(line) or _RESULT_XDIST.match(line)
+    return (m.group("id").strip(), m.group("res")) if m else None
 
 
 def split_failures(output: str) -> dict[str, str]:

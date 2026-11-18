@@ -92,6 +92,63 @@ def _final_channels(symbol: str, l: int, j2: int):
     return out
 
 
+DYN_CORE_MAX = 0.7              # the one-oscillator core factor 1/(1 - (ω/ω_core)²) is used below this ω/ω_core
+
+
+def dipole_operator(symbol: str, r: np.ndarray, omega_au: float) -> np.ndarray:
+    """The dipole operator in r: r [1 - λ s(ω) g(r)], the core-polarized form of the extrapolation model.
+
+    The valence electron polarizes the ionic core, whose induced dipole opposes the electron's inside a few a0;
+    near a Cooper minimum the radial integral nearly cancels, so this correction sets both its size and the J
+    ratio (Rb 5s at 266 nm: plain r gives 0.21 Mb, measured 0.017(2) Mb). g(r) is the model's form with the
+    Singor α_D and cutoff r_c, λ its damping, s(ω) its one-oscillator dynamic core factor (static where the
+    species has no ω_core). That factor diverges at ω_core, so above DYN_CORE_MAX ω_core it is held at its value
+    there. The core screens the valence dipole only below its own excitations: the correction fades out (cos²)
+    between half the core's first excitation and that excitation (``core_oscillators``; Rb 15 eV, the Cooper
+    minimum lies near 5 eV), so the model's static screening does not inflate σ far above threshold.
+    Plain r for species without model parameters.
+    """
+    try:
+        from qali.physics.extrapolation.exact import polarization_term
+        from qali.physics.extrapolation.params import model_params, species_params
+
+        p = species_params(symbol)
+        form = model_params()["form"]
+    except Exception:
+        return r
+    wc = (p.get("wcore_eV") or 0.0) / 27.211386245988
+    x = min(omega_au / wc, DYN_CORE_MAX) if wc else 0.0
+    s = 1.0 / (1.0 - x * x) * _core_fade(symbol, omega_au)
+    if s == 0.0:
+        return r
+    return r * (1.0 - float(p.get("lam", 1.0)) * s * polarization_term(form, r, float(p["singor_alpha_D"]),
+                                                                      float(p["singor_rc"])))
+
+
+@lru_cache(maxsize=16)
+def _first_core_excitation(symbol: str) -> float:
+    """ω (Hartree) of the core's lowest pseudo-oscillator (RPA spectrum of ``core_oscillators``); 0 if unknown."""
+    try:
+        from qali.physics.polarizability_core import core_oscillators
+
+        osc = core_oscillators(symbol)
+        return float(min(w for w, _f in osc)) if osc else 0.0
+    except Exception:
+        return 0.0
+
+
+def _core_fade(symbol: str, omega_au: float) -> float:
+    w1 = _first_core_excitation(symbol)
+    if not w1:
+        return 1.0
+    a = 0.5 * w1
+    if omega_au <= a:
+        return 1.0
+    if omega_au >= w1:
+        return 0.0
+    return math.cos(0.5 * math.pi * (omega_au - a) / (w1 - a)) ** 2
+
+
 @lru_cache(maxsize=128)
 def continuum_lines(symbol: str, n: int, l: int, j2: int, binding_au: float) -> tuple[tuple[float, float], ...]:
     """((ω, f), ...) pseudo-lines for the level n l j (j2 = 2j, 0 if not resolved), absorption from it.
@@ -114,7 +171,8 @@ def continuum_lines(symbol: str, n: int, l: int, j2: int, binding_au: float) -> 
         x = radial_grid(float(e))
         r = np.exp(x)
         ubi = np.interp(r, rb, ub, right=0.0)
-        s = sum(w * float(np.trapezoid(ubi * r * continuum_u(symbol, lf, jf, e, x) * r, x)) ** 2
+        d = dipole_operator(symbol, r, float(e) + binding_au)
+        s = sum(w * float(np.trapezoid(ubi * d * continuum_u(symbol, lf, jf, e, x) * r, x)) ** 2
                 for lf, jf, w in chans)
         dfde[i] = (2.0 / 3.0) * (e + binding_au) * s
     wts = np.zeros_like(eps)

@@ -37,6 +37,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field, replace
 from fractions import Fraction
+from typing import Any
 
 import numpy as _np
 
@@ -115,6 +116,9 @@ class FValueSources:
     # polarizability_core.load_published_lines(...): {(lower, upper): (|D|, σ_D)} of the ticked rows of
     # "Published matrix elements"; each such line takes this value ahead of NIST and the literature (a precision line excepted)
     published: Mapping = field(default_factory=dict)
+    # extrapolation.stage.GroundModel: the calibrated ns->np model for ground-state lines no measured,
+    # published or NIST-series value covers (in place of Numerov/Coulomb); None for other species
+    ground_model: Any = None
 
 
 @dataclass(frozen=True)
@@ -214,6 +218,7 @@ class LifetimesResult:
     n_nist_flagged_rows: int
     series_caveats_applied: list[dict]
     lifetimes: list[Lifetime]
+    n_ground_model: int = 0               # ground ns->np lines from the calibrated model (were Numerov/Coulomb)
 
 
 @dataclass(frozen=True)
@@ -924,6 +929,52 @@ def _model_replacement(row: TransitionA, res) -> TransitionA:
                    fosc_model_source=row.fosc_source)
 
 
+def apply_ground_model(rows: Sequence[TransitionA], dropped: Sequence[Dropped], gs_label: str, model
+                       ) -> tuple[list[TransitionA], list[Dropped], int]:
+    """Ground ns -> np lines with nothing better than a model take the calibrated model's f (``model.f``),
+    with its uncertainty:
+      - rows still on Numerov/Coulomb (the Numerov value is kept as ``fosc_model``; the g's stay those of
+        the row, so a label without J keeps its multiplet f, both J summed, and statistical A);
+      - lines dropped at the Numerov gate (the ground state's n* is under 2.5 for K, Rb, Cs, Fr), which
+        otherwise leave high np levels without their ground-state decay.
+    Returns (rows, the drops still without an A, n lines from the model)."""
+    if model is None:
+        return list(rows), list(dropped), 0
+    out, n = [], 0
+    still: list[Dropped] = []
+    for d in dropped:
+        t = d.transition
+        f = (model.f(t['upper_label']) if d.reason.startswith('below_numerov_gate')
+             and t.get('lower_label') == gs_label and t.get('upper_l') == 'p' and t.get('wavelength_nm') else None)
+        if not (f and f > 0):
+            still.append(d)
+            continue
+        J2 = parse_J2_set(t.get('upper_J') or parse_J_label(t['upper_label']), 1)
+        g_up = float(sum(j + 1 for j in J2))
+        dlt = model.sigma(t['upper_label'])
+        A = EINSTEIN_PREFACTOR / t['wavelength_nm'] ** 2 * (2.0 / g_up) * f
+        out.append(_row(t, f, model_source(), f"calibrated model (±{100 * dlt:.0f}%)", dlt, g_up, 2.0, A, A * dlt))
+        n += 1
+    for r in rows:
+        if r.lower_label == gs_label and r.upper_l == 'p' and r.fosc_source in ('Numerov', 'Coulomb'):
+            f = model.f(r.upper_label)
+            if f and f > 0 and r.wavelength_nm:
+                d = model.sigma(r.upper_label)
+                A = EINSTEIN_PREFACTOR / r.wavelength_nm ** 2 * (r.g_lower / r.g_upper) * f
+                r = replace(r, fosc=f, fosc_source=model_source(), fosc_acc=f"calibrated model (±{100 * d:.0f}%)",
+                            fosc_delta=d, A_s=A, sigma_A_s=A * d, fosc_model=r.fosc,
+                            fosc_model_source=r.fosc_source)
+                n += 1
+        out.append(r)
+    return out, still, n
+
+
+def model_source() -> str:
+    from qali.physics.extrapolation.stage import GROUND_MODEL_SOURCE
+
+    return GROUND_MODEL_SOURCE
+
+
 def extrapolate_nist_series(rows: Sequence[TransitionA], dropped: Sequence[Dropped], qd,
                             exclusions: Sequence[Mapping] = ()):
     """Fill lines from the NIST series of their lower levels. Used ONLY for channels that have no
@@ -1240,6 +1291,7 @@ def compute(
         rows, recovered, dropped, series, n_replaced, vs_model = extrapolate_nist_series(
             rows, dropped, qd, sources.nist_fit_exclusions)
         rows.extend(recovered)
+    rows, dropped, n_ground_model = apply_ground_model(rows, dropped, gs_label, sources.ground_model)
     flag_pairs: dict[frozenset, float] = {}
     n_flagged = 0
     if numerov_cal is not None:
@@ -1262,4 +1314,5 @@ def compute(
                            n_extrap_replaced=n_replaced, extrap_vs_model=vs_model,
                            series_fits=series, nist_flag_pairs=flag_pairs,
                            n_nist_flagged_rows=n_flagged,
-                           series_caveats_applied=caveats_applied, lifetimes=lifetimes)
+                           series_caveats_applied=caveats_applied, lifetimes=lifetimes,
+                           n_ground_model=n_ground_model)

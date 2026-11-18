@@ -1,4 +1,11 @@
 {
+  "_qali": {
+    "version": "3.0.0",
+    "stage": "hyperfine",
+    "revision": 1,
+    "command": "qali --pipeline hyperfine --all",
+    "generated_utc": "2026-11-18T09:39:04+00:00"
+  },
   "element": "K",
   "isotope_A": 39,
   "I": 1.5,

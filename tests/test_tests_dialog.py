@@ -162,3 +162,13 @@ def test_unavailable_dialog_shows_the_reason(tmp_path):
     app = QApplication.instance() or QApplication([])
     d = TestsDialog(None, tests_dir=tmp_path / "missing", collect=False)
     assert not hasattr(d, "run_all_btn") and app is not None
+
+
+def test_parallel_and_skip_slow_options():
+    a = R.run_args(["tests"], parallel=True, skip_slow=True)
+    assert ("-n" in a) == R.parallel_available()
+    assert a[a.index("-m", 3):a.index("-m", 3) + 2] == ["-m", "not slow"]
+    assert R.parse_result("[gw1] [ 16%] PASSED tests/test_units.py::test_conversions ") == \
+        ("tests/test_units.py::test_conversions", "PASSED")
+    assert R.parse_result("[gw0] [100%] FAILED tests/test_b.py::TestX::test_p[2]") == \
+        ("tests/test_b.py::TestX::test_p[2]", "FAILED")

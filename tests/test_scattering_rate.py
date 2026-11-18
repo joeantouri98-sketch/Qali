@@ -16,7 +16,6 @@ import pytest
 from qali.core.constants import ISOTOPE_MASS_AMU
 from qali.physics import laser_cooling as lc
 
-from helpers import write_result_summary
 
 STECK = {   # element: (A, Γ/2π MHz, λ nm, I_sat cycling, T_D µK, T_rec µK, v_rec m/s)
     'Na': (23, 9.7946, 589.158326, 6.2600, 235.03, 2.3998, 2.9461e-2),
@@ -82,9 +81,3 @@ def test_slower_length_and_capture_velocity():
     assert lc.slower_length(v, G, wl, m, 0.5) == pytest.approx(v * v / lc.max_acceleration(G, wl, m))
     assert lc.capture_velocity(G, wl) == pytest.approx(G / lc.wavenumber(wl))
 
-
-def test_record_na_d2_anchor(results_dir):
-    G, wl = 2 * math.pi * 9.7946e6, 589.158326
-    write_result_summary(results_dir, "scattering_rate_anchor", {
-        "element": "Na", "line": "D2", "gamma_rad_s": G, "Isat_cycling_mWcm2": lc.isat_cycling_mW_cm2(G, wl),
-        "T_doppler_uK": lc.doppler_limit_K(G) * 1e6, "R_max_s1": 0.5 * G, "v_capture_m_s": lc.capture_velocity(G, wl)})

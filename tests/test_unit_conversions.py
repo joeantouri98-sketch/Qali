@@ -28,7 +28,6 @@ from qali.physics.polarizability_core import (
     omega_au_from_nm,
 )
 
-from helpers import write_result_summary
 
 # CODATA 2018 (exact, via eV and E_h/e): 1 eV = E_h / 27.211386245988.
 _CODATA_EV_TO_AU = 0.036749322
@@ -138,20 +137,3 @@ def test_eV_to_au_codata():
     # One Hartree of eV must convert back to exactly 1 a.u.
     assert eV_to_au(1.0 / EV_TO_HARTREE) == pytest.approx(1.0, rel=1e-12)
 
-
-def test_record_trap_depth_sample(results_dir):
-    """Record a Na-like sample (alpha = 162.7 au at 1 kW/cm^2) for the log."""
-    alpha_au = 162.7  # Na ground-state static polarizability (au), ALPHA0_EXPT
-    u_J = U_joules(alpha_au, kWcm2_to_Wm2(1.0))
-    write_result_summary(
-        results_dir,
-        "unit_conversions_trap_depth",
-        {
-            "alpha_au": alpha_au,
-            "I_kWcm2": 1.0,
-            "U_joules": u_J,
-            "U_uK": U_to_uK(u_J),
-            "U_kHz_h": U_to_kHz_h(u_J),
-            "omega_au_589nm": omega_au_from_nm(589.158),
-        },
-    )

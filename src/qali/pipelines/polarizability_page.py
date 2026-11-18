@@ -19,6 +19,7 @@ import math
 import os
 import sys
 
+from qali.physics.polarizability_core import default_magic_n_range
 from qali.core.data_inputs import resolve_data_file
 from qali.core.errors import MissingDataError
 from qali.core.species import resolve_species
@@ -121,8 +122,12 @@ def build_payload(element: str, label: str, pol: dict, tw: dict | None, opts: di
         magic=[dict(wl_nm=m['wl_nm'], alpha_au=m['alpha_au'],
                     delta_alpha_slope_au_per_nm=m['delta_alpha_slope_au_per_nm'],
                     nearby_resonance_nm=m['nearby_resonance_nm'],
-                    nearby_resonance_label=m['nearby_resonance_label'], robustness=m['robustness'])
+                    nearby_resonance_label=m['nearby_resonance_label'], robustness=m['robustness'],
+                    practical=m.get('practical', True), heating_time_s=m.get('heating_time_s'),
+                    window_ghz=m.get('window_ghz'), line_n=m.get('line_n'),
+                    excite_per_decay=m.get('excite_per_decay'))
                for m in pol.get('magic_wavelengths') or []],
+        nr=list(pol.get('magic_n_range') or default_magic_n_range(pol.get('gs_label', ''))),
         mass=_r((tw or {}).get('point', {}).get('mass_amu') or pol.get('mass_amu') or 0.0) or 1.0,
         tw=tw, tabs=tabs,
         opts=dict(unit=opts['units'], scale=opts['scale'], wmin=opts['wl_min'], wmax=opts['wl_max'],
