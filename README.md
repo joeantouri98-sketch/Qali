@@ -1,4 +1,5 @@
 <p align="center"><img src="Qali.png" alt="Qali" width="180"></p>
+<img width="1920" height="1039" alt="Screenshot 2026-11-18 125149" src="https://github.com/user-attachments/assets/0c4f4c18-8e5b-4f3d-a22f-f214635dd17d" />
 
 # Qali
 
