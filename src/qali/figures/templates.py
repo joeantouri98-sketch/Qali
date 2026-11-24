@@ -120,6 +120,9 @@ def lines_between(lines: list[dict], chosen: set[str]) -> list[dict]:
     return [t for t in lines if t["upper_label"] in chosen and t["lower_label"] in chosen]
 
 
+MODEL_SOURCES = ("DHF", "Brueckner")      # level energies calculated by a structure model, not measured
+
+
 def grotrian(params: dict, species: str, data_dir: str, style: dict) -> Result:
     lv, all_lines, IE = grotrian_choices(species, data_dir)
     by_label = {x.label: x for x in lv}
@@ -153,7 +156,9 @@ def grotrian(params: dict, species: str, data_dir: str, style: dict) -> Result:
         x = by_label[lab]
         xc, w = x_of(x)
         nodes[lab] = (xc, w, y_of(x))
-        p.add("hlines", y_of(x), xc - w, xc + w, colors="k", linewidth=1.1)
+        model = x.source in MODEL_SOURCES
+        p.add("hlines", y_of(x), xc - w, xc + w, colors="0.35" if model else "k", linewidth=1.1,
+              linestyles="--" if model else "solid")
     if params.get("label_levels", True):
         # lower-J sub-column labels go left, the rest right; labels sharing a gap between columns are
         # spread apart vertically so near-degenerate levels (Li 3p and 3d) stay readable
@@ -276,6 +281,9 @@ def grotrian(params: dict, species: str, data_dir: str, style: dict) -> Result:
     rows += [["line", t["upper_label"], t["lower_label"], y_of(by_label[t["upper_label"]]), t["wavelength_nm"],
               t["A_s"], t.get("fosc", "")] for t in shown]
     head = ["item", "upper", "lower", f"energy_{eu}", "wavelength_nm", "A_s-1", "f"]
+    model_lv = sorted({by_label[lab].source for lab in chosen if by_label[lab].source in MODEL_SOURCES})
+    if model_lv:
+        notes.append(f"Dashed levels: calculated ({', '.join(model_lv)}), no NIST level of their series.")
     return Result([p], notes, aspect=1.0, table=(head, rows))
 
 
@@ -2009,6 +2017,246 @@ def trap(params: dict, species: str, data_dir: str, style: dict) -> Result:
     return Result([a, b], notes, aspect=0.85, sharex=True, table=(["wavelength_nm", "U_uK", "R_sc_s-1"], rows))
 
 
+# ------------------------------------------------------------------------- Extrapolator vs structure models
+def model_check(params: dict, species: str, data_dir: str, style: dict) -> Result:
+    """Ground ns -> np_J f-values: measured, the Extrapolator (fit and 68 % band, and its uncorrected model), and the
+    DHF and Brueckner stages, as f·n*³ against n, one panel per J."""
+    from qali.physics.extrapolation.crosscheck import CLEAN, MODEL_NAMES, cross_check
+    from qali.physics.extrapolation.params import UnsupportedSpeciesError
+    from qali.physics.polarizability_core import load_nist_fvalues
+
+    ryd = _need(catalog.load_json(species, "rydberg", data_dir), species, "rydberg")
+    models: dict[str, dict] = {}
+    for m in MODEL_NAMES:
+        doc = catalog.load_json(species, m, data_dir)
+        if doc:
+            models[m] = doc
+    if not models:
+        raise TemplateError(f"No {species}_dhf.json or {species}_brueckner.json: run the DHF or Brueckner stage first.")
+    try:
+        res = cross_check(species, load_nist_fvalues(species, verbose=False), ryd, models)
+    except UnsupportedSpeciesError:
+        raise TemplateError(f"The Extrapolator has no model for {species} (alkali atoms only).") from None
+    Ry = float(ryd.get("rydberg_constant_eV") or 13.605693)
+    nus = {e["label"]: math.sqrt(Ry / -float(e["energy_eV"])) for e in ryd.get("excitations", [])
+           if float(e.get("energy_eV", 0)) < 0}
+    look = {"dhf": ("s", "C1"), "brueckner": ("^", "C2")}
+    panels, rows_out = [], []
+    for k, jstr in enumerate(("1/2", "3/2")):
+        rows = [r for r in res["rows"] if r["J"] == jstr and r["label"] in nus]
+        if not rows:
+            continue
+        p = Panel(ylabel=rf"$f\,n^{{*3}}$ ($p_{{{jstr}}}$)", yscale="log")
+        w = {r["n"]: nus[r["label"]] ** 3 for r in rows}
+        ext = [r for r in rows if r["f_extrap"]]
+        if ext:
+            nn = [r["n"] for r in ext]
+            p.add("fill_between", nn, [r["lo68"] * w[r["n"]] for r in ext], [r["hi68"] * w[r["n"]] for r in ext],
+                  color="C0", alpha=0.18, linewidth=0)
+            p.add("plot", nn, [r["f_extrap"] * w[r["n"]] for r in ext], color="C0", label="Extrapolator (68 %)")
+            off = [r for r in ext if r["f_model_off"]]
+            p.add("plot", [r["n"] for r in off], [r["f_model_off"] * w[r["n"]] for r in off], color="C0",
+                  linestyle="--", linewidth=0.8, label="its model, no fit")
+        for m in models:
+            pts = [r for r in rows if r.get(f"f_{m}")]
+            mk, col = look[m]
+            for clean in (True, False):
+                sel = [r for r in pts if (r.get(f"cancel_{m}") is None or r[f"cancel_{m}"] >= CLEAN) == clean]
+                if sel:
+                    p.add("plot", [r["n"] for r in sel], [r[f"f_{m}"] * w[r["n"]] for r in sel], linestyle="none",
+                          marker=mk, color=col, markerfacecolor=col if clean else "none",
+                          label=MODEL_NAMES[m] + ("" if clean else ", 95 % cancelled"))
+        nx = [r for r in rows if r.get("f_nist_extrapolated")]
+        if nx:
+            p.add("plot", [r["n"] for r in nx], [r["f_nist_extrapolated"] * w[r["n"]] for r in nx], linestyle="none",
+                  marker="o", color="0.5", markerfacecolor="none", markersize=3, label="NIST, extrapolated source")
+        meas = [r for r in rows if r["f_measured"]]
+        p.add("plot", [r["n"] for r in meas], [r["f_measured"] * w[r["n"]] for r in meas], linestyle="none",
+              marker="o", color="k", markersize=3, label="measured", zorder=4)
+        p.legend = {"loc": "best", "ncol": 1, "frame": False} if k == 0 else None
+        panels.append(p)
+        for r in rows:
+            rows_out.append([r["label"], r["f_measured"] or r.get("f_nist_extrapolated"), r["f_extrap"], r["lo68"], r["hi68"], r["f_model_off"],
+                             *[r.get(f"f_{m}") for m in MODEL_NAMES], *[r.get(f"z_{m}") for m in MODEL_NAMES]])
+    if not panels:
+        raise TemplateError("No ns -> np lines to compare.")
+    panels[-1].xlabel = "$n$"
+    notes = [f"{species} ground ns → np: f·n*³ (smooth across the series). Extrapolator "
+             "with its default settings; open markers: the model's radial integral cancels by more than 95 %, so "
+             "a 1 % error in its parts is ≳ 20 % in f."]
+    for m, sm in res["summary"].items():
+        if sm["compared"]:
+            flagged = ", ".join(sm["beyond_2sigma"]) or "none"
+            notes.append(f"{MODEL_NAMES[m]} vs Extrapolator beyond the measured lines: {sm['compared']} lines, "
+                         f"median ratio {sm['median_ratio']:.2f}, beyond 2σ: {flagged}.")
+        else:
+            notes.append(f"{MODEL_NAMES[m]}: no line beyond the measured ones (raise its --n-max).")
+    head = ["line", "f_measured", "f_extrapolator", "lo68", "hi68", "f_model_no_fit",
+            *[f"f_{m}" for m in MODEL_NAMES], *[f"z_{m}" for m in MODEL_NAMES]]
+    return Result(panels, notes, aspect=0.95, sharex=True, table=(head, rows_out))
+
+
+# ------------------------------------------------------------------------- Stark map
+STARK_UNITS = {"GHz": ("GHz", 1.0), "MHz": ("MHz", 1e3), "cm": ("cm$^{-1}$", 1 / 29.9792458)}
+STARK_CMAPS = {"viridis_r": "Viridis", "qali_red": "Red (grey to red)", "qali_blue": "Blue (grey to blue)",
+               "plasma_r": "Plasma"}
+
+
+FOLLOW_MIN = 0.5            # the followed line is drawn while one level holds at least this much of the state
+
+
+def _stark_followed(d: dict) -> np.ndarray:
+    """The followed state's energy (GHz) with NaN where no level holds half of it, or where it jumps to
+    another level (more than 5x its largest smooth step), so the line is not drawn across the map."""
+    y = np.asarray(d["followed_ghz"], float).copy()
+    cmax = np.array([max(c) if c else 0.0 for c in d["character"]])
+    y[cmax < FOLLOW_MIN] = np.nan
+    dy = np.abs(np.diff(y))
+    ok = dy[np.isfinite(dy)]
+    if ok.size > 3:
+        lim = 5 * np.percentile(ok, 75) + 1e-9
+        y[1:][dy > lim] = np.nan
+    return y
+
+
+def stark(params: dict, species: str, data_dir: str, style: dict) -> Result:
+    """The Stark stage's map: eigenvalues against field, coloured by the chosen state's character.
+    An AC map (mode "ac") has quasienergies against the peak AC amplitude."""
+    d = _need(catalog.load_json(species, "stark", data_dir), species, "stark")
+    ac = d.get("ac") if d.get("mode") == "ac" else None
+    unit, k = STARK_UNITS.get(params.get("unit") or "GHz", STARK_UNITS["GHz"])
+    mc = float(params.get("min_char") or 0.0)
+    # zero at the state's field-free level, or at the ionization limit (absolute term energy)
+    off = -float(d["binding_cm"]) * 29.9792458 if params.get("zero") == "limit" else 0.0
+    F = np.asarray(d["fields_V_cm"], float)
+    xs, ys, cs = [], [], []
+    for f, E, C in zip(F, d["energies_ghz"], d["character"]):
+        for e, c in zip(E, C):
+            if c >= mc:
+                xs.append(f)
+                ys.append((e + off) * k)
+                cs.append(c)
+    if not xs:
+        raise TemplateError("No eigenvalue above the character threshold.")
+    order = np.argsort(cs)
+    xs_a, ys_a, cs_a = np.asarray(xs)[order], np.asarray(ys)[order], np.asarray(cs)[order]
+    p = Panel()
+    size = float(params.get("size") or 1.5)
+    faint = cs_a < 0.02
+    if faint.any():                                  # the manifolds, grey, under the coloured states
+        p.add("scatter", xs_a[faint], ys_a[faint], color="0.78", s=size, linewidths=0, rasterized=True)
+    p.add("scatter", xs_a[~faint], ys_a[~faint], c=cs_a[~faint], cmap=params.get("cmap") or "viridis_r",
+          vmin=0.0, vmax=1.0, s=size * 1.6, linewidths=0, rasterized=True)
+    m = re.match(r"^(\d+)([a-z])(\d+/2)$", d["state"])
+    auto = (rf"$|\langle {m.group(1)}{m.group(2).upper()}_{{{m.group(3)}}}|\mu\rangle|^2$" if m
+            else rf"$|\langle$ {d['state']} $|\mu\rangle|^2$")
+    p.colorbar = (params.get("cbar_label") or "").strip() or auto
+    fol_y = _stark_followed(d)
+    if params.get("followed", True):
+        p.add("plot", F, (fol_y + off) * k, color="C1", linewidth=0.9, label="followed state")
+    pol = d.get("polarizability") or {}
+    mj = f"{round(2 * abs(d.get('mj', 0.5)))}/2"
+    alpha = (pol.get("by_mj") or {}).get(mj, pol.get("alpha0"))
+    quad = np.asarray(d["quadratic_ghz"], float) if d.get("quadratic_ghz") else (
+        -0.5 * alpha * F * F / 1e3 if alpha is not None else None)
+    if params.get("quadratic", True) and quad is not None:
+        qlab = r"$-\alpha F^2/2$" if not ac else (r"$-\alpha(\omega) F_\mathrm{ac}^2/4$" if not ac.get("dc_V_cm")
+                                                   else "second order")
+        p.add("plot", F, (quad + off) * k, color="C2", linestyle="--", linewidth=0.9, label=qlab)
+    cross = [c["field_V_cm"] for c in d.get("crossings") or []]
+    if params.get("crossings", False) and cross:
+        fol = (np.asarray(d["followed_ghz"]) + off) * k     # crossings sit on the state, followed or not
+        p.add("plot", cross, np.interp(cross, F, fol), linestyle="none", marker="x", color="C3", markersize=4,
+              label="avoided crossing")
+    st = _pretty(d["state"])
+    p.xlabel = r"$F_\mathrm{ac}$ (V/cm, peak)" if ac else "$F$ (V/cm)"
+    p.ylabel = f"$E$ below the limit ({unit})" if off else f"$E - E$({st}) ({unit})"
+    p.legend = {"loc": "best", "frame": False}
+    b = d["basis"]
+    notes = [f"{species} {d['state']}, m_j = {mj if d.get('mj', 0.5) > 0 else '-' + mj}: eigenvalues of H0 + F z, "
+             f"coloured by overlap with the state.",
+             f"Basis n {b['n_lo']}-{b['n_hi']}, l <= {b['l_max']} ({b['size']} states); "
+             f"alpha0 = {pol.get('alpha0', float('nan')):.5g} MHz/(V/cm)^2."]
+    if ac:
+        notes[0] = (f"{species} {d['state']}, m_j = {mj if d.get('mj', 0.5) > 0 else '-' + mj}: Floquet quasienergies "
+                    f"at {ac['frequency_ghz']:.6g} GHz (sidebands ±{ac['sidebands']}, static field {ac['dc_V_cm']:g} V/cm), "
+                    f"coloured by overlap with the state.")
+        dyn = ac.get("alpha_dynamic") or {}
+        notes.append(f"alpha0(omega) = {dyn.get('alpha0', float('nan')):.5g} MHz/(V/cm)^2; AC shift -alpha(omega) F_ac^2/4.")
+    if cross:
+        notes.append(f"First avoided crossing: {cross[0]:.4g} V/cm.")
+    rows = [[float(x), float(y), float(c)] for x, y, c in zip(xs_a, ys_a, cs_a)]
+    return Result([p], notes, aspect=0.75, table=(["ac_amplitude_V_cm" if ac else "field_V_cm", f"energy_{params.get('unit') or 'GHz'}", "character"], rows))
+
+
+PAIR_UNITS = {"GHz": ("GHz", 1.0), "MHz": ("MHz", 1e3)}
+
+
+def pair(params: dict, species: str, data_dir: str, style: dict) -> Result:
+    """The pair stage's potentials: eigenvalues against R, coloured by the chosen pair's character."""
+    d = _need(catalog.load_json(species, "pair", data_dir), species, "pair")
+    unit, k = PAIR_UNITS.get(params.get("unit") or "MHz", PAIR_UNITS["MHz"])
+    mc = float(params.get("min_char") or 0.0)
+    R = np.asarray(d["R_um"], float)
+    xs, ys, cs = [], [], []
+    for r, E, C in zip(R, d["energies_ghz"], d["character"]):
+        for e, c in zip(E, C):
+            if c >= mc:
+                xs.append(r)
+                ys.append(e * k)
+                cs.append(c)
+    if not xs:
+        raise TemplateError("No eigenvalue above the character threshold.")
+    order = np.argsort(cs)
+    xs_a, ys_a, cs_a = np.asarray(xs)[order], np.asarray(ys)[order], np.asarray(cs)[order]
+    p = Panel()
+    size = float(params.get("size") or 1.5)
+    faint = cs_a < 0.02
+    if faint.any():
+        p.add("scatter", xs_a[faint], ys_a[faint], color="0.78", s=size, linewidths=0, rasterized=True)
+    p.add("scatter", xs_a[~faint], ys_a[~faint], c=cs_a[~faint], cmap=params.get("cmap") or "qali_blue",
+          vmin=0.0, vmax=1.0, s=size * 1.6, linewidths=0, rasterized=True)
+
+    def tex(st: str) -> str:
+        m = re.match(r"^(\d+)([a-z])(\d+/2)$", st)
+        return f"{m.group(1)}{m.group(2).upper()}_{{{m.group(3)}}}" if m else st
+    a, b = tex(d["state1"]), tex(d["state2"])
+    p.colorbar = (params.get("cbar_label") or "").strip() or rf"$|\langle {a}\,{b}|\mu\rangle|^2$"
+    res = (d.get("c3") or {}).get("resonant")
+    if params.get("followed", True):
+        y = np.asarray(d["followed_ghz"], float).copy()
+        cmax = np.array([max(c) if c else 0.0 for c in d["character"]])
+        y[cmax < FOLLOW_MIN] = np.nan
+        p.add("plot", R, y * k, color="C1", linewidth=0.9, label="followed pair")
+    if params.get("asymptote", True):
+        if res:
+            c3 = abs(float(d["c3"]["chosen"]))
+            p.add("plot", R, c3 / R ** 3 * k, color="C2", linestyle="--", linewidth=0.9, label=r"$\pm C_3/R^3$")
+            p.add("plot", R, -c3 / R ** 3 * k, color="C2", linestyle="--", linewidth=0.9)
+        else:
+            p.add("plot", R, np.asarray(d["vdw_ghz"], float) * k, color="C2", linestyle="--", linewidth=0.9,
+                  label=r"$C_6/R^6$")
+    bl = d.get("blockade") or {}
+    rb = bl.get("R_perturbative_um")
+    if params.get("blockade", True) and rb and R[0] <= rb <= R[-1]:
+        p.add("axvline", rb, color="C3", linewidth=0.8, linestyle=":", label=r"$R_b$")
+    W = float(d.get("window_ghz") or 0) * k
+    if W:
+        p.ylim = [-W, W]
+    p.xlabel = r"$R$ ($\mu$m)"
+    p.ylabel = f"$E - E({a}\\,{b})$ ({unit})"
+    p.legend = {"loc": "best", "frame": False}
+    c6 = (d.get("c6") or {}).get("chosen", float("nan"))
+    notes = [f"{species} {d['state1']} + {d['state2']}, theta = {d.get('theta_deg', 0):g} deg: eigenvalues of "
+             f"E1 + E2 + V_dd(R), coloured by overlap with the pair.",
+             f"C6 = {c6:.5g} GHz um^6 (dE = C6/R^6); blockade radius {rb:.4g} um at "
+             f"{bl.get('rabi_MHz', 1):g} MHz." if rb else f"C6 = {c6:.5g} GHz um^6 (dE = C6/R^6)."]
+    if res:
+        notes.append(f"Resonant: C3 = {abs(float(d['c3']['chosen'])):.5g} GHz um^3.")
+    rows = [[float(x), float(y), float(c)] for x, y, c in zip(xs_a, ys_a, cs_a)]
+    return Result([p], notes, aspect=0.75, table=(["R_um", f"energy_{params.get('unit') or 'MHz'}", "character"], rows))
+
+
 def inputs_of(template: str, params: dict) -> list[str]:
     """The stage outputs of the figure's species that *template* reads, in the order shown."""
     if template == "grotrian":
@@ -2023,6 +2271,8 @@ def inputs_of(template: str, params: dict) -> list[str]:
         return ["polarizability", "lifetimes"] if params.get("magic_show") == "practical" else ["polarizability"]
     if template in ("contributions", "oscillator_density"):
         return ["polarizability"]
+    if template == "model_check":
+        return ["rydberg", "dhf", "brueckner"]
     if template == "branching":
         return ["lifetimes"]
     if template == "cascade":
@@ -2037,6 +2287,10 @@ def inputs_of(template: str, params: dict) -> list[str]:
         return ["lifetimes"] if params.get("view") == "map" else ["blackbody"]
     if template == "breit_rabi":
         return ["hyperfine"]
+    if template == "stark":
+        return ["stark"]
+    if template == "pair":
+        return ["pair"]
     return []                                   # the builder picks a table, named runs included, per series
 
 
@@ -2051,10 +2305,13 @@ TEMPLATES = {
     "branching": ("Decay branching ratios", branching),
     "cascade": ("Decay cascade", cascade),
     "oscillator_density": ("df/dε across the ionization limit", oscillator_density),
+    "model_check": ("Extrapolator vs DHF / Brueckner (ns→np f)", model_check),
     "blackbody": ("Blackbody: shifts, rates, temperature", blackbody),
     "breit_rabi": ("Breit–Rabi (Zeeman) diagram", breit_rabi),
     "feshbach": ("Feshbach scattering length a(B)", feshbach),
     "radial": ("Radial wavefunctions", radial),
     "spectrum": ("Spectrum: absorption, emission, D lines", spectrum),
     "trap": ("Trap depth and scattering vs λ", trap),
+    "stark": ("Stark map (Rydberg state in a static or AC field)", stark),
+    "pair": ("Pair potential (two Rydberg atoms)", pair),
 }

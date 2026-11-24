@@ -1,10 +1,10 @@
 {
   "_qali": {
-    "version": "3.0.0",
+    "version": "3.1.0",
     "stage": "hyperfine",
     "revision": 1,
     "command": "qali --pipeline hyperfine --all",
-    "generated_utc": "2026-11-18T09:38:56+00:00"
+    "generated_utc": "2026-11-18T14:41:00+00:00"
   },
   "element": "Cs",
   "isotope_A": 133,

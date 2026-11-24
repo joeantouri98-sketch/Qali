@@ -109,6 +109,7 @@ def draw(spec: FigureSpec, fig=None, raster: bool = True):
     for the screen or PNG/TIFF (decides whether LaTeX can be used, see :func:`~.style.latex_available`)."""
     from matplotlib.figure import Figure
 
+    register_colormaps()
     tex = _usetex(spec.style, raster)
     with style_context(spec.style, raster):
         if fig is None:
@@ -294,6 +295,25 @@ make_panel_axes = _AXES_NS["make_panel_axes"]
 break_axes = _AXES_NS["break_axes"]
 head_axes = _AXES_NS["head_axes"]
 
+# Colour maps of Qali's own (a state's character in the Stark maps): light grey at 0, so a level that
+# carries almost none of the state still reads as a line.  Registered here and in exported scripts.
+_CMAPS_SRC = (
+    "from matplotlib.colors import LinearSegmentedColormap as _LSC\n"
+    "for _name, _cols in (('qali_red', ['#d9d9d9', '#f26b6b', '#d40000', '#000000']),\n"
+    "                     ('qali_blue', ['#d9d9d9', '#7fb0e8', '#1f5fbf', '#08204a'])):\n"
+    "    if _name not in mpl.colormaps:\n"
+    "        mpl.colormaps.register(_LSC.from_list(_name, _cols))\n"
+)
+_CMAPS_DONE: list[bool] = []
+
+
+def register_colormaps() -> None:
+    """Make qali_red and qali_blue known to matplotlib (once; matplotlib is imported here, not at load)."""
+    if not _CMAPS_DONE:
+        import matplotlib as mpl
+        exec(_CMAPS_SRC, {"mpl": mpl})          # noqa: S102 - our own constant source, shared with the script
+        _CMAPS_DONE.append(True)
+
 
 def _draw_ops(ax, ops: list[dict], tex: bool):
     """Draw *ops* on *ax*; returns the last colour-mapped artist (for a colour bar), or None."""
@@ -310,12 +330,17 @@ def _draw_ops(ax, ops: list[dict], tex: bool):
             if len(args) > idx and isinstance(args[idx], str):
                 args[idx] = tex_safe(args[idx], tex)
         out = getattr(ax, op["op"])(*args, **kw)
-        if op["op"] in FILLED_OPS:
+        if colour_mapped(op):
             mappable = out
     return mappable
 
 
 FILLED_OPS = ("pcolormesh", "contourf", "tricontourf")          # what a colour bar shows (not contour lines)
+
+
+def colour_mapped(op: dict) -> bool:
+    """A filled map, or a scatter coloured through a colour map."""
+    return op["op"] in FILLED_OPS or (op["op"] == "scatter" and "cmap" in op.get("kw", {}))
 
 
 def has_range(lim) -> TypeGuard[list]:
@@ -499,7 +524,7 @@ def _op_lines(ops: list[dict], tex: bool, ax: str = "ax", keep: str = "") -> lis
         if transform == "axes":
             parts.append(f"transform={ax}.transAxes")
         call = f"{ax}.{op['op']}(" + ", ".join(parts) + ")"
-        out.append(f"{keep} = {call}" if keep and op["op"] in FILLED_OPS else call)
+        out.append(f"{keep} = {call}" if keep and colour_mapped(op) else call)
     return out
 
 
@@ -525,7 +550,7 @@ def to_script(spec: FigureSpec, out_name: str = "figure.pdf") -> str:
     ]
     lines += [f"    {k!r}: {v!r}," for k, v in rc.items()]
     lines += ["})", f"mpl.rcParams['axes.prop_cycle'] = mpl.cycler(color={cycle!r})", "", _TIDY_SRC, _CLIP_SRC,
-              _AXES_SRC]
+              _AXES_SRC, _CMAPS_SRC]
     n = max(len(spec.panels), 1)
     ratios = [p.height_ratio for p in spec.panels] or [1]
     share = sharex_ok(spec)

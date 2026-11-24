@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><title>$!TITLE</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#fcfcfb;--panel:#f3f2ef;--edge:#dedcd6;--ink:#161513;--ink2:#55534e;--muted:#7d7a73;--grid:#e8e6e1;
+  --acc:#2a78d6;--fol:#e8710a;--quad:#6250d6;--cross:#c8261c;--dot:#c9c6bf;--hl:#fff3c4;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#171716;--panel:#212120;--edge:#34332f;--ink:#f0efec;--ink2:#c3c2b7;--muted:#8f8d86;--grid:#2b2a28;
+  --acc:#3987e5;--fol:#f08a2d;--quad:#9085e9;--cross:#ee5d52;--dot:#4a4945;--hl:#4a4220;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#171716;--panel:#212120;--edge:#34332f;--ink:#f0efec;--ink2:#c3c2b7;--muted:#8f8d86;--grid:#2b2a28;
+  --acc:#3987e5;--fol:#f08a2d;--quad:#9085e9;--cross:#ee5d52;--dot:#4a4945;--hl:#4a4220;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;margin:0;padding:16px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-bottom:12px}
+h1{font-size:21px;font-weight:600;margin:0}
+.sub{color:var(--ink2);font-size:13px}
+.hdr-btns{margin-left:auto;display:flex;gap:8px}
+.app{display:grid;grid-template-columns:292px minmax(0,1fr);gap:14px;align-items:start}
+.app.closed{grid-template-columns:minmax(0,1fr)}.app.closed .rail{display:none}
+@media(max-width:900px){.app{grid-template-columns:minmax(0,1fr)}}
+.rail{background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:14px}
+.rail h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:600}
+.btn{background:transparent;color:var(--ink);border:1px solid var(--edge);border-radius:6px;padding:4px 10px;font:inherit;font-size:12.5px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.seg{display:flex;border:1px solid var(--edge);border-radius:6px;overflow:hidden}
+.seg button{flex:1;background:transparent;color:var(--ink2);border:0;padding:5px 2px;font:inherit;font-size:12.5px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--edge)}
+.seg button[aria-pressed=true]{background:var(--acc);color:#fff}
+.checks{display:flex;flex-wrap:wrap;gap:4px 12px}
+.checks label{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12.5px}
+input[type=checkbox]{accent-color:var(--acc);margin:0}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.sl .top{display:flex;justify-content:space-between;color:var(--ink2);font-size:12.5px}
+.sl .v{font-family:var(--mono);font-size:12px;color:var(--ink)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px}
+.kv span:nth-child(odd){color:var(--ink2)}.kv span:nth-child(even){font-family:var(--mono);font-size:12px;text-align:right}
+.main{min-width:0;display:flex;flex-direction:column;gap:10px}
+.plot{border:1px solid var(--edge);border-radius:8px;overflow:hidden}
+#plot{width:100%;height:640px}
+.note{color:var(--ink2);font-size:12.5px;line-height:1.5;margin:0;padding-left:18px}
+.card{border:1px solid var(--edge);border-radius:8px;padding:10px 12px}
+.card b{font-size:13px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums;margin-top:6px}
+th,td{text-align:left;padding:3px 12px 3px 0;border-bottom:1px solid var(--grid);white-space:nowrap}
+th{color:var(--muted);font-weight:500;font-size:11.5px}
+tbody tr{cursor:pointer}tbody tr:hover{background:var(--panel)}tr.sel td{background:var(--hl)}
+.tw{max-height:260px;overflow:auto}
+@media print{header,.rail{display:none!important}.app{display:block}}
+</style></head><body>
+<header>
+  <h1 id="h1"></h1><span class="sub" id="sub"></span>
+  <div class="hdr-btns">
+    <button class="btn" id="csv">Data CSV</button>
+    <button class="btn" id="railbtn" aria-expanded="true">Hide controls</button>
+    <button class="btn" id="theme">Theme: auto</button>
+  </div>
+</header>
+<div class="app" id="app">
+  <aside class="rail" aria-label="Controls">
+    <section><h2>Pair</h2><div class="kv" id="pair"></div></section>
+    <section><h2>Interaction</h2><div class="kv" id="int"></div></section>
+    <section><h2>Show</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="c-fol" checked>Followed pair</label>
+        <label><input type="checkbox" id="c-vdw" checked><span id="vlab">C₆/R⁶</span></label>
+        <label><input type="checkbox" id="c-bl" checked>Blockade radius</label>
+        <label><input type="checkbox" id="c-grey">Grey dots</label>
+      </div>
+      <div class="sl" style="margin-top:8px"><div class="top"><span>Hide character below</span><span class="v" id="minv"></span></div>
+        <input type="range" id="minc" min="0" max="0.5" step="0.005" value="0"></div>
+    </section>
+    <section><h2>Energy</h2>
+      <div class="seg" id="unit"><button data-u="GHz">GHz</button><button data-u="MHz" aria-pressed="true">MHz</button></div>
+      <div class="seg" id="cmap" style="margin-top:6px"><button data-c="blue" aria-pressed="true">Blue</button><button data-c="red">Red</button><button data-c="viridis">Viridis</button></div>
+    </section>
+    <section><h2>Distance cursor</h2>
+      <div class="sl"><div class="top"><span>R</span><span class="v" id="rv"></span></div>
+        <input type="range" id="rcur" min="0" step="1" value="0"></div>
+      <div class="kv" id="atr" style="margin-top:6px"></div>
+    </section>
+  </aside>
+  <main class="main">
+    <div class="plot"><div id="plot"></div></div>
+    <ul class="note" id="notes"></ul>
+    <div class="card"><b>Channels of C<sub>6</sub></b>
+      <div class="tw"><table><thead><tr><th>pair</th><th>Förster defect</th><th>C₆ part (GHz µm⁶)</th><th>share</th></tr></thead><tbody id="ct"></tbody></table></div>
+    </div>
+    <div class="card"><b>C<sub>6</sub> in the degenerate manifold</b>
+      <div class="tw"><table><thead><tr><th>#</th><th>C₆ (GHz µm⁶)</th><th>blockade radius</th></tr></thead><tbody id="mt"></tbody></table></div>
+    </div>
+  </main>
+</div>
+<script>
+const D=$!DATA_JS;
+const $=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const S={unit:'MHz',theme:'auto',k:0,cmap:'blue'};
+const CMAPS={blue:()=>[[0,css('--dot')],[0.15,css('--dot')],[1,css('--acc')]],red:()=>[[0,css('--dot')],[0.08,css('--dot')],[0.4,'#f26b6b'],[0.75,'#d40000'],[1,'#3a0000']],
+  viridis:()=>'Viridis'};
+const GL=(()=>{try{const c=document.createElement('canvas');return !!(c.getContext('webgl')||c.getContext('experimental-webgl'))}catch(e){return false}})();   // SVG without WebGL
+const UF={GHz:[1,'GHz'],MHz:[1e3,'MHz']};
+const ef=v=>v*UF[S.unit][0];
+const g=x=>{if(x==null||!isFinite(x))return '–';const a=Math.abs(x);return a!==0&&(a<1e-3||a>=1e6)?x.toExponential(4):(+x.toPrecision(6)).toString()};
+const lab=s=>esc(s).replace(/(\d+\/2)$/,'<sub>$1</sub>');
+const fr=x=>{const a=Math.round(2*x);return (a<0?'−':'')+Math.abs(a)+'/2'};
+const R=D.R_um, N=R.length, C6=D.c6.chosen, RES=D.c3.resonant;
+const up=s=>{const m=/^(\d+)([a-z])(\d+\/2)$/.exec(s);return m?`${m[1]}${m[2].toUpperCase()}<sub>${m[3]}</sub>`:esc(s)};
+const PAIR=D.state1===D.state2?`${up(D.state1)}${up(D.state2)}`:`${up(D.state1)} ${up(D.state2)}`;
+const CBT=`|⟨${PAIR}|μ⟩|²`;
+const FOL=(()=>{const y=D.followed_ghz.map((v,k)=>Math.max(0,...D.character[k])>=0.5?v:null);
+  const d=[];for(let k=1;k<N;k++)if(y[k]!=null&&y[k-1]!=null)d.push(Math.abs(y[k]-y[k-1]));d.sort((a,b)=>a-b);
+  if(d.length>3){const lim=5*d[Math.floor(0.75*(d.length-1))]+1e-9;for(let k=1;k<N;k++)if(y[k]!=null&&y[k-1]!=null&&Math.abs(y[k]-y[k-1])>lim)y[k-1]=null}
+  return y})();
+function header(){
+  $('h1').innerHTML=`${esc(D.label||D.element)} ${lab(D.state1)} + ${lab(D.state2)}, m<sub>j</sub> = ${fr(D.mj1)}, ${fr(D.mj2)}`;
+  $('sub').textContent=`Pair potential: ${D.basis.size} pair states, n ${D.basis.n_lo}–${D.basis.n_hi}, l ≤ ${D.basis.l_max}, θ = ${g(D.theta_deg)}°`;
+  $('pair').innerHTML=[['n* (1)',D.n_star1.toFixed(5)],['n* (2)',D.n_star2.toFixed(5)],['energies from',D.energy_source1===D.energy_source2?D.energy_source1:D.energy_source1+', '+D.energy_source2],
+    ['θ',g(D.theta_deg)+'°'],['LeRoy radius',g(D.leroy_um)+' µm']].map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('');
+  const B=D.blockade,rows=[['C₆',g(C6)+' GHz µm⁶'],['C₆',g(D.c6.chosen_au)+' a.u.']];
+  if(RES)rows.push(['C₃',g(Math.abs(D.c3.chosen))+' GHz µm³']);
+  rows.push(['Ω/2π',g(B.rabi_MHz)+' MHz'],['R_b ('+(B.from_c3?'C₃':'C₆')+')',g(B.R_perturbative_um)+' µm'],['R_b (diagonalised)',B.R_diagonalised_um?g(B.R_diagonalised_um)+' µm':'out of range']);
+  $('int').innerHTML=rows.map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('');
+}
+function curPoints(){const mc=+$('minc').value,xs=[],ys=[],cs=[];
+  for(let k=0;k<N;k++){const E=D.energies_ghz[k],C=D.character[k];for(let i=0;i<E.length;i++){if(C[i]<mc)continue;xs.push(R[k]);ys.push(ef(E[i]));cs.push(C[i])}}
+  const o=cs.map((_,i)=>i).sort((a,b)=>cs[a]-cs[b]);
+  return [o.map(i=>xs[i]),o.map(i=>ys[i]),o.map(i=>cs[i])]}
+function draw(){
+  const ink=css('--ink'),ink2=css('--ink2'),grid=css('--grid'),bg=css('--bg');
+  const [xs,ys,cs]=curPoints(),grey=$('c-grey').checked;
+  const tr=[{type:GL?'scattergl':'scatter',mode:'markers',x:xs,y:ys,name:'pair states',hovertemplate:'R %{x:.4g} µm<br>E %{y:.6g} '+UF[S.unit][1]+'<br>'+CBT+' %{marker.color:.3f}<extra></extra>',
+    marker:{size:3.2,color:grey?cs.map(()=>0):cs,cmin:0,cmax:1,colorscale:CMAPS[S.cmap](),reversescale:S.cmap==='viridis',
+      showscale:!grey,colorbar:{title:{text:CBT,font:{size:11,color:ink2}},thickness:10,len:0.6,tickfont:{size:10,color:ink2}}}}];
+  if($('c-fol').checked)tr.push({type:'scatter',mode:'lines',x:R,y:FOL.map(v=>v==null?null:ef(v)),connectgaps:false,name:'followed',line:{color:css('--fol'),width:1.4},hoverinfo:'skip'});
+  if($('c-vdw').checked){
+    if(RES){const c3=Math.abs(D.c3.chosen),cs3=[c3,-c3];
+      cs3.forEach((c,i)=>tr.push({type:'scatter',mode:'lines',x:R,y:R.map(r=>ef(c/r**3)),name:'C₃/R³',showlegend:i===0,line:{color:css('--quad'),width:1,dash:'dash'},hoverinfo:'skip'}))}
+    else tr.push({type:'scatter',mode:'lines',x:R,y:D.vdw_ghz.map(ef),name:'C₆/R⁶',line:{color:css('--quad'),width:1.2,dash:'dash'},hoverinfo:'skip'})}
+  const r0=R[S.k],shapes=[{type:'line',x0:r0,x1:r0,yref:'paper',y0:0,y1:1,line:{color:ink2,width:1,dash:'dot'}}];
+  const rb=D.blockade.R_perturbative_um;
+  if($('c-bl').checked&&rb>=R[0]&&rb<=R[N-1]){shapes.push({type:'line',x0:rb,x1:rb,yref:'paper',y0:0,y1:1,line:{color:css('--cross'),width:1.2}});
+    const om=ef(D.blockade.rabi_MHz*1e-3);shapes.push({type:'line',xref:'paper',x0:0,x1:1,y0:om,y1:om,line:{color:css('--cross'),width:0.8,dash:'dot'}},{type:'line',xref:'paper',x0:0,x1:1,y0:-om,y1:-om,line:{color:css('--cross'),width:0.8,dash:'dot'}})}
+  const W=ef(D.window_ghz);
+  const L={paper_bgcolor:bg,plot_bgcolor:bg,font:{family:css('--sans'),color:ink},margin:{l:72,r:20,t:14,b:48},hovermode:'closest',
+    xaxis:{title:{text:'R (µm)',font:{color:ink2,size:12}},gridcolor:grid,zerolinecolor:grid,tickfont:{color:ink2,size:11},ticks:'outside',tickcolor:ink2,linecolor:ink2},
+    yaxis:{title:{text:'E − E('+D.state1+' + '+D.state2+') ('+UF[S.unit][1]+')',font:{color:ink2,size:12}},range:[-W,W],gridcolor:grid,zerolinecolor:grid,tickfont:{color:ink2,size:11},ticks:'outside',tickcolor:ink2,linecolor:ink2,tickformat:'~g'},
+    legend:{orientation:'h',x:0,y:1.05,font:{size:12,color:ink2}},shapes};
+  return Plotly.react('plot',tr,L,{displaylogo:false,responsive:true,modeBarButtonsToRemove:['lasso2d','select2d']});
+}
+function atR(){const k=S.k,E=D.energies_ghz[k],C=D.character[k];$('rv').textContent=g(R[k])+' µm';
+  let im=0;C.forEach((c,i)=>{if(c>C[im])im=i});
+  let gap=Infinity;E.forEach((e,i)=>{if(i!==im)gap=Math.min(gap,Math.abs(e-E[im]))});
+  const pert=RES?null:D.vdw_ghz[k];
+  $('atr').innerHTML=[['shift',g(ef(E[im]))+' '+UF[S.unit][1]],['C₆/R⁶',pert==null?'–':g(ef(pert))+' '+UF[S.unit][1]],[CBT,C[im].toFixed(4)],
+    ['nearest other',g(ef(gap))+' '+UF[S.unit][1]],['R / R_b',(R[k]/D.blockade.R_perturbative_um).toFixed(3)]].map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('')}
+function tables(){
+  $('ct').innerHTML=D.channels.length?D.channels.map(c=>`<tr><td>${esc(c.pair).replace(/(\d+\/2)/g,'<sub>$1</sub>')}</td><td>${g(ef(c.forster_ghz))} ${UF[S.unit][1]}</td><td>${g(c.c6_ghz_um6)}</td><td>${(100*c.share).toFixed(1)} %</td></tr>`).join('')
+    :'<tr><td colspan="4">none</td></tr>';
+  const rab=D.blockade.rabi_MHz;
+  $('mt').innerHTML=D.c6.eigen.map((c,i)=>`<tr><td>${i+1}</td><td>${g(c)}</td><td>${g(Math.pow(Math.abs(c)*1e3/rab,1/6))} µm</td></tr>`).join('')}
+function notes(){const B=D.blockade,n=[
+  `Each dot is an eigenstate of E₁ + E₂ + V_dd(R) (dipole-dipole); colour: ${'|⟨pair|μ⟩|²'}, the share of the chosen pair (and its swap) in each eigenstate μ.`,
+  `Basis: single-atom n ${D.basis.n_lo}–${D.basis.n_hi}, l ≤ ${D.basis.l_max}; pair states within ±${g(D.basis.ecut_ghz)} GHz of the same parity`+(D.theta_deg?'':' and M')+`: ${D.basis.size} (${D.basis.symmetric} symmetric, ${D.basis.antisymmetric} antisymmetric).`,
+  `Energies: precision quantum defects (j-resolved), NIST levels at low n; radial integrals in the Marinescu model potential.`,
+  `C₆ from second order in the pair's degenerate manifold, ΔE = C₆/R⁶ (repulsive: C₆ > 0; ARC quotes −C₆)`+(D.c6.cut_ghz?`, pairs within ${g(D.c6.cut_ghz)} GHz.`:', every pair the single-atom basis gives.'),
+  RES?`The two levels are dipole coupled: the interaction is resonant, ±C₃/R³ at long range (C₃ of the chosen pair's eigenstates).`:`Shown: eigenvalues within ±${g(D.window_ghz)} GHz of the pair.`,
+  `Blockade radius: where |C${B.from_c3?'₃':'₆'}|/R${B.from_c3?'³':'⁶'} = hΩ/2π; diagonalised: where the followed pair has moved by Ω/2π.`,
+  `Below the LeRoy radius (${g(D.leroy_um)} µm) the electron clouds overlap and the multipole expansion fails.`];
+  if(D.mixed_below_um!=null)n.push(`Below ${g(D.mixed_below_um)} µm no eigenstate holds half of the pair.`);
+  $('notes').innerHTML=n.map(t=>`<li>${esc(t)}</li>`).join('')}
+function csv(){const rows=['R_um,energy_GHz,character'];for(let k=0;k<N;k++)D.energies_ghz[k].forEach((e,i)=>rows.push(`${R[k]},${e},${D.character[k][i]}`));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));a.download=`${D.element}_${D.state1.replace('/','-')}_${D.state2.replace('/','-')}_pair.csv`;a.click()}
+$('rcur').max=N-1;$('rcur').oninput=e=>{S.k=+e.target.value;atR();draw()};
+$('minc').oninput=()=>{$('minv').textContent=(+$('minc').value).toFixed(3);draw()};
+['c-fol','c-vdw','c-bl','c-grey'].forEach(i=>$(i).onchange=draw);
+document.querySelectorAll('#cmap button').forEach(b=>b.onclick=()=>{S.cmap=b.dataset.c;document.querySelectorAll('#cmap button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw()});
+document.querySelectorAll('#unit button').forEach(b=>b.onclick=()=>{S.unit=b.dataset.u;document.querySelectorAll('#unit button').forEach(x=>x.setAttribute('aria-pressed',x===b));tables();atR();draw()});
+$('railbtn').onclick=()=>{const c=$('app').classList.toggle('closed');$('railbtn').textContent=c?'Show controls':'Hide controls';$('railbtn').setAttribute('aria-expanded',!c);setTimeout(()=>Plotly.Plots.resize('plot'),50)};
+$('theme').onclick=()=>{const o=['auto','light','dark'];S.theme=o[(o.indexOf(S.theme)+1)%3];const h=document.documentElement;S.theme==='auto'?h.removeAttribute('data-theme'):h.setAttribute('data-theme',S.theme);$('theme').textContent='Theme: '+S.theme;draw()};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(S.theme==='auto')draw()});
+$('csv').onclick=csv;
+$('minv').textContent='0.000';if(RES)$('vlab').textContent='C₃/R³';
+S.k=N-1;$('rcur').value=N-1;
+header();notes();tables();atR();draw();
+</script>
+</body></html>

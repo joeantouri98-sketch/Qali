@@ -1,10 +1,10 @@
 {
   "_qali": {
-    "version": "3.0.0",
+    "version": "3.1.0",
     "stage": "lifetimes",
     "revision": 2,
     "command": "qali --pipeline lifetimes Cs",
-    "generated_utc": "2026-11-18T09:35:46+00:00"
+    "generated_utc": "2026-11-18T14:37:28+00:00"
   },
   "species_id": "Cs",
   "element": "Cs",

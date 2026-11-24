@@ -3,13 +3,15 @@ The ``brueckner`` pipeline: Brueckner-orbital spectrum of a one-valence atom or 
 -----------------------------------------------------------------------------
 Frozen-core Dirac-Hartree-Fock plus the second-order correlation potential Sigma(2)(E)
 (energy-dependent core polarisation), solved self-consistently per level; E1 matrix elements
-between the Brueckner orbitals dressed by the core's RPA response.  The physics is in
-``qali.physics.atomic_structure.brueckner``.
+between the Brueckner orbitals dressed by the core's RPA response, plus structural radiation
+and normalisation (third order).  The physics is in ``qali.physics.atomic_structure.brueckner``.
 
 Compared with the DHF + core-polarisation stage, the energy dependence carries the d and f
 series that one static potential cannot (Ca+ 4d +0.10% vs +0.83%, Ba+ 4f +0.2-0.4% vs +4-5%),
 and the core polarisability comes from the same RPA instead of a table.  Lowest-p lifetimes are
-within 0.5% of precision data for Na-Fr, Ca+, Sr+ and Ba+.
+within 0.5% of precision data for Na-Fr, Ca+, Sr+ and Ba+; the third order brings the weak
+ns-(n+1)p lines (Cs 6s-7p, Rb 5s-6p, K 4s-5p) from 4-7% low to within ~0.6%.  It adds minutes to
+each run (tens of minutes for Cs and Fr at --n-max 25); --no-third-order leaves it out.
 
 Fit to NIST (default): one scale factor per kappa on Sigma, fixed by the lowest NIST level of
 that kappa (s: the ionization energy); a kappa with no NIST level takes the mean of the nearest
@@ -27,6 +29,7 @@ Usage:
     qali --pipeline brueckner Cs
     qali --pipeline brueckner Ba_c1 --omega 1.0
     qali --pipeline brueckner K --unscaled
+    qali --pipeline brueckner Cs --no-third-order
 """
 
 __version__ = '1.0'
@@ -71,9 +74,11 @@ def _cache_path(data_dir, element):
     return os.path.join(data_dir, f"{element}_brueckner_cache.npz")
 
 
-def run_element(element, nist_dir, data_dir, *, scale=True, ip_cm=None, n_max=None, lmax=5, omegas=()):
+def run_element(element, nist_dir, data_dir, *, scale=True, ip_cm=None, n_max=None, lmax=5, omegas=(),
+                third_order=True):
     print(f"\n{'='*65}")
-    print(f"  {element}  —  Brueckner orbitals (DHF + Sigma(2)), RPA dipoles")
+    print(f"  {element}  —  Brueckner orbitals (DHF + Sigma(2)), RPA dipoles"
+          + (" + SR + normalisation" if third_order else ""))
     print(f"{'='*65}")
     sp = resolve_species(element)
     Z, charge = sp['Z'], sp['charge']
@@ -108,7 +113,7 @@ def run_element(element, nist_dir, data_dir, *, scale=True, ip_cm=None, n_max=No
           f"Sigma(2) virtual orbitals l <= {lmax}" + ("" if cache else "; first run builds Sigma (minutes)"))
     res = compute_brueckner(Z, charge=charge, mass_number=round(mass) if mass else None,
                             ionization_cm=ip_cm if scale else None, fit_levels_cm=fit, scale=scale,
-                            n_max=n_max, lmax=lmax, omegas_eV=omegas, cache=cache,
+                            n_max=n_max, lmax=lmax, omegas_eV=omegas, third_order=third_order, cache=cache,
                             progress=lambda msg: print(f"    {msg}", flush=True))
     if {k: id(v) for k, v in cache.items()} != before:
         np.savez(cache_path, **cache)
@@ -129,7 +134,8 @@ def run_element(element, nist_dir, data_dir, *, scale=True, ip_cm=None, n_max=No
         model="brueckner",
         label=sp['label'],
         method="Brueckner orbitals: frozen-core DHF + second-order correlation potential Sigma(2)(E); "
-               "E1 dressed by the core's RPA response",
+               "E1 dressed by the core's RPA response"
+               + ("; structural radiation and normalisation (third order, lambda-scaled)" if third_order else ""),
         inputs=dict(scaling="fit" if scale else "none",
                     ionization_cm=ip_cm if scale else None,
                     ionization_source=ip_source if scale else None,
@@ -187,6 +193,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--n-extra', type=int, default=None, help=argparse.SUPPRESS)   # replaced by --n-max
     parser.add_argument('--omega', type=float, nargs='*', default=[],
                         help='Photon energies (eV) for alpha(omega)')
+    parser.add_argument('--no-third-order', action='store_true',
+                        help='Leave out structural radiation and normalisation of the dipoles: faster, '
+                             'weak lines (e.g. Cs 6s-7p) several %% low')
     parser.add_argument('--all', action='store_true')
     parser.add_argument('--nist-dir', default=None,
                         help='Folder of NIST level exports; default: bundled')
@@ -216,7 +225,8 @@ def main(argv=None) -> int:
     check_n_max(parser, args, elements)
     for el in elements:
         run_element(el, nist_dir, args.data_dir, scale=not args.unscaled, ip_cm=args.ip,
-                    n_max=args.n_max, lmax=args.lmax, omegas=args.omega)
+                    n_max=args.n_max, lmax=args.lmax, omegas=args.omega,
+                    third_order=not args.no_third_order)
     return 0
 
 

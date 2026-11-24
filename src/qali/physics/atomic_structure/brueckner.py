@@ -3,14 +3,18 @@
 Levels: frozen-core DHF plus the second-order correlation potential Sigma(2)(E) (``dhf_sigma``),
 solved self-consistently per level, optionally scaled per kappa to one measured level.
 E1: reduced dipoles between Brueckner orbitals, dressed by the core's RPA response at the
-transition frequency (``dhf_rpa``); the core polarisability is the same RPA, so alpha(0) has no
-external input either.
+transition frequency (``dhf_rpa``), plus structural radiation and normalisation (``dhf_sr``,
+third order; scaled by the same lambda as Sigma); the core polarisability is the same RPA, so
+alpha(0) has no external input either.
 
-Accuracy (scaled, against precision data): lowest-p lifetimes within 0.5% for Na-Fr, Ca+, Sr+,
-Ba+ (Cs 6s-6p1/2 4.4993 vs 4.5057); p -> d branching fractions of Ca+, Ba+ within ~1.5%.
-Not included: structural radiation and normalisation (third order, ~0.1-0.2% on resonance
-lines, several % on weak lines such as Cs 6s-7p), the core-valence (Pauli) term of alpha,
-Breit, QED.
+Accuracy (scaled, against precision data), n-max 25 runs with the third order: D lines K +0.06 /
++0.03 %, Rb +0.02 / -0.04 %, Cs -0.15 / -0.15 %, Fr +0.02 / -0.20 %, Na +0.17 %; the weak
+ns-(n+1)p lines K +0.04 %, Rb -0.13 / +0.42 %, Cs 6s-7p -0.55 / -0.44 % (4-7 % low without the
+third order), Cs 7s-6p -0.13 / -0.11 %, 7s-7p -0.04 %; and the ground ns-np series up to the
+highest measured n within the scatter of the measurements (no spurious Cooper minimum in Cs
+np1/2).  Lowest-p lifetimes of Ca+, Sr+, Ba+ within 0.5 % and their p -> d branching fractions
+within ~1.5 % (checked before the third order, which moves resonance lines by ~0.1 %).
+Not included: the core-valence (Pauli) term of alpha, Breit, QED.
 
 Engine contract: inputs as arguments, results as frozen dataclasses; no files, prints or plots.
 """
@@ -27,6 +31,7 @@ from qali.physics.atomic_structure.angular import kappa_label, kappa_lj, reduced
 from qali.physics.atomic_structure.dhf_cp import HARTREE_TO_CM1, VALENCE_KAPPAS, Lifetime, Transition
 from qali.physics.atomic_structure.dhf_rpa import CoreRPA, ValenceE1
 from qali.physics.atomic_structure.dhf_sigma import Sigma2Level, brueckner_levels, setup_brueckner
+from qali.physics.atomic_structure.dhf_sr import ThirdOrder
 
 ALPHA_FS = 1 / 137.035999084
 
@@ -53,18 +58,20 @@ class BruecknerResult:
     # Photoionization of the ground level: ((omega_au, f), ...) of the positive-energy states of the
     # basis cavity, with RPA-dressed dipoles (a quadrature of df/de); omega up to 50 Ha
     continuum: tuple[tuple[float, float], ...] = ()
+    third_order: bool = False             # dipoles include structural radiation + normalisation
 
 
 def compute_brueckner(Z: int, *, charge: int = 0, mass_number: float | None = None,
                       ionization_cm: float | None = None,
                       fit_levels_cm: Mapping[tuple[int, int], float] | None = None,
                       scale: bool = True, n_max: int | None = None, n_defects: int = 30, lmax: int = 5,
-                      omegas_eV: Sequence[float] = (), e1: bool = True,
+                      omegas_eV: Sequence[float] = (), e1: bool = True, third_order: bool = True,
                       cache: MutableMapping[str, np.ndarray] | None = None,
                       progress: Callable[[str], None] | None = None) -> BruecknerResult:
     """Brueckner levels (up to n_max; None: n_valence + 6), E1 network, lifetimes, alpha and quantum
     defects (up to n_defects).  Inputs as for ``dhf_sigma.compute_sigma2``; e1=False skips the
-    dipoles (levels and defects only)."""
+    dipoles (levels and defects only); third_order=False leaves out structural radiation and
+    normalisation (faster; weak lines several % low)."""
     say = progress or (lambda _msg: None)
     st = setup_brueckner(Z, charge=charge, mass_number=mass_number, ionization_cm=ionization_cm,
                          fit_levels_cm=fit_levels_cm, scale=scale, n_max=n_max, lmax=lmax,
@@ -107,6 +114,40 @@ def compute_brueckner(Z: int, *, charge: int = 0, mass_number: float | None = No
             rpa.at(om)
             return V.element(kw, w, kv, v, om, wtag, vtag)
 
+        # third order: SR[(w, v)] = <w||SR||v> at omega = E_w - E_v, and dSigma/dE per level, both
+        # times the level's lambda (SR: geometric mean of the two)
+        sr: dict[tuple[str, str], float] = {}
+        dsig: dict[str, float] = {}
+        if third_order:
+            say("Structural radiation and normalisation ...")
+            to = ThirdOrder(br, rpa, V.on_v, m.bv)
+            stacks = {}
+            for kap in sorted({lv.kappa for lv, _, _ in orbs.values()}, key=abs):
+                items = sorted((t for t in orbs.values() if t[0].kappa == kap), key=lambda t: t[1])
+                stk = to.stack(kap, [t[2] for t in items], [t[1] for t in items])
+                stacks[kap] = ([t[0].label for t in items], stk)
+                for lab, ds in zip(stacks[kap][0], to.dsigma(stk)):
+                    dsig[lab] = st.lam[kap] * float(ds)
+            kaps = list(stacks)
+            for i, k1 in enumerate(kaps):
+                for k2 in kaps[i + 1:]:
+                    if reduced_c(k1, k2) == 0.0:
+                        continue
+                    say(f"  SR {kappa_label(0, k1)[1:]} - {kappa_label(0, k2)[1:]} ...")
+                    M = to.structural_radiation(stacks[k1][1], stacks[k2][1])
+                    lam = math.sqrt(st.lam[k1] * st.lam[k2])
+                    sgn = reduced_c(k2, k1) / reduced_c(k1, k2)       # <v||.||w> = sgn <w||.||v>
+                    for a_, l1 in enumerate(stacks[k1][0]):
+                        for b_, l2 in enumerate(stacks[k2][0]):
+                            sr[(l1, l2)] = lam * float(M[a_, b_])
+                            sr[(l2, l1)] = lam * sgn * float(M[a_, b_])
+
+        def third(d, wlab, vlab):
+            """d + SR + normalisation for <w||D||v> (unchanged without the third order)."""
+            if (wlab, vlab) not in sr:
+                return d
+            return d + sr[(wlab, vlab)] + 0.5 * d * (dsig[wlab] + dsig[vlab])
+
         say("E1 network ...")
         A_tot = {lab: 0.0 for lab in orbs}
         report = sorted(orbs.values(), key=lambda t: t[1])
@@ -115,6 +156,7 @@ def compute_brueckner(Z: int, *, charge: int = 0, mass_number: float | None = No
                 if reduced_c(up.kappa, lo.kappa) == 0.0:
                     continue
                 _bare, d = dressed(up.kappa, s_up, E_up, lo.kappa, s_lo, E_lo, up.label, lo.label)
+                d = third(d, up.label, lo.label)
                 w = E_up - E_lo
                 f = 2.0 / 3.0 * w * d * d / (kappa_lj(lo.kappa)[1] + 1)
                 A = 4.0 / 3.0 * ALPHA_FS ** 3 * w ** 3 * d * d / (kappa_lj(up.kappa)[1] + 1) / AU_TIME_S
@@ -138,14 +180,18 @@ def compute_brueckner(Z: int, *, charge: int = 0, mass_number: float | None = No
             own = {lv.n - st.n0(kap) for lv, _, _ in orbs.values() if lv.kappa == kap}
             eps, P, Q = br.spectrum(kap, max(st.nodes), st.lam[kap])
             for i in range(len(eps)):
+                own_lab = None
                 if i in own:
                     lv, E, s = orbs[kappa_label(st.n0(kap) + i, kap)]
+                    own_lab = lv.label
                 else:
                     E, s = float(eps[i]), (P[i], Q[i])
                 if E - g_E > 50.0:                          # far continuum: negligible
                     break
                 _b, d = dressed(kap, s, E, -1, g_orb, g_E, ('a', kap, i), 'ground')
                 V.forget(('a', kap, i))
+                if own_lab is not None:                     # reported levels: with the third order
+                    d = third(d, own_lab, g_lv.label)
                 terms.append((E - g_E, d * d))
                 if E > 0:
                     cont.append((float(E - g_E), float(2.0 / 3.0 * (E - g_E) * d * d / (kappa_lj(-1)[1] + 1))))
@@ -165,4 +211,4 @@ def compute_brueckner(Z: int, *, charge: int = 0, mass_number: float | None = No
         alpha_core_au=float(alpha_core), alpha_core_dhf_au=float(alpha_core_dhf), alpha0_au=float(alpha0),
         alpha_dynamic_au=alpha_dyn, levels=tuple(levels), transitions=tuple(transitions),
         lifetimes=tuple(lifetimes), quantum_defects=defects,
-        continuum=tuple(sorted(cont)) if e1 else ())
+        continuum=tuple(sorted(cont)) if e1 else (), third_order=bool(e1 and third_order))

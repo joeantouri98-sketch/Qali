@@ -43,6 +43,8 @@ IMPLEMENTATIONS = {
     "spectra": "qali.pipelines.spectra",
     "polarizability_page": "qali.pipelines.polarizability_page",
     "orbital3d": "qali.pipelines.orbital3d",
+    "stark": "qali.pipelines.stark",
+    "pair": "qali.pipelines.pair",
     "compare_elements": "qali.pipelines.compare_elements",
     "scattering_rate": "qali.pipelines.scattering_rate",
     "figure": "qali.pipelines.figure",

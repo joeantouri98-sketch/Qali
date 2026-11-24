@@ -37,7 +37,7 @@ def _pick(tab, key):
     tab.redraw()
 
 
-@pytest.mark.parametrize("key", [k for k in templates.TEMPLATES if k != "builder"])
+@pytest.mark.parametrize("key", [k for k in templates.TEMPLATES if k not in ("builder", "model_check", "stark", "pair")])
 def test_each_template_previews(tab, key):
     _pick(tab, key)
     assert tab.spec is not None, tab.message.text()
@@ -334,3 +334,21 @@ def test_alpha_line_n_range_round_trips(tab):
     assert (p["magic_n_min"], p["magic_n_max"]) == (3, 12)
     tab._load_controls()
     assert (tab.al_n0.text(), tab.al_n1.text()) == ("3", "12")
+
+
+def test_model_check_without_model_outputs_says_which_stage_to_run(tab):
+    """The bundled data has no DHF / Brueckner output: the figure says so instead of drawing."""
+    _pick(tab, "model_check")
+    assert tab.spec is None and "run the DHF or Brueckner stage" in tab.message.text()
+
+
+def test_stark_without_its_output_says_which_stage_to_run(tab):
+    """The bundled data has no Stark output: the figure says so instead of drawing."""
+    _pick(tab, "stark")
+    assert tab.spec is None and "Stark stage" in tab.message.text()
+
+
+def test_pair_without_its_output_says_which_stage_to_run(tab):
+    """The bundled data has no pair output: the figure says so instead of drawing."""
+    _pick(tab, "pair")
+    assert tab.spec is None and "Pair stage" in tab.message.text()

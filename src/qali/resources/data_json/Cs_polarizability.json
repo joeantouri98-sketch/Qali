@@ -1,10 +1,10 @@
 {
   "_qali": {
-    "version": "3.0.0",
+    "version": "3.1.0",
     "stage": "polarizability",
     "revision": 3,
     "command": "qali --pipeline polarizability --all",
-    "generated_utc": "2026-11-18T09:35:56+00:00"
+    "generated_utc": "2026-11-18T14:37:38+00:00"
   },
   "element": "Cs",
   "gs_label": "6s",

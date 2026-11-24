@@ -706,3 +706,17 @@ def test_one_ended_ranges_keep_the_other_end_automatic():
     assert templates._num_pair(["2", ""]) == [2.0, None]
     assert templates._num_pair([None, None]) is None and templates._num_pair([3, 3]) is None
     assert templates._num_pair([None, 5], both=True) is None
+
+
+def test_model_check_figure_with_a_model_output(tmp_path, dd):
+    """Two panels (p1/2, p3/2) with measured points, the Extrapolator and the model; a table for Data..."""
+    import json
+    import shutil
+    shutil.copy(os.path.join(dd, "Rb_rydberg.json"), tmp_path / "Rb_rydberg.json")
+    rows = [{"lower": "5s1/2", "upper": f"{n}p{j}", "f_absorption": f, "cancellation": 0.3}
+            for n, j, f in ((6, "1/2", 3.6e-3), (6, "3/2", 9.5e-3), (8, "1/2", 1.5e-4), (8, "3/2", 4.6e-4))]
+    (tmp_path / "Rb_dhf.json").write_text(json.dumps({"transitions": rows, "levels": []}), encoding="utf-8")
+    r = templates.model_check({}, "Rb", str(tmp_path), {})
+    assert len(r.panels) == 2 and r.table[0][0] == "line"
+    labels = [op["kw"].get("label") for op in r.panels[0].ops]
+    assert {"measured", "DHF", "Extrapolator (68 %)"} <= set(labels)

@@ -1,10 +1,10 @@
 {
   "_qali": {
-    "version": "3.0.0",
+    "version": "3.1.0",
     "stage": "blackbody",
     "revision": 3,
     "command": "qali --pipeline blackbody --all --field 100",
-    "generated_utc": "2026-11-18T09:37:30+00:00"
+    "generated_utc": "2026-11-18T14:39:22+00:00"
   },
   "element": "K",
   "gs_label": "4s",

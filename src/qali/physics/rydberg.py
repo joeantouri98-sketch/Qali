@@ -787,8 +787,26 @@ def ritz_delta(ritz, l_char, n, default):
     return p['delta0'] + p['delta2'] / (n - p['delta0']) ** 2
 
 
+_MADELUNG = [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (4, 0), (3, 2), (4, 1), (5, 0), (4, 2), (5, 1), (6, 0),
+             (4, 3), (5, 2), (6, 1), (7, 0), (5, 3), (6, 2), (7, 1)]
+
+
+def core_shell_counts(n_core_electrons: int) -> dict[str, int]:
+    """Filled shells of each l in a closed core of *n_core_electrons* (aufbau order): Fr⁺ ([Rn], 86) has one f
+    shell (4f) and three d shells, so its valence nf series starts at 5f with a quantum defect near 1."""
+    out = {c: 0 for c in "spdfg"}
+    left = n_core_electrons
+    for _n, l in _MADELUNG:
+        cap = 2 * (2 * l + 1)
+        if left < cap:
+            break
+        out["spdfg"[l]] += 1
+        left -= cap
+    return out
+
+
 def generate_rydberg_series(ionization_energy, quantum_defects, nist_lookup,
-                             n_start, n_max, ry_eff=None, ritz=None):
+                             n_start, n_max, ry_eff=None, ritz=None, first_n=None):
     """
     Generate Rydberg series with J-resolved levels where NIST data exists.
 
@@ -800,6 +818,9 @@ def generate_rydberg_series(ionization_energy, quantum_defects, nist_lookup,
     at high n). Label is plain '10p', '15d', etc.
 
     Wavelength is computed as the transition energy from ground state.
+
+    first_n: {orbital: lowest n} for series with no NIST level (the first member above the core's shells
+    of that l, Fr 5f); measured series start at their lowest measured member.
     """
     if ry_eff is None:
         ry_eff = Ry
@@ -825,7 +846,8 @@ def generate_rydberg_series(ionization_energy, quantum_defects, nist_lookup,
 
     # A series can start below the ground state's n: Cs 5d and 4f, Rb 4d, K 3d lie above 6s, 5s, 4s.
     # They are the main decay route of the states above them.
-    for n in range(min([n_start, *min_nist_n.values()]), n_max + 1):
+    first_n = {l_: n for l_, n in (first_n or {}).items() if l_ not in min_nist_n}
+    for n in range(min([n_start, *min_nist_n.values(), *first_n.values()]), n_max + 1):
         for l_char in ['s', 'p', 'd', 'f', 'g']:
             l = l_to_int.get(l_char, -1)
             if l < 0 or l >= n:
@@ -874,6 +896,8 @@ def generate_rydberg_series(ionization_energy, quantum_defects, nist_lookup,
                 # Never model n below the lowest NIST-observed member of the
                 # series: those states are core-filled, not Rydberg states.
                 if l_char in min_nist_n and n < min_nist_n[l_char]:
+                    continue
+                if l_char in first_n and n < first_n[l_char]:
                     continue
                 delta = ritz_delta(ritz, l_char, n, quantum_defects.get(l_char, 0.0))
                 E = rydberg_energy(n, l_char, delta, ry_eff=ry_eff)

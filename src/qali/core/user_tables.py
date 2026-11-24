@@ -61,6 +61,7 @@ TABLES = (
     TableInfo("spectrum.vapour_pressure", "Spectrum", "Vapour pressure, log10(P/Pa) = a - b/T", "qali.physics.spectrum_core", "VAPOUR_PRESSURE"),
     TableInfo("spectrum.cell_temperature", "Spectrum", "Default cell temperature", "qali.physics.spectrum_core", "DEFAULT_CELL_T", "K"),
     TableInfo("spectroscopy.dline", "Species constants", "D-line literature values", "qali.core.spectroscopy", "LITERATURE"),
+    TableInfo("rydberg.defects", "Rydberg", "Rydberg quantum defects (j-resolved) and ionization energy", "qali.physics.rydberg_stark.defects", "RYDBERG_DEFECTS"),
 )
 BY_ID = {t.table_id: t for t in TABLES}
 
@@ -104,6 +105,8 @@ def unit(table_id: str, key: str) -> str:
     last = key.rsplit(" / ", 1)[-1]
     if table_id == "spectrum.vapour_pressure":
         return "" if last.endswith("_a") else "K"          # a in log10(Pa); b and the melting point in K
+    if table_id == "rydberg.defects":
+        return {"mass_amu": "u", "ionization_cm": "cm\u207b\u00b9"}.get(last, "")
     if table_id == "spectroscopy.dline":
         if last == "mass_amu":
             return "u"

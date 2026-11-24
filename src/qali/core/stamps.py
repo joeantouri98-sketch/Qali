@@ -25,8 +25,10 @@ STAMP_KEY = "_qali"
 
 # Bump a stage's number when its outputs change meaning or physics (and say why in the CHANGELOG).
 STAGE_REVISIONS: dict[str, int] = {
-    "orca_to_json": 1, "dhf": 1, "brueckner": 1,
-    "rydberg": 1, "transitions": 1,
+    "orca_to_json": 1, "dhf": 1,
+    "brueckner": 2,           # 2: dipoles with structural radiation + normalisation (third order)
+    "rydberg": 2,             # 2: series with no NIST level start above the core shells of their l (Fr 5f)
+    "transitions": 1,
     "lifetimes": 2,          # 2: ground ns->np from the calibrated model (2026-11-17)
     "polarizability": 3,     # 2: idem; core-polarized continuum dipole. 3: every magic wavelength, practicality
     "blackbody": 3,          # 3: shift-vs-T sweep by the exact principal value (no zig-zag above ~600 K)
@@ -34,6 +36,7 @@ STAGE_REVISIONS: dict[str, int] = {
     "hyperfine": 1, "plotinteractive": 1, "spectra": 1, "orbital3d": 1,
     "polarizability_page": 2,   # 2: practical-only filter and photons/s for the magic wavelengths
     "scattering_rate": 1, "figure": 1, "runorca": 1,
+    "stark": 1, "pair": 1,
 }
 
 # Which stage writes <El>_<suffix>.json, and the stage outputs each one reads (same species).
@@ -41,6 +44,7 @@ _JSON_STAGE = {
     "rydberg": "rydberg", "transitions": "transitions", "lifetimes": "lifetimes",
     "polarizability": "polarizability", "blackbody": "blackbody", "tweezer": "tweezer",
     "hyperfine": "hyperfine", "feshbach_out": "feshbach", "dhf": "dhf", "brueckner": "brueckner",
+    "stark": "stark", "pair": "pair",
 }
 UPSTREAM: dict[str, tuple[str, ...]] = {
     "transitions": ("rydberg",),

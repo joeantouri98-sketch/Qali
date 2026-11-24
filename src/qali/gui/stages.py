@@ -138,6 +138,8 @@ PIPELINE = [
                   help="Report levels and lines up to this n. Blank: valence n + 6 (Na 9, Cs 12)."),
              dict(name="--omega", kind="strlist", label="alpha(omega) photon energies (eV)",
                   default="", section="model"),
+             dict(name="--no-third-order", kind="invflag", label="Third-order dipoles", section="model",
+                  help="Structural radiation and normalisation. Untick: faster, weak lines a few % low."),
              dict(name="--unscaled", kind="invflag", label="Scale Σ2 to NIST", section="fit",
                   help="One factor per l, j from the lowest NIST level. Untick: pure ab initio."),
              dict(name="--ip", kind="float", label="Ionization energy (cm-1)", default="", section="fit",
@@ -151,11 +153,17 @@ PIPELINE = [
          outputs=["data/{el}_brueckner.json"]),
 
     dict(id="rydberg", label="Rydberg series", symbol="QDT", pipeline="rydberg",
-         desc="NIST levels + quantum defect theory -> Rydberg series.",
+         desc="NIST levels + quantum defect theory -> Rydberg series; optionally DHF/Brueckner levels "
+              "for series NIST lacks.",
          positional=lambda el: [el],
          flags=[
              dict(name="--n-max", kind="int", label="Max n", default="50",
                   help="Maximum principal quantum number for the Rydberg series."),
+             dict(name="--model-levels", kind="choice", label="Model levels",
+                  choices=[("", "None"), ("dhf", "DHF + core polarisation"), ("brueckner", "Brueckner")],
+                  default="", help="Fill series NIST has no level of (Fr nf) from the model, marked theoretical."),
+             dict(name="--model-file", kind="path", browse="data", label="Model data", default="",
+                  help="Structure-model file to read. Blank: <species>_dhf.json or _brueckner.json."),
              dict(name="--nist-only", kind="flag", label="NIST-only (no QDT model)",
                   help="Write NIST ASD term levels only, no quantum-defect series. "
                        "Always on for neutral atoms that are not alkalis."),
@@ -603,6 +611,60 @@ PIPELINE = [
          ],
          outputs=["plots/{el}/{el}_orbital3d.html"]),
 
+    dict(id="stark", label="Stark map", symbol="F", pipeline="stark",
+         desc="Rydberg state in a static or AC field: Stark map, polarisability, avoided crossings.",
+         positional=lambda el: [el],
+         flags=[
+             dict(name="--state", kind="str", label="State", default="50s1/2",
+                  help="For example 50s1/2, 40p3/2, 60d5/2."),
+             dict(name="--mj", kind="str", label="m_j", default="1/2", help="Projection on the field axis."),
+             dict(name="--field-min", kind="float", label="Field from (V/cm)", default="0",
+                  help="AC: peak amplitude."),
+             dict(name="--field-max", kind="float", label="Field to (V/cm)", default="",
+                  help="Blank: the Inglis-Teller field, where manifolds meet. AC: peak amplitude."),
+             dict(name="--points", kind="int", label="Field points", default="300"),
+             dict(name="--ac-frequency", kind="float", label="AC frequency (GHz)", default="",
+                  help="Blank: static field. Set: AC map (Floquet)."),
+             dict(name="--sidebands", kind="int", label="AC sidebands", default="2",
+                  help="Photon blocks each side. Time grows as (2n+1)³."),
+             dict(name="--dc-field", kind="float", label="AC: static field (V/cm)", default="0"),
+             dict(name="--n-range", kind="int", label="Basis n ±", default="4", section="model"),
+             dict(name="--l-max", kind="int", label="Basis max l", default="", section="model",
+                  help="Blank: every l."),
+             dict(name="--window", kind="float", label="Energy window (GHz)", default="", section="model",
+                  help="Blank: 0.6 manifold spacings (AC: 1.5 × frequency)."),
+             dict(name="--data-dir", kind="path", browse="dir", label="Data directory", default=workspace_data_dir),
+         ],
+         outputs=["data/{el}_stark.json", "plots/{el}/{el}_stark.html"]),
+
+    dict(id="pair", label="Pair potential", symbol="V", pipeline="pair",
+         desc="Two Rydberg atoms: pair potentials, C6 (or C3), blockade radius.",
+         positional=lambda el: [el],
+         flags=[
+             dict(name="--state", kind="str", label="State", default="60s1/2",
+                  help="Atom 1, for example 60s1/2 or 60d5/2."),
+             dict(name="--mj", kind="str", label="m_j", default="1/2"),
+             dict(name="--state2", kind="str", label="Second state", default="", help="Blank: the same."),
+             dict(name="--mj2", kind="str", label="Second m_j", default="", help="Blank: the same."),
+             dict(name="--theta", kind="float", label="Axis angle θ (°)", default="0",
+                  help="Between the atoms' axis and the quantisation axis."),
+             dict(name="--rabi", kind="float", label="Rabi Ω/2π (MHz)", default="1", help="For the blockade radius."),
+             dict(name="--r-min", kind="float", label="R from (µm)", default="", help="Blank: 0.3 blockade radii."),
+             dict(name="--r-max", kind="float", label="R to (µm)", default="", help="Blank: 2 blockade radii."),
+             dict(name="--points", kind="int", label="R points", default="200"),
+             dict(name="--n-range", kind="int", label="Basis n ±", default="4", section="model"),
+             dict(name="--l-max", kind="int", label="Basis max l", default="", section="model",
+                  help="Blank: the pair's highest l + 3."),
+             dict(name="--ecut", kind="float", label="Pair energy cut (GHz)", default="", section="model",
+                  help="Blank: 1.7 manifold spacings."),
+             dict(name="--window", kind="float", label="Energy window (GHz)", default="", section="model",
+                  help="Blank: 1.5 × the shift at the smallest R."),
+             dict(name="--c6-cut", kind="float", label="C6 energy cut (GHz)", default="", section="model",
+                  help="Blank: every pair. ARC uses 25."),
+             dict(name="--data-dir", kind="path", browse="dir", label="Data directory", default=workspace_data_dir),
+         ],
+         outputs=["data/{el}_pair.json", "plots/{el}/{el}_pair.html"]),
+
     dict(id="compare", label="Compare elements", symbol="Σ",
          pipeline="compare_elements",
          desc="Adds element(s) to the cross-element table and writes the Compare page.",
@@ -634,7 +696,7 @@ PIPELINE = [
 STAGE_GROUPS = (
     ("Structure models", ("runorca", "orca_to_json", "dhf", "brueckner")),
     ("Atomic structure", ("rydberg", "transitions", "lifetimes")),
-    ("Atomic response", ("polarizability", "tweezer", "blackbody", "hyperfine", "feshbach")),
+    ("Atomic response", ("polarizability", "tweezer", "blackbody", "hyperfine", "feshbach", "stark", "pair")),
     ("Visualise", ("grotrian", "response", "spectra", "orbital3d")),
     ("Compare", ("compare",)),
 )
@@ -669,7 +731,8 @@ STAGE_PHYSICS = {
         "potential Sigma2(E): core polarisation that depends on the level's energy, which "
         "carries the d and f series of Ca+, Sr+, Ba+ that one static potential cannot. "
         "Sigma2 is scaled per l, j to the lowest NIST level (or not at all: pure ab initio). "
-        "Dipoles include the core's RPA response, which also gives alpha_core."
+        "Dipoles include the core's RPA response, which also gives alpha_core, and the "
+        "third-order structural radiation and normalisation."
     ),
     "rydberg": (
         "Fits quantum defects delta_l from NIST energy levels via "
@@ -763,6 +826,25 @@ STAGE_PHYSICS = {
         "thin emission at an excitation temperature, the hyperfine D lines with the "
         "natural isotope mix (Doppler or saturated absorption), the curve of growth, "
         "colour strips and the line list with air and vacuum wavelengths."
+    ),
+    "stark": (
+        "Diagonalises H0 + F z for one m_j in a basis of |n l j m_j> states around the chosen "
+        "Rydberg state (every l of n - 4 to n + 4 by default), with fine-structure-resolved energies "
+        "from precision quantum defects and radial integrals in the Marinescu model potential. "
+        "Each eigenvalue is coloured by its overlap with the chosen state, which shows where it "
+        "goes through the avoided crossings with the hydrogenic manifolds. Also gives the "
+        "polarisability (scalar and tensor) and the crossings' fields and gaps. With an AC "
+        "frequency the field is F_dc + F_ac cos(2 pi f t), solved with Shirley's Floquet "
+        "Hamiltonian (photon sidebands, as in ARC); the map is then quasienergy against the "
+        "peak amplitude, with the dynamic polarisability alpha(omega)."
+    ),
+    "pair": (
+        "Diagonalises E1 + E2 + V_dd(R) for two Rydberg atoms over pair states near the chosen "
+        "pair (dipole-dipole coupling, any axis angle), split by exchange symmetry, with the "
+        "energies and radial integrals of the Stark stage. Each eigenvalue is coloured by its "
+        "weight on the chosen pair. C6 comes from second order in the pair's degenerate manifold "
+        "(dE = C6/R^6, with its channels and Förster defects), C3 when the two levels are dipole "
+        "coupled, and the blockade radius for the Rabi frequency, perturbative and diagonalised."
     ),
     "orbital3d": (
         "Orbital page for the ground state and every level up to Max n: a 3D volume "

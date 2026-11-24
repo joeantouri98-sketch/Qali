@@ -320,6 +320,13 @@ def build_parser() -> argparse.ArgumentParser:
         '--nist-dir', default=None,
         help='NIST levels directory (default: the bundled "NIST Levels")')
     parser.add_argument(
+        '--model-levels', choices=['none', 'dhf', 'brueckner'], default='none',
+        help='Fill the series NIST has no level of (Fr nf) from the DHF or Brueckner stage output, '
+             'marked theoretical; measured series keep their quantum-defect fit (default: none)')
+    parser.add_argument(
+        '--model-file', default=None, metavar='FILE',
+        help='Model output to read instead of <species>_<model>.json (a path, or a name under the data folder)')
+    parser.add_argument(
         '--nist-only', action='store_true',
         help='Write NIST ASD term levels only (no QDT). Auto-used for 3d metals.')
     return parser
@@ -469,6 +476,52 @@ def main(argv=None) -> int:
     nist_lookup = build_nist_lookup(ionization_energy, levels)
     print(f"\nNIST lookup table : {len(nist_lookup)} unique (n, l, J, term) entries")
 
+    # Series with no measured level: the integer part of their quantum defect is the number of core shells of
+    # that l (Fr 4f), and the series starts above them (Fr 5f, n* ≈ 4); hydrogenic δ = 0 would put "6f" where
+    # 7f lies and leave 5f out.
+    from qali.core.elements import atomic_number
+    from qali.physics.rydberg import core_shell_counts
+
+    measured_l = {key[1] for key, meta in nist_lookup.items()
+                  if not (isinstance(meta, dict) and meta.get('theoretical'))}
+    core = core_shell_counts((atomic_number(sp["symbol"]) or 0) - int(sp["charge"]) - 1)
+    first_n = {}
+    qd_sources = {}
+    for l_char in 'spdfg':
+        if l_char in measured_l:
+            continue
+        first_n[l_char] = 'spdfg'.index(l_char) + 1 + core[l_char]
+        if core[l_char]:
+            quantum_defects[l_char] = float(core[l_char])
+            ritz.pop(l_char, None)
+            qd_sources[l_char] = f'core shells ({core[l_char]})'
+            print(f"  {l_char}: no NIST level; delta = {core[l_char]} (core {l_char} shells), series from "
+                  f"{first_n[l_char]}{l_char}")
+
+    model_doc, model_series = None, []
+    if args.model_levels != 'none':
+        from qali.core.data_inputs import resolve_data_file
+        from qali.physics import model_levels as ML
+
+        data_dir_in = str(Workspace.current().data_json_dir)
+        try:
+            model_doc = ML.load_model(element, args.model_levels, data_dir_in,
+                                      resolve_data_file(args.model_file, element, data_dir_in, "model"))
+        except ML.ModelLevelsError as exc:
+            raise MissingDataError(str(exc)) from None
+        model_series = ML.unmeasured_series(model_doc, measured_l)
+        name = ML.MODEL_NAMES[args.model_levels]
+        if not model_series:
+            print(f"\nModel levels ({name}): every series it covers has measured levels; nothing to fill")
+        for l_char in model_series:
+            fit = ML.ritz_fit([x for x in ML.model_levels(model_doc) if x['l'] == l_char], ry_eff)
+            if fit:
+                ritz[l_char] = dict(fit, source=name)
+                quantum_defects[l_char] = fit['delta0']
+                qd_sources[l_char] = name
+                print(f"  {name} {l_char}: delta(n) = {fit['delta0']:.5f} + {fit['delta2']:+.4f}/(n-delta)^2 "
+                      f"(model levels n={fit['n_min']}..{fit['n_max']}; no NIST {l_char} level)")
+
     # Show fine-structure splitting for first few p levels (good sanity check)
     p_levels = sorted(
         [(n, j, term, meta['energy_eV'])
@@ -511,17 +564,31 @@ def main(argv=None) -> int:
 
     print(f"\nGenerating Rydberg series for {element} (n={n_start}..{n_max})...")
     states = generate_rydberg_series(ionization_energy, quantum_defects,
-                                     nist_lookup, n_start, n_max, ry_eff=ry_eff, ritz=ritz)
+                                     nist_lookup, n_start, n_max, ry_eff=ry_eff, ritz=ritz, first_n=first_n)
 
     if not states:
         raise MissingDataError(f"no Rydberg states could be generated for {element}")
 
+    model_summary = None
+    if model_doc is not None and model_series:
+        from qali.physics import model_levels as ML
+
+        model_summary = ML.apply_model_levels(states, model_doc, args.model_levels, model_series,
+                                              ionization_energy, ry_eff, n_max)
+        model_summary['file'] = os.path.basename(
+            args.model_file or f"{element}_{args.model_levels}.json")
+        print(f"\nModel levels ({model_summary['name']}): {model_summary['levels']} levels of the "
+              f"{', '.join(model_series)} series (no NIST level), marked theoretical: "
+              + ", ".join(model_summary['labels'][:8]) + (" ..." if model_summary['levels'] > 8 else ""))
+
     nist_count  = sum(1 for s in states if s['source'] == 'NIST')
     model_count = sum(1 for s in states if s['source'] == 'QDT model')
+    theory_count = sum(1 for s in states if s['source'] in ('DHF', 'Brueckner'))
     theo_count  = sum(1 for s in states if s.get('theoretical'))
     print(f"\nGenerated {len(states)} Rydberg states")
     print(f"  {nist_count} from NIST (J-resolved),  {model_count} from QDT model"
-          f"  ({theo_count} marked theoretical [ ])")
+          + (f",  {theory_count} from {model_summary['name']}" if model_summary else "")
+          + f"  ({theo_count} marked theoretical)")
     print(f"Energy range: {min(s['energy_eV'] for s in states):.4f} to "
           f"{max(s['energy_eV'] for s in states):.4f} eV")
 
@@ -542,6 +609,8 @@ def main(argv=None) -> int:
         'rydberg_constant_eV':  ry_eff,
         'quantum_defects':      quantum_defects,
         'quantum_defects_ritz': ritz,
+        **({'quantum_defect_sources': qd_sources} if qd_sources else {}),
+        **({'model_levels': model_summary} if model_summary else {}),
         'qd_notes': (
             'Averaged with inverse-variance weights from ASD Uncertainty (eV); '
             'theoretical [ ] levels excluded from the QD fit but kept in excitations.'

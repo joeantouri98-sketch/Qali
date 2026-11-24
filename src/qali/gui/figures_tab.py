@@ -676,6 +676,15 @@ class FiguresTab(QWidget):
         f.addRow(self.od_merge)
         return w
 
+    def _page_model_check(self) -> QWidget:
+        w = QWidget()
+        f = QVBoxLayout(w)
+        f.setContentsMargins(0, 0, 0, 0)
+        lab = QLabel("Ground ns→np f-values: measured, the Extrapolator and the DHF / Brueckner stages.")
+        lab.setWordWrap(True)
+        f.addWidget(lab)
+        return w
+
     def _page_blackbody(self) -> QWidget:
         w = QWidget()
         f = QFormLayout(w)
@@ -747,6 +756,46 @@ class FiguresTab(QWidget):
         f.addRow("Level", self.bra_state)
         f.addRow("B up to (G)", self.bra_bmax)
         f.addRow("Energy", self.bra_unit)
+        return w
+
+    def _page_stark(self) -> QWidget:
+        w = QWidget()
+        f = QFormLayout(w)
+        self.sk_unit = self._combo([(k, v[0].replace("$^{-1}$", "\u207b\u00b9")) for k, v in templates.STARK_UNITS.items()])
+        self.sk_zero = self._combo([("state", "the state's level"), ("limit", "the ionization limit")])
+        self.sk_cmap = self._combo(list(templates.STARK_CMAPS.items()))
+        self.sk_cbar = self._edit("automatic", "Blank: |<state|μ>|², the state's share of each level")
+        self.sk_min = self._edit("0", "Leave out eigenvalues with less of the state")
+        self.sk_fol = self._check("Followed state")
+        self.sk_quad = self._check("Second-order shift")
+        self.sk_cross = self._check("Avoided crossings")
+        f.addRow("Energy", self.sk_unit)
+        f.addRow("Zero at", self.sk_zero)
+        f.addRow("Colours", self.sk_cmap)
+        f.addRow("Colour-bar label", self.sk_cbar)
+        f.addRow("Character from", self.sk_min)
+        f.addRow(self.sk_fol)
+        f.addRow(self.sk_quad)
+        f.addRow(self.sk_cross)
+        return w
+
+    def _page_pair(self) -> QWidget:
+        w = QWidget()
+        f = QFormLayout(w)
+        self.pp_unit = self._combo([(k, v[0]) for k, v in templates.PAIR_UNITS.items()])
+        self.pp_cmap = self._combo(list(templates.STARK_CMAPS.items()))
+        self.pp_cbar = self._edit("automatic", "Blank: |<pair|μ>|², the pair's share of each level")
+        self.pp_min = self._edit("0", "Leave out eigenvalues with less of the pair")
+        self.pp_fol = self._check("Followed pair")
+        self.pp_asym = self._check("C\u2086/R\u2076 (or \u00b1C\u2083/R\u00b3)")
+        self.pp_bl = self._check("Blockade radius")
+        f.addRow("Energy", self.pp_unit)
+        f.addRow("Colours", self.pp_cmap)
+        f.addRow("Colour-bar label", self.pp_cbar)
+        f.addRow("Character from", self.pp_min)
+        f.addRow(self.pp_fol)
+        f.addRow(self.pp_asym)
+        f.addRow(self.pp_bl)
         return w
 
     def _page_feshbach(self) -> QWidget:
@@ -978,6 +1027,21 @@ class FiguresTab(QWidget):
             self._bb_rows()
             self.bra_bmax.setText(f"{p['B_max']:g}" if p.get("B_max") else "")
             self.bra_unit.setCurrentIndex(max(0, self.bra_unit.findData(p.get("unit", ""))))
+            self.sk_unit.setCurrentIndex(max(0, self.sk_unit.findData(p.get("unit", "GHz"))))
+            self.sk_zero.setCurrentIndex(max(0, self.sk_zero.findData(p.get("zero", "state"))))
+            self.sk_cmap.setCurrentIndex(max(0, self.sk_cmap.findData(p.get("cmap", "viridis_r"))))
+            self.sk_cbar.setText(p.get("cbar_label") or "")
+            self.sk_min.setText(f"{p['min_char']:g}" if p.get("min_char") else "")
+            self.sk_fol.setChecked(bool(p.get("followed", True)))
+            self.sk_quad.setChecked(bool(p.get("quadratic", True)))
+            self.sk_cross.setChecked(bool(p.get("crossings", False)))
+            self.pp_unit.setCurrentIndex(max(0, self.pp_unit.findData(p.get("unit", "MHz"))))
+            self.pp_cmap.setCurrentIndex(max(0, self.pp_cmap.findData(p.get("cmap", "qali_blue"))))
+            self.pp_cbar.setText(p.get("cbar_label") or "")
+            self.pp_min.setText(f"{p['min_char']:g}" if p.get("min_char") else "")
+            self.pp_fol.setChecked(bool(p.get("followed", True)))
+            self.pp_asym.setChecked(bool(p.get("asymptote", True)))
+            self.pp_bl.setChecked(bool(p.get("blockade", True)))
             self.fe_bmin.setText(f"{p['B_min']:g}" if p.get("B_min") is not None else "")
             self.fe_bmax.setText(f"{p['B_max']:g}" if p.get("B_max") is not None else "")
             self.fe_ymax.setText(f"{p['ymax']:g}" if p.get("ymax") else "")
@@ -1286,6 +1350,17 @@ class FiguresTab(QWidget):
         elif t == "breit_rabi":
             p.update(state=self.bra_state.currentData() or "", B_max=_float_or_none(self.bra_bmax.text()),
                      unit=self.bra_unit.currentData())
+        elif t == "stark":
+            p.update(unit=self.sk_unit.currentData(), zero=self.sk_zero.currentData(), cmap=self.sk_cmap.currentData(),
+                     cbar_label=self.sk_cbar.text().strip(),
+                     min_char=_float_or_none(self.sk_min.text()),
+                     followed=self.sk_fol.isChecked(), quadratic=self.sk_quad.isChecked(),
+                     crossings=self.sk_cross.isChecked())
+        elif t == "pair":
+            p.update(unit=self.pp_unit.currentData(), cmap=self.pp_cmap.currentData(),
+                     cbar_label=self.pp_cbar.text().strip(), min_char=_float_or_none(self.pp_min.text()),
+                     followed=self.pp_fol.isChecked(), asymptote=self.pp_asym.isChecked(),
+                     blockade=self.pp_bl.isChecked())
         elif t == "feshbach":
             if self.fe_channels.count():
                 p["channels"] = self._checked(self.fe_channels)

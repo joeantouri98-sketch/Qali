@@ -314,10 +314,12 @@ def _ion(ion_ws, species):
 def test_mg_ion_matches_nist(ion_ws):
     data, levels, f, _ = _ion(ion_ws, "Mg_c1")
     assert data["charge"] == 1 and data["label"] == "Mg+"
-    assert data["inputs"]["ionization_source"] == "NIST Handbook (built-in)"
+    # the bundled NIST levels (resources/NIST Levels/Mg_c1.csv) take precedence over the Handbook table
+    assert data["inputs"]["ionization_source"] == "NIST"
     assert data["alpha_core_au"] == pytest.approx(0.48)
-    # NIST Handbook Mg II (MZ80): 3p and 3d, 4d are inputs; 4s, 4p, 5s are predictions
-    assert levels["3p1/2"]["fitted"] and levels["4d3/2"]["fitted"]
+    # NIST ASD Mg II: 3p, 3d (and the highest d) are inputs; 4s, 4p, 5s and 4d are predictions
+    assert levels["3p1/2"]["fitted"] and levels["3d3/2"]["fitted"] and not levels["4d5/2"]["fitted"]
+    assert levels["4d5/2"]["energy_cm"] == pytest.approx(11.569039 * 8065.543937, rel=1e-5)
     assert levels["4s1/2"]["energy_cm"] == pytest.approx(69804.95, rel=5e-4)
     assert levels["4p3/2"]["energy_cm"] == pytest.approx(80650.02, rel=5e-4)
     assert levels["5s1/2"]["energy_cm"] == pytest.approx(92790.51, rel=5e-4)

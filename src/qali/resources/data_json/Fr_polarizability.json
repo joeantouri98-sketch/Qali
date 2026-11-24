@@ -1,10 +1,10 @@
 {
   "_qali": {
-    "version": "3.0.0",
+    "version": "3.1.0",
     "stage": "polarizability",
     "revision": 3,
     "command": "qali --pipeline polarizability --all",
-    "generated_utc": "2026-11-18T09:35:58+00:00"
+    "generated_utc": "2026-11-18T14:37:41+00:00"
   },
   "element": "Fr",
   "gs_label": "7s",
@@ -235,7 +235,7 @@
       "detuning_nm": 0.0281,
       "scatter_ground_1mK_s": 6.271,
       "heating_time_s": 1243.0,
-      "excite_per_decay": 0.0004321,
+      "excite_per_decay": 0.0004322,
       "window_ghz": 0.9202,
       "practical": true,
       "robustness": "very sensitive"
@@ -363,7 +363,7 @@
       "detuning_nm": -0.0342,
       "scatter_ground_1mK_s": 6.279,
       "heating_time_s": 1244.0,
-      "excite_per_decay": 0.0002801,
+      "excite_per_decay": 0.0002802,
       "window_ghz": 1.446,
       "practical": true,
       "robustness": "very sensitive"
@@ -715,7 +715,7 @@
       "detuning_nm": -0.0626,
       "scatter_ground_1mK_s": 6.325,
       "heating_time_s": 1247.0,
-      "excite_per_decay": 9.471e-05,
+      "excite_per_decay": 9.472e-05,
       "window_ghz": 4.384,
       "practical": true,
       "robustness": "very sensitive"
@@ -811,7 +811,7 @@
       "detuning_nm": -0.0785,
       "scatter_ground_1mK_s": 6.353,
       "heating_time_s": 1249.0,
-      "excite_per_decay": 7.033e-05,
+      "excite_per_decay": 7.034e-05,
       "window_ghz": 5.93,
       "practical": true,
       "robustness": "very sensitive"
@@ -907,7 +907,7 @@
       "detuning_nm": -0.102,
       "scatter_ground_1mK_s": 6.399,
       "heating_time_s": 1251.0,
-      "excite_per_decay": 5.227e-05,
+      "excite_per_decay": 5.228e-05,
       "window_ghz": 8.019,
       "practical": true,
       "robustness": "very sensitive"
@@ -923,7 +923,7 @@
       "detuning_nm": 0.0677,
       "scatter_ground_1mK_s": 6.403,
       "heating_time_s": 1251.0,
-      "excite_per_decay": 9.897e-05,
+      "excite_per_decay": 9.898e-05,
       "window_ghz": 4.193,
       "practical": true,
       "robustness": "very sensitive"
@@ -939,7 +939,7 @@
       "detuning_nm": -0.1133,
       "scatter_ground_1mK_s": 6.421,
       "heating_time_s": 1251.0,
-      "excite_per_decay": 4.717e-05,
+      "excite_per_decay": 4.718e-05,
       "window_ghz": 8.905,
       "practical": true,
       "robustness": "very sensitive"
@@ -955,7 +955,7 @@
       "detuning_nm": 0.085,
       "scatter_ground_1mK_s": 6.426,
       "heating_time_s": 1252.0,
-      "excite_per_decay": 7.992e-05,
+      "excite_per_decay": 7.993e-05,
       "window_ghz": 5.227,
       "practical": true,
       "robustness": "very sensitive"
@@ -987,7 +987,7 @@
       "detuning_nm": 0.1119,
       "scatter_ground_1mK_s": 6.454,
       "heating_time_s": 1252.0,
-      "excite_per_decay": 6.222e-05,
+      "excite_per_decay": 6.223e-05,
       "window_ghz": 6.755,
       "practical": true,
       "robustness": "very sensitive"
@@ -1003,7 +1003,7 @@
       "detuning_nm": -0.1347,
       "scatter_ground_1mK_s": 6.483,
       "heating_time_s": 1253.0,
-      "excite_per_decay": 4.063e-05,
+      "excite_per_decay": 4.064e-05,
       "window_ghz": 10.38,
       "practical": true,
       "robustness": "very sensitive"
@@ -1019,7 +1019,7 @@
       "detuning_nm": 0.1518,
       "scatter_ground_1mK_s": 6.49,
       "heating_time_s": 1253.0,
-      "excite_per_decay": 4.778e-05,
+      "excite_per_decay": 4.779e-05,
       "window_ghz": 8.843,
       "practical": true,
       "robustness": "very sensitive"
@@ -1035,7 +1035,7 @@
       "detuning_nm": -0.1569,
       "scatter_ground_1mK_s": 6.526,
       "heating_time_s": 1254.0,
-      "excite_per_decay": 3.546e-05,
+      "excite_per_decay": 3.547e-05,
       "window_ghz": 11.93,
       "practical": true,
       "robustness": "very sensitive"
@@ -1051,7 +1051,7 @@
       "detuning_nm": 0.1967,
       "scatter_ground_1mK_s": 6.535,
       "heating_time_s": 1254.0,
-      "excite_per_decay": 3.81e-05,
+      "excite_per_decay": 3.811e-05,
       "window_ghz": 11.15,
       "practical": true,
       "robustness": "very sensitive"
@@ -1083,7 +1083,7 @@
       "detuning_nm": 0.2628,
       "scatter_ground_1mK_s": 6.594,
       "heating_time_s": 1254.0,
-      "excite_per_decay": 3.005e-05,
+      "excite_per_decay": 3.006e-05,
       "window_ghz": 14.22,
       "practical": true,
       "robustness": "very sensitive"
@@ -1099,7 +1099,7 @@
       "detuning_nm": -0.2025,
       "scatter_ground_1mK_s": 6.659,
       "heating_time_s": 1254.0,
-      "excite_per_decay": 3.014e-05,
+      "excite_per_decay": 3.015e-05,
       "window_ghz": 14.14,
       "practical": true,
       "robustness": "very sensitive"
@@ -1115,7 +1115,7 @@
       "detuning_nm": 0.3758,
       "scatter_ground_1mK_s": 6.674,
       "heating_time_s": 1254.0,
-      "excite_per_decay": 2.311e-05,
+      "excite_per_decay": 2.312e-05,
       "window_ghz": 18.65,
       "practical": true,
       "robustness": "very sensitive"
@@ -1147,7 +1147,7 @@
       "detuning_nm": 0.5454,
       "scatter_ground_1mK_s": 6.786,
       "heating_time_s": 1253.0,
-      "excite_per_decay": 1.774e-05,
+      "excite_per_decay": 1.775e-05,
       "window_ghz": 24.56,
       "practical": true,
       "robustness": "very sensitive"
@@ -1163,7 +1163,7 @@
       "detuning_nm": -0.2863,
       "scatter_ground_1mK_s": 6.913,
       "heating_time_s": 1250.0,
-      "excite_per_decay": 2.489e-05,
+      "excite_per_decay": 2.49e-05,
       "window_ghz": 17.33,
       "practical": true,
       "robustness": "very sensitive"
@@ -1179,7 +1179,7 @@
       "detuning_nm": 0.8123,
       "scatter_ground_1mK_s": 6.947,
       "heating_time_s": 1250.0,
-      "excite_per_decay": 1.369e-05,
+      "excite_per_decay": 1.37e-05,
       "window_ghz": 32.34,
       "practical": true,
       "robustness": "sensitive"
@@ -1211,7 +1211,7 @@
       "detuning_nm": 1.2615,
       "scatter_ground_1mK_s": 7.195,
       "heating_time_s": 1242.0,
-      "excite_per_decay": 1.049e-05,
+      "excite_per_decay": 1.05e-05,
       "window_ghz": 43.19,
       "practical": true,
       "robustness": "sensitive"
@@ -1227,7 +1227,7 @@
       "detuning_nm": -0.4345,
       "scatter_ground_1mK_s": 7.509,
       "heating_time_s": 1229.0,
-      "excite_per_decay": 2.118e-05,
+      "excite_per_decay": 2.119e-05,
       "window_ghz": 20.86,
       "practical": true,
       "robustness": "very sensitive"
@@ -1243,7 +1243,7 @@
       "detuning_nm": 2.0737,
       "scatter_ground_1mK_s": 7.608,
       "heating_time_s": 1225.0,
-      "excite_per_decay": 8.055e-06,
+      "excite_per_decay": 8.071e-06,
       "window_ghz": 58.2,
       "practical": true,
       "robustness": "sensitive"
@@ -1275,7 +1275,7 @@
       "detuning_nm": -3.7015,
       "scatter_ground_1mK_s": 8.394,
       "heating_time_s": 1184.0,
-      "excite_per_decay": 6.357e-06,
+      "excite_per_decay": 6.379e-06,
       "window_ghz": 77.65,
       "practical": true,
       "robustness": "sensitive"
@@ -1291,7 +1291,7 @@
       "detuning_nm": -0.7113,
       "scatter_ground_1mK_s": 9.66,
       "heating_time_s": 1112.0,
-      "excite_per_decay": 2.16e-05,
+      "excite_per_decay": 2.161e-05,
       "window_ghz": 21.53,
       "practical": true,
       "robustness": "very sensitive"
@@ -1307,7 +1307,7 @@
       "detuning_nm": -5.5034,
       "scatter_ground_1mK_s": 10.28,
       "heating_time_s": 1076.0,
-      "excite_per_decay": 5.285e-06,
+      "excite_per_decay": 5.323e-06,
       "window_ghz": 101.6,
       "practical": true,
       "robustness": "sensitive"
@@ -1339,7 +1339,7 @@
       "detuning_nm": -7.0214,
       "scatter_ground_1mK_s": 19.6,
       "heating_time_s": 696.0,
-      "excite_per_decay": 6.012e-06,
+      "excite_per_decay": 6.055e-06,
       "window_ghz": 103.5,
       "practical": true,
       "robustness": "sensitive"
@@ -1371,7 +1371,7 @@
       "detuning_nm": 28.1855,
       "scatter_ground_1mK_s": 168.0,
       "heating_time_s": 116.9,
-      "excite_per_decay": 3.79e-06,
+      "excite_per_decay": 3.791e-06,
       "window_ghz": 84.13,
       "practical": true,
       "robustness": "sensitive"

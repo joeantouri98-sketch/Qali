@@ -1,4 +1,4 @@
-<script src="plotly.min.js" charset="utf-8"></script><meta charset="utf-8"><title>Li Grotrian diagram</title>
+<meta name="qali-stamp" content='{"version": "3.1.0", "stage": "plotinteractive", "revision": 1, "command": "qali --pipeline plotinteractive Li", "generated_utc": "2026-11-18T14:43:41+00:00"}'><script src="plotly.min.js" charset="utf-8"></script><meta charset="utf-8"><title>Li Grotrian diagram</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 :root{
@@ -194,7 +194,7 @@ const lab=l=>l.pl||l.k;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const nice=l=>lab(l);
 const nh=l=>{const m=/^(.*?)(\d+\/\d+)$/.exec(lab(l));return m?esc(m[1])+'<span class="j">'+m[2]+'</span>':esc(lab(l))};
-const cls=l=>l.src==='NIST'?(l.th?'NIST theo.':'NIST'):(l.src==='NIST'||l.src==null?'NIST':(l.src==='QDT model'?'QDT':l.src));
+const cls=l=>l.src==='NIST'?(l.th?'NIST theo.':'NIST'):(l.src==='NIST'||l.src==null?'NIST':(l.src==='QDT model'?'QDT':(l.src==='DHF'||l.src==='Brueckner'?'Model':l.src)));
 // ---- transitions: [u,l,wl,A,f,fsrc,facc,sigmaA,fdelta]; extras sparse
 const T=D.trans.map((r,i)=>{const u=L[r[0]],lo=L[r[1]];
   return {id:i,u:r[0],l:r[1],wl:r[2],A:r[3],f:r[4],fs:r[5]||'–',fa:r[6],grade:gradeOf(r[6]),sA:r[7],fd:r[8],ex:D.extra[i]||{},ls:cls(u)+'–'+cls(lo),up:u,lo:lo,
@@ -262,7 +262,7 @@ function shown(c,mt){ if(S.isolate&&S.sel.size)return [...S.sel].map(i=>T[i]);
 const rcol=t=>S.col==='mono'?css('--line'):css(REG.find(r=>r[0]===t.region)[2]);
 const NB=4;
 function levelHover(l){return `<b>${esc(nice(l))}</b> · ${esc(l.nl)}${l.term?' · '+esc(l.term):''} · ${cls(l)}<br>E = ${l.E.toFixed(5)} eV (${(l.E*8065.544).toFixed(2)} cm⁻¹)<br>Ionisation-relative ${(l.E-D.IE).toFixed(5)} eV`+(l.g?`<br>g = ${l.g}`:'<br>g = n/a (no J)')+(l.unc?`<br>σ(E) = ${l.unc} eV`:'')+
-  (l.th?'<br><i>NIST theoretical level [ ], excluded from the QD fit</i>':'')+
+  (cls(l)==='Model'?'<br><i>'+esc(l.src)+' level: calculated, no NIST level of this series</i>':(l.th?'<br><i>NIST theoretical level [ ], excluded from the QD fit</i>':''))+
   (l.tau?`<br>──────<br>τ = ${l.tau.toFixed(2)} ± ${l.stau.toFixed(2)} ns<br>A_total = ${sci(l.At)} ± ${sci(l.sAt)} s⁻¹<br>Dominant: ${esc(l.ds)}${l.da?' ['+esc(l.da)+']':''} · overall ${esc(l.qa||'–')} (±${Math.round((l.qd||0)*100)}%)<br>${l.nch} decay channels, main → ${esc(l.dd)}<br>Δν_nat = ${l.nat.toPrecision(4)} MHz`:'<br>no lifetime data')+`<br><i>click to pin</i>`}
 function bandTxt(x){return `<br>──────<br>Extrapolation model: f = ${fmtF(x.f)}<br>68%: ${fmtF(x.lo68)} – ${fmtF(x.hi68)}<br>95%: ${fmtF(x.lo95)} – ${fmtF(x.hi95)}`}
 function lineHover(t){const e=t.ex,ul=t.up,ll=t.lo,br=branch(t);
@@ -308,7 +308,7 @@ function build(){
   if(c.lbl){const seen=new Set();[...tr].sort((p,q)=>(q.f||0)-(p.f||0)).filter(t=>{if(!pos[t.u]||!pos[t.l]||t.dE<300)return false;const k=t.wl.toFixed(0);if(seen.has(k))return false;seen.add(k);return true}).slice(0,10).forEach(t=>{const a=pos[t.l],b=pos[t.u];
     ann.push({x:(mid(a)+mid(b))/2,y:(Y(a.E)+Y(b.E))/2,text:t.wl.toFixed(1),showarrow:false,font:{size:10,color:ink,family:css('--mono')},bgcolor:bg,borderpad:1,opacity:.92})})}
   if(c.lv){
-    [['NIST','NIST level',cNist,5,'solid'],['NIST theo.','NIST theoretical [ ]',css('--theo'),4,'dashdot'],['QDT','QDT-model level (no J)',cQdt,3,'dot']].forEach(([src,name,colr,w,dash])=>{
+    [['NIST','NIST level',cNist,5,'solid'],['NIST theo.','NIST theoretical [ ]',css('--theo'),4,'dashdot'],['QDT','QDT-model level (no J)',cQdt,3,'dot'],['Model','Model level (DHF / Brueckner)',css('--theo'),4,'dash']].forEach(([src,name,colr,w,dash])=>{
       const items=lv.filter(l=>cls(l)===src); if(!items.length)return;
       const x=[],y=[],tx=[],cd=[];
       items.forEach(l=>{const [a,b]=span(l),yy=Y(l.E),hov=levelHover(l);
@@ -366,7 +366,7 @@ function rowCsv(t){return [t.u,t.l,t.wl,t.dE.toFixed(3),t.f==null?'':t.f.toExpon
 function closeMore(){const o=$('ov');if(o)o.remove()}
 function showMore(t){closeMore();const e=t.ex,ul=t.up,ll=t.lo,xb=e.xb,br=branch(t);
   const kv=a=>'<div class="g">'+a.map(([k,v])=>`<span>${k}</span><span>${v}</span>`).join('')+'</div>';
-  const lev=l=>kv([['Label',nh(l)+' · '+esc(l.nl)],['Term',esc(l.term||'–')],['Class',cls(l)+(l.th?' (ASD theoretical level)':'')],['E',l.E.toFixed(6)+' eV · '+(l.E*8065.544).toFixed(2)+' cm⁻¹'],['E (ionisation-relative)',(l.E-D.IE).toFixed(6)+' eV'],['σ(E)',l.unc?l.unc+' eV':'–'],['g = 2J+1',l.g||'n/a'],
+  const lev=l=>kv([['Label',nh(l)+' · '+esc(l.nl)],['Term',esc(l.term||'–')],['Class',cls(l)==='Model'?esc(l.src)+' (calculated)':cls(l)+(l.th?' (ASD theoretical level)':'')],['E',l.E.toFixed(6)+' eV · '+(l.E*8065.544).toFixed(2)+' cm⁻¹'],['E (ionisation-relative)',(l.E-D.IE).toFixed(6)+' eV'],['σ(E)',l.unc?l.unc+' eV':'–'],['g = 2J+1',l.g||'n/a'],
     ['Lifetime τ',l.tau?l.tau.toFixed(3)+' ± '+l.stau.toFixed(3)+' ns':'none'],['A_total',l.tau?sci(l.At)+' ± '+sci(l.sAt)+' s⁻¹':'–'],['Dominant source',l.tau?esc(l.ds)+(l.da?' ['+esc(l.da)+']':''):'–'],['Overall grade',l.tau?esc(l.qa||'–')+' (±'+Math.round((l.qd||0)*100)+'%)':'–'],['Decay channels',l.tau?l.nch+', main → '+esc(l.dd):'–'],['Natural linewidth',l.tau?l.nat.toPrecision(4)+' MHz':'–']]);
   const o=document.createElement('div');o.className='ov';o.id='ov';
   o.innerHTML=`<div class="dlg" role="dialog" aria-label="Transition details"><div style="display:flex;gap:8px;align-items:flex-start"><div style="flex:1"><h3>${nh(ul)} ↔ ${nh(ll)}</h3><div class="hint" style="margin:0">${t.wl.toFixed(4)} nm (vacuum) · ${t.region}</div></div><button class="btn" id="dcopy">Copy as text</button><button class="btn" id="dclose">Close</button></div>
