@@ -4,6 +4,8 @@ Short notes on what changed in Qali (called LiNaK until November 2026). Newest f
 
 ## Latest
 
+## 3.1.1 – 2026-11-24
+
 ### Added
 - **Stark map stage** (Atomic response > **Stark map**; `qali --pipeline stark Rb --state 50s1/2`). A Rydberg state of Li–Fr in a static field, with the engine below:
   - writes `<El>_stark.json` and the page `plots/<El>/<El>_stark.html`: every eigenvalue near the state against field, coloured by its overlap with the state (character), the followed state, −½αF², the avoided crossings it meets (field and gap), and the field-free levels in the window; a field cursor reads off shift, character and the nearest other level; GHz, MHz or cm⁻¹; CSV export;
@@ -47,6 +49,10 @@ Short notes on what changed in Qali (called LiNaK until November 2026). Newest f
   - Checked by taking the f series of Na to Cs as if unmeasured: the Brueckner f levels are within 0.2 cm⁻¹ of NIST (DHF 0.5 cm⁻¹), against 14–76 cm⁻¹ for a hydrogenic series, and within the stated uncertainty. Li 5f is the exception: Brueckner, DHF and a hydrogenic level all sit 7 cm⁻¹ from the NIST value.
   - With Brueckner f levels, Fr nd (n ≥ 8) lifetimes drop 3–6 % (decay to 5f, 6f); 5f₅/₂ lives 47.9 ns, 5f₇/₂ 50.0 ns. α₀ and the 7s–7p₁/₂ magic wavelengths do not change (no f channel).
   - Grotrian: model levels dashed (figure) or in their own style (Grotrian page), with a note.
+
+### Changed
+- **Citation.** One DOI everywhere (README, CITATION.cff, REFERENCES, Help > About): 10.5281/zenodo.21821148, the concept DOI that resolves to the latest version. CITATION.cff has new keywords and an abstract covering the current scope.
+- **Bundled ion levels.** NIST levels of Be⁺, Mg⁺, Ca⁺, Sr⁺ and Ba⁺ (`resources/NIST Levels/*_c1.csv`) now come with Qali, so the ion stages take their levels and ionization energy from NIST rather than the built-in Handbook table.
 
 ### Fixed
 - **Fr nf series.** A series with no NIST level was hydrogenic (δ = 0) from the ground state's n up: Fr "6f" sat where 7f lies (n* = 6 against 4.97), every f level was labelled one n too low, and 5f, the lowest member, was missing. Such a series now starts above the core's shells of its l and takes their number as the integer part of its quantum defect (Fr: one f shell, 4f, so δ_f = 1, series from 5f); its fractional part needs a model (above). Fr 5g is now generated too. The Rydberg stage revision is 2; Li to Cs are unchanged.

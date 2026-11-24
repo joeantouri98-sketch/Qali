@@ -214,7 +214,7 @@ If that does not help, please [open an issue](https://github.com/joeantouri98-sk
 
 If you use Qali in a paper or thesis, please cite:
 
-Youssef Antoury, *Qali: an integrated computational toolkit for AMO physics* (2026). DOI: [10.5281/zenodo.24201623](https://doi.org/10.5281/zenodo.24201623)
+Youssef Antoury, *Qali: an integrated computational toolkit for AMO physics* (2026). DOI: [10.5281/zenodo.21821148](https://doi.org/10.5281/zenodo.21821148)
 
 Please also cite the sources of any numbers you quote, such as NIST ASD. [REFERENCES.md](REFERENCES.md) lists what to cite, and [REFERENCES.bib](REFERENCES.bib) has the BibTeX entries. If you report ORCA or ARC results, cite those programs too.
 

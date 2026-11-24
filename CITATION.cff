@@ -8,22 +8,49 @@ authors:
     orcid: https://orcid.org/0009-0009-4665-0029
     email: Joeantouri98@gmail.com
 keywords:
+  - atomic physics
   - AMO
   - alkali atoms
-  - Rydberg
+  - alkali-like ions
+  - quantum defect theory
+  - Dirac-Hartree-Fock
+  - Brueckner orbitals
+  - many-body perturbation theory
+  - oscillator strengths
+  - radiative lifetimes
+  - blackbody radiation
   - polarizability
-  - Feshbach
+  - magic wavelengths
   - optical tweezers
-version: "0.1.0"
-date-released: "2026-08-06"
+  - hyperfine structure
+  - Zeeman effect
+  - Feshbach resonances
+  - Rydberg atoms
+  - Stark maps
+  - Floquet theory
+  - van der Waals C6
+  - Rydberg blockade
+  - NIST Atomic Spectra Database
+  - Python
+version: "3.1.1"
+date-released: "2026-11-24"
 license: GPL-3.0-or-later
 abstract: >-
-  Qali (called LiNaK until November 2026) is a Python NIST/QDT toolkit for neutral alkali atoms (Li–Fr):
-  levels, transitions, lifetimes, polarizability, BBR, tweezers, hyperfine,
-  and Feshbach, with optional ORCA (Neese) and ARC bridges. Limited support
-  for ions and 3d metals (Fe, Cr).
+  Qali (called LiNaK until November 2026) is an open-source Python toolkit, with a desktop
+  interface, for the atomic structure and light-matter properties of the alkali atoms Li to Fr
+  and alkali-like ions. It combines NIST Atomic Spectra Database levels with quantum-defect
+  theory and model-potential wavefunctions, and adds its own Dirac-Hartree-Fock calculation
+  with core polarisation and second- and third-order Brueckner corrections. From these it
+  computes energy levels, E1 matrix elements and oscillator strengths, radiative and blackbody
+  lifetimes, static and dynamic polarisabilities, magic wavelengths, optical-tweezer traps and
+  scattering rates, hyperfine and Zeeman structure, Feshbach resonances and absorption spectra.
+  For Rydberg states it gives Stark maps in static and oscillating fields (Shirley's Floquet
+  method), dipole-dipole pair potentials, C3 and C6 coefficients and blockade radii, checked
+  against measurements and against ARC. Results come as interactive pages and as
+  publication-ready figures, with optional bridges to ORCA and ARC.
 url: "https://github.com/joeantouri98-sketch/Qali"
 repository-code: "https://github.com/joeantouri98-sketch/Qali"
 identifiers:
   - type: doi
-    value: "10.5281/zenodo.24201623"
+    value: "10.5281/zenodo.21821148"
+    description: "Concept DOI: all versions of Qali (resolves to the latest)"
