@@ -2,6 +2,8 @@
 
 Short notes on what changed in Qali (called LiNaK until November 2026). Newest first.
 
+## 3.2.0 – 2026-11-26
+
 ## Latest
 
 ### Added
