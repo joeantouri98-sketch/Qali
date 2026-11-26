@@ -140,7 +140,7 @@ def _state_index(ss: SingleStates, level: int, m2: int) -> int:
 
 
 def dispersion(ss: SingleStates, a: int, b: int, m2a: int, m2b: int, theta: float = 0.0,
-               ecut_ghz: float | None = None) -> Dispersion:
+               ecut_ghz: float | None = None, deg_tol_ghz: float = 1e-6) -> Dispersion:
     """C3 and C6 of the pair (levels a, b) in its degenerate manifold, and C6 of |a m2a, b m2b>.
 
     ecut_ghz: leave out intermediate pairs further than this from the chosen pair (None: all of
@@ -151,11 +151,18 @@ def dispersion(ss: SingleStates, a: int, b: int, m2a: int, m2b: int, theta: floa
            for ma in range(-la.j2, la.j2 + 1, 2) for mb in range(-lb.j2, lb.j2 + 1, 2)]
     if a != b:
         man += [(t, s) for s, t in man]
+    # the degenerate manifold: every m in zero field; in a field only those still degenerate (±m in E,
+    # none other in B), and any other pair within deg_tol_ghz of the chosen one (a Förster resonance)
+    E_c = ss.E_ghz[_state_index(ss, a, m2a)] + ss.E_ghz[_state_index(ss, b, m2b)]
+    man = [(s, t) for s, t in man if abs(ss.E_ghz[s] + ss.E_ghz[t] - E_c) <= deg_tol_ghz]
+    if getattr(ss, "field_V_cm", 0.0) or getattr(ss, "B_gauss", 0.0):
+        near = np.argwhere(np.abs(ss.E_ghz[:, None] + ss.E_ghz[None, :] - E_c) <= deg_tol_ghz)
+        man += [(int(s), int(t)) for s, t in near if (int(s), int(t)) not in man]
     labels = tuple(f"{ss.levels[ss.states[s][0]].label} {ss.states[s][1]}/2, "
                    f"{ss.levels[ss.states[t][0]].label} {ss.states[t][1]}/2" for s, t in man)
     S = len(ss.states)
     cols = _v_columns(ss, W, man)                                  # [S*S, K] a.u.
-    E_t = ss.E_ghz[man[0][0]] + ss.E_ghz[man[0][1]]
+    E_t = E_c
     Ep = (ss.E_ghz[:, None] + ss.E_ghz[None, :]).ravel()
     dE = E_t - Ep
     in_man = np.zeros(S * S, bool)
@@ -219,7 +226,9 @@ def pair_basis(ss: SingleStates, a: int, b: int, m2a: int, m2b: int, theta: floa
     m2 = np.array([m for _, m in ss.states])
     ok1 = np.ones(S, bool) if l_max is None else lv <= l_max
     dE = ss.E_ghz[:, None] + ss.E_ghz[None, :] - E_t
-    mask = (np.abs(dE) <= ecut_ghz) & ok1[:, None] & ok1[None, :] & (((lv[:, None] + lv[None, :]) % 2) == lpar)
+    mask = (np.abs(dE) <= ecut_ghz) & ok1[:, None] & ok1[None, :]
+    if not getattr(ss, "field_V_cm", 0.0):           # a field mixes parity
+        mask &= ((lv[:, None] + lv[None, :]) % 2) == lpar
     if abs(theta) < 1e-12:
         mask &= (m2[:, None] + m2[None, :]) == (m2a + m2b)
     mask[sa, sb] = mask[sb, sa] = True

@@ -28,12 +28,22 @@ keywords:
   - Rydberg atoms
   - Stark maps
   - Floquet theory
+  - field ionisation
+  - complex scaling
+  - Landau-Zener transitions
+  - Forster resonances
   - van der Waals C6
   - Rydberg blockade
+  - dipole-dipole interactions
+  - Rydberg pair potentials
+  - Stark-Zeeman effect
+  - Paschen-Back effect
+  - diamagnetic shift
+  - AC Stark shift
   - NIST Atomic Spectra Database
   - Python
-version: "3.1.1"
-date-released: "2026-11-24"
+version: "3.2.0"
+date-released: "2026-11-26"
 license: GPL-3.0-or-later
 abstract: >-
   Qali (called LiNaK until November 2026) is an open-source Python toolkit, with a desktop
@@ -45,9 +55,12 @@ abstract: >-
   lifetimes, static and dynamic polarisabilities, magic wavelengths, optical-tweezer traps and
   scattering rates, hyperfine and Zeeman structure, Feshbach resonances and absorption spectra.
   For Rydberg states it gives Stark maps in static and oscillating fields (Shirley's Floquet
-  method), dipole-dipole pair potentials, C3 and C6 coefficients and blockade radii, checked
-  against measurements and against ARC. Results come as interactive pages and as
-  publication-ready figures, with optional bridges to ORCA and ARC.
+  method), with a magnetic field parallel or crossed and the diamagnetic term, field-ionisation
+  widths by complex scaling, and state transfer through field ramps (with Landau-Zener
+  crossings); and dipole-dipole pair potentials, C3 and C6 coefficients and blockade radii, in
+  electric and magnetic fields, with Forster resonance maps, checked against measurements and
+  against ARC. Results come as interactive pages and as publication-ready figures, with optional
+  bridges to ORCA and ARC.
 url: "https://github.com/joeantouri98-sketch/Qali"
 repository-code: "https://github.com/joeantouri98-sketch/Qali"
 identifiers:

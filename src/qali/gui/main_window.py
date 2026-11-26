@@ -247,6 +247,7 @@ class MainWindow(QMainWindow):
         self.root = self._initial_root()
         self.current_species = ""
         self.process: QProcess | None = None
+        self._replot_pages: list[Path] = []
         self.current_stage = None
         self._snapshot = None            # outputs before a run filed under a name (Save as)
         self._snapshot_name = None
@@ -781,6 +782,8 @@ class MainWindow(QMainWindow):
                 item.setToolTip(stage["desc"])
                 self.stage_list.addItem(item)
         self.stage_list.itemDoubleClicked.connect(lambda _it: self._run_stage())
+        self.stage_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.stage_list.customContextMenuRequested.connect(self._stage_context_menu)
         self.stage_list.currentItemChanged.connect(self._on_stage_selected)
         layout.addWidget(self.stage_list, stretch=1)
         return sidebar
@@ -864,6 +867,7 @@ class MainWindow(QMainWindow):
         self.console.setObjectName("console")
         self.console.setReadOnly(True)
         self.console.setFont(mono_font())
+        self.console.setMinimumHeight(30)          # the bottom panel can be dragged down to a few lines
         self.bottom_overview = SpeciesOverviewWidget()
         self.bottom_tabs = QTabWidget()
         self.bottom_tabs.setDocumentMode(True)
@@ -1753,17 +1757,64 @@ class MainWindow(QMainWindow):
                                     "Save as works for one species at a time; untick \"Run all available elements\" "
                                     "or clear the name.")
             return
-        program, args = stage_program(pipeline_args)
         self._snapshot, self._snapshot_name = None, save_name
         if save_name:
             ws = Workspace(root=self.root)
             self._snapshot = OutputSnapshot(
                 [ws.output_path(t.format(el=self.current_species or "")) for t in stage["outputs"]])
+        self._launch(stage, pipeline_args, f"Running {stage['label']} for {self.current_species}...")
 
+    def _stage_context_menu(self, position) -> None:
+        item = self.stage_list.itemAt(position)
+        if item is None or item.data(Qt.UserRole) is None:
+            return
+        stage = STAGE_BY_ID[item.data(Qt.UserRole)]
+        menu = QMenu(self.stage_list)
+        act = menu.addAction("Generate plot from...")
+        if not stage.get("replot"):
+            act.setEnabled(False)
+            act.setText("Generate plot from... (this stage's page needs a new run)")
+        else:
+            act.triggered.connect(lambda: self._replot_stage(stage))
+        menu.exec(self.stage_list.viewport().mapToGlobal(position))
+
+    def _replot_stage(self, stage) -> None:
+        """Write the page of saved runs of *stage* again, from their JSON (no calculation)."""
+        from .replot_dialog import ReplotDialog
+        if self.process is not None and self.process.state() != QProcess.NotRunning:
+            QMessageBox.information(self, "Busy", "A stage is already running.")
+            return
+        dlg = ReplotDialog(stage, Workspace(root=self.root).data_json_dir, self.current_species, self)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        paths = dlg.selected_paths()
+        if not paths:
+            return
+        self._snapshot, self._snapshot_name = None, ""
+        name = dlg.page_name()
+        self._replot_pages = [self._page_for_json(stage, p, name) for p in paths]
+        self._launch(stage, [stage["pipeline"], "--from-json", *paths, *(["--name", name] if name else [])],
+                     f"Writing {len(paths)} {stage['label']} page{'s' if len(paths) > 1 else ''}...")
+
+    def _page_for_json(self, stage, json_path: str, name: str = "") -> Path:
+        """Where --from-json writes the page of *json_path*: plots/<species>/<name or json name>.html."""
+        from qali.pipelines.page_store import page_stem
+        stem = page_stem(json_path)
+        species = Path(json_path).stem.split("_")[0]
+        try:
+            from qali.pipelines.rydberg_runs import load_run
+            species = load_run(json_path).get("element") or species
+        except (OSError, ValueError, TypeError):
+            pass
+        return Workspace(root=self.root).output_path(f"plots/{species}/{name or stem}.html")
+
+    def _launch(self, stage, pipeline_args, status: str) -> None:
+        """Run ``qali --pipeline`` with *pipeline_args* in a child process, its output in the console."""
+        program, args = stage_program(pipeline_args)
         self.console.clear()
         self._show_console()
         self._log(f"$ {program} {' '.join(args)}")
-        self.statusBar().showMessage(f"Running {stage['label']} for {self.current_species}...")
+        self.statusBar().showMessage(status)
         self.run_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
 
@@ -1914,6 +1965,9 @@ class MainWindow(QMainWindow):
         self._refresh_all()
         if ok and stage["id"] == "compare":
             self._show_compare_table()
+        pages, self._replot_pages = self._replot_pages, []
+        if ok and pages and pages[-1].is_file():
+            self._load_output(pages[-1], "PLOT")
 
     def _compare_json_path(self) -> Path:
         return Workspace(root=self.root).output_path("data/comparison_table.json")

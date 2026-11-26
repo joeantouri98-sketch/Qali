@@ -680,6 +680,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help='Page: units for the shifts when it opens (switchable on the page).')
     parser.add_argument('--plot-t-min', type=float, default=10.0, help='Page: lowest temperature shown (K).')
     parser.add_argument('--plot-t-max', type=float, default=1000.0, help='Page: highest temperature shown (K).')
+    from qali.pipelines.page_store import add_arguments
+    add_arguments(parser)
     return parser
 
 
@@ -689,6 +691,11 @@ def main(argv=None) -> int:
 
     data_dir = args.data_dir
     plots_dir = args.output_dir
+    if args.from_json:
+        if args.name and len(args.from_json) > 1:
+            parser.error("--name needs a single --from-json file")
+        from qali.pipelines.page_store import pages_only
+        return pages_only("blackbody", args.from_json, plots_dir, args.name)
     os.makedirs(plots_dir, exist_ok=True)
     print(f"qali --pipeline blackbody (v{__version__})")
 
@@ -723,10 +730,15 @@ def main(argv=None) -> int:
             failed.append(el)
             continue
         payload = output_json(el, run)
-        save_json(payload, data_dir)
-        if not args.no_plot:
-            write_report(resolve_species(el)['label'], el, payload, run.trans_gs, run.trans_ex, run.life,
-                         options_from_args(args), el_out_dir, shifts=run.shifts)
+        rec: dict = {}
+        try:
+            if not args.no_plot:
+                write_report(resolve_species(el)['label'], el, payload, run.trans_gs, run.trans_ex, run.life,
+                             options_from_args(args), el_out_dir, shifts=run.shifts, store=rec)
+        finally:
+            if rec:                            # what the page was made from, for Generate plot from...
+                payload['page'] = rec
+            save_json(payload, data_dir)
 
     if failed:
         print(f"  Failed: {', '.join(failed)}")

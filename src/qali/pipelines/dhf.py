@@ -1,5 +1,6 @@
 """
-The ``dhf`` pipeline: ab initio spectrum of a one-valence atom or ion.
+The ``dhf`` pipeline: spectrum of a one-valence atom or ion from a DHF core and a fitted
+core-polarisation potential (semi-empirical: the IP, alpha_core and the lowest p and d levels go in).
 -----------------------------------------------------------------------------
 Dirac-Hartree-Fock frozen core + core-polarisation potential (the physics is in
 ``qali.physics.atomic_structure.dhf_cp``). A theory source independent of NIST

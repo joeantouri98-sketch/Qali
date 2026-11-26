@@ -2119,38 +2119,158 @@ def _stark_followed(d: dict) -> np.ndarray:
     return y
 
 
+STARK_VIEWS = {"map": "Map", "state": "State: shift and share against field", "ramp": "Ramp: populations",
+               "ionisation": "Ionisation rate against field"}
+PAIR_VIEWS = {"potentials": "Potentials", "loglog": "Shift against R (log-log)", "blockade": "Blockade radius against Ω",
+              "forster": "Förster map"}
+
+
+def _mj_text(d: dict) -> str:
+    m2 = round(2 * float(d.get("mj", 0.5)))
+    return f"{'-' if m2 < 0 else ''}{abs(m2)}/2"
+
+
+def _fields_text(d: dict) -> str:
+    """', B = 500 G at 90° to E' for a run with a magnetic field, else ''."""
+    mg = d.get("magnetic")
+    if not mg:
+        return ""
+    return f", B = {mg['B_gauss']:g} G" + (f" at {mg['angle_deg']:g} deg to E" if mg.get("angle_deg") else " along E")
+
+
+def _stark_state(d: dict, params: dict, species: str) -> Result:
+    """The level holding most of the state: its shift against field beside the second-order law,
+    and its share of the state on the right-hand axis."""
+    unit, k = STARK_UNITS.get(params.get("unit") or "GHz", STARK_UNITS["GHz"])
+    if unit.startswith("cm"):
+        unit, k = STARK_UNITS["GHz"]
+    F = np.asarray(d["fields_V_cm"], float)
+    y = _stark_followed(d)
+    share = np.array([max(c) if c else np.nan for c in d["character"]])
+    p = Panel(xlabel="$F_\\mathrm{ac}$ (V/cm, peak)" if d.get("mode") == "ac" else "$F$ (V/cm)",
+              ylabel=f"shift ({unit})")
+    p.add("plot", F, y * k, color="C1", linewidth=1.1, label="followed state")
+    if params.get("quadratic", True) and d.get("quadratic_ghz"):
+        p.add("plot", F, np.asarray(d["quadratic_ghz"], float) * k, color="C2", linestyle="--", linewidth=0.9,
+              label="second order")
+    p.add("plot", F, share, on="y2", color="0.45", linewidth=0.9, linestyle=":", label="its share of the state")
+    p.y2 = {"label": "share", "scale": "linear", "lim": [0, 1.02]}
+    if params.get("crossings", False):
+        for c in d.get("crossings") or []:
+            p.add("axvline", c["field_V_cm"], color="C3", linewidth=0.6, linestyle=":")
+    p.legend = {"loc": "best", "frame": False}
+    notes = [f"{species} {d['state']}, m_j = {_mj_text(d)}{_fields_text(d)}: the level holding most of the state "
+             f"(drawn while it holds at least half) and its share."]
+    rows = [[float(f), float(v), float(s)] for f, v, s in zip(F, y, share)]
+    return Result([p], notes, aspect=0.75, table=(["field_V_cm", "shift_GHz", "share"], rows))
+
+
+def _stark_ramp(d: dict, params: dict, species: str) -> Result:
+    rp = d.get("ramp")
+    if not rp:
+        raise TemplateError("This Stark run has no field ramp: run the Stark stage with a ramp time.")
+    F = np.asarray(d["fields_V_cm"], float)
+    p = Panel(xlabel="$F$ (V/cm)", ylabel="population", ylim=[0, 1.05])
+    p.add("plot", F, rp["on_state"], color="C1", linewidth=1.1, label="on the level with most of the state")
+    p.add("plot", F, rp["in_window"], color="0.45", linewidth=0.9, linestyle=":", label="in the window")
+    for c in rp.get("crossings") or []:
+        p.add("axvline", c["field_V_cm"], color="C3", linewidth=0.6, linestyle=":")
+    p.legend = {"loc": "best", "frame": False}
+    notes = [f"{species} {d['state']}, m_j = {_mj_text(d)}{_fields_text(d)}: field ramped from {F[0]:g} to "
+             f"{F[-1]:.4g} V/cm in {rp['ramp_ns']:g} ns ({rp.get('method', 'direct')} propagation); dotted: "
+             f"avoided crossings."]
+    for c in (rp.get("crossings") or [])[:6]:
+        if c.get("p_lz") is not None:
+            notes.append(f"{c['field_V_cm']:.4g} V/cm: Landau-Zener {c['p_lz']:.3f}"
+                         + (f", propagation {c['p_tdse']:.3f}" if c.get("p_tdse") is not None else ""))
+    rows = [[float(f), float(a), float(b)] for f, a, b in zip(F, rp["on_state"], rp["in_window"])]
+    return Result([p], notes, aspect=0.75, table=(["field_V_cm", "on_state", "in_window"], rows))
+
+
+def _stark_ionisation(d: dict, params: dict, species: str) -> Result:
+    ion = d.get("ionisation")
+    if not ion or not ion.get("state_rate_MHz"):
+        raise TemplateError("This Stark run has no ionisation widths: run the Stark stage with Ionisation widths.")
+    F = np.asarray(d["fields_V_cm"], float)
+    r = np.asarray(ion["state_rate_MHz"], float)
+    top = float(np.nanmax(r)) if np.any(r > 0) else 1.0
+    # below ~0.2 MHz the widths are at the numerical floor: the axis starts at 0.01 MHz
+    p = Panel(xlabel="$F$ (V/cm)", ylabel=r"$\Gamma/h$ of the state (MHz)", yscale="log",
+              ylim=[1e-2, max(10 * top, 10 * float(ion["rate_MHz"]))])
+    p.add("plot", F, np.where(r > 0, r, np.nan), color="C1", linewidth=1.1, label="the state's rate")
+    p.add("axhline", ion["rate_MHz"], color="0.45", linewidth=0.8, linestyle=":", label="onset rate")
+    if ion.get("onset_V_cm"):
+        p.add("axvline", ion["onset_V_cm"], color="C1", linewidth=0.8, linestyle="--", label="onset")
+    if params.get("classical", True):
+        p.add("axvline", ion["classical_field_V_cm"], color="C3", linewidth=0.8, linestyle=":",
+              label="classical ionisation field")
+    p.legend = {"loc": "best", "frame": False}
+    notes = [f"{species} {d['state']}, m_j = {_mj_text(d)}: the state's ionisation rate (widths of the levels it is "
+             f"spread over, weighted by its share), by complex scaling.",
+             "Rates below ~0.2 MHz are at the numerical floor."]
+    rows = [[float(f), float(v)] for f, v in zip(F, r)]
+    return Result([p], notes, aspect=0.75, table=(["field_V_cm", "rate_MHz"], rows))
+
+
 def stark(params: dict, species: str, data_dir: str, style: dict) -> Result:
     """The Stark stage's map: eigenvalues against field, coloured by the chosen state's character.
-    An AC map (mode "ac") has quasienergies against the peak AC amplitude."""
+    An AC map (mode "ac") has quasienergies against the peak AC amplitude.  view: map (default),
+    state, ramp or ionisation."""
     d = _need(catalog.load_json(species, "stark", data_dir), species, "stark")
+    view = params.get("view") or "map"
+    if view == "state":
+        return _stark_state(d, params, species)
+    if view == "ramp":
+        return _stark_ramp(d, params, species)
+    if view == "ionisation":
+        return _stark_ionisation(d, params, species)
     ac = d.get("ac") if d.get("mode") == "ac" else None
     unit, k = STARK_UNITS.get(params.get("unit") or "GHz", STARK_UNITS["GHz"])
     mc = float(params.get("min_char") or 0.0)
     # zero at the state's field-free level, or at the ionization limit (absolute term energy)
     off = -float(d["binding_cm"]) * 29.9792458 if params.get("zero") == "limit" else 0.0
     F = np.asarray(d["fields_V_cm"], float)
-    xs, ys, cs = [], [], []
-    for f, E, C in zip(F, d["energies_ghz"], d["character"]):
-        for e, c in zip(E, C):
-            if c >= mc:
+    ion = d.get("ionisation") if d.get("widths_ghz") else None
+    by_width = bool(ion) and params.get("color_by") == "width"
+    by_pop = bool(d.get("population")) and params.get("color_by") == "population"
+    xs, ys, cs, gs = [], [], [], []
+    Wr = d.get("widths_ghz") or [[0.0] * len(E) for E in d["energies_ghz"]]
+    Pr = d.get("population") or [[0.0] * len(E) for E in d["energies_ghz"]]
+    for f, E, C, G, P in zip(F, d["energies_ghz"], d["character"], Wr, Pr):
+        for e, c, g, q in zip(E, C, G, P):
+            if c >= mc or (by_pop and q >= mc):
                 xs.append(f)
                 ys.append((e + off) * k)
-                cs.append(c)
+                cs.append(q if by_pop else c)
+                gs.append(g)
     if not xs:
         raise TemplateError("No eigenvalue above the character threshold.")
-    order = np.argsort(cs)
+    order = np.argsort(gs if by_width else cs)
     xs_a, ys_a, cs_a = np.asarray(xs)[order], np.asarray(ys)[order], np.asarray(cs)[order]
+    gs_a = np.asarray(gs)[order]
     p = Panel()
     size = float(params.get("size") or 1.5)
-    faint = cs_a < 0.02
-    if faint.any():                                  # the manifolds, grey, under the coloured states
-        p.add("scatter", xs_a[faint], ys_a[faint], color="0.78", s=size, linewidths=0, rasterized=True)
-    p.add("scatter", xs_a[~faint], ys_a[~faint], c=cs_a[~faint], cmap=params.get("cmap") or "viridis_r",
-          vmin=0.0, vmax=1.0, s=size * 1.6, linewidths=0, rasterized=True)
+    if by_width:                                     # ionisation width, log scale from 1 kHz to 10 GHz
+        lg = np.log10(np.maximum(gs_a * 1e3, 1e-3))
+        p.add("scatter", xs_a, ys_a, c=lg, cmap=params.get("cmap") or "viridis", vmin=-3.0, vmax=4.0,
+              s=size * 1.6, linewidths=0, rasterized=True)
+    else:
+        faint = cs_a < 0.02
+        if faint.any():                              # the manifolds, grey, under the coloured states
+            p.add("scatter", xs_a[faint], ys_a[faint], color="0.78", s=size, linewidths=0, rasterized=True)
+        p.add("scatter", xs_a[~faint], ys_a[~faint], c=cs_a[~faint], cmap=params.get("cmap") or "viridis_r",
+              vmin=0.0, vmax=1.0, s=size * 1.6, linewidths=0, rasterized=True)
     m = re.match(r"^(\d+)([a-z])(\d+/2)$", d["state"])
     auto = (rf"$|\langle {m.group(1)}{m.group(2).upper()}_{{{m.group(3)}}}|\mu\rangle|^2$" if m
             else rf"$|\langle$ {d['state']} $|\mu\rangle|^2$")
-    p.colorbar = (params.get("cbar_label") or "").strip() or auto
+    p.colorbar = (params.get("cbar_label") or "").strip() or (r"$\log_{10}(\Gamma/h$ / MHz)" if by_width
+                                                             else "population" if by_pop else auto)
+    if ion and params.get("classical", True):
+        p.add("plot", F, (np.asarray(ion["saddle_ghz"], float) + off) * k, color="C3", linestyle=":",
+              linewidth=0.9, label=r"classical limit $-2\sqrt{F}$")
+        W = float(d.get("window_ghz") or 0.0)
+        if W:
+            p.ylim = [(-W + off) * k, (W + off) * k] if k > 0 else None
     fol_y = _stark_followed(d)
     if params.get("followed", True):
         p.add("plot", F, (fol_y + off) * k, color="C1", linewidth=0.9, label="followed state")
@@ -2173,8 +2293,8 @@ def stark(params: dict, species: str, data_dir: str, style: dict) -> Result:
     p.ylabel = f"$E$ below the limit ({unit})" if off else f"$E - E$({st}) ({unit})"
     p.legend = {"loc": "best", "frame": False}
     b = d["basis"]
-    notes = [f"{species} {d['state']}, m_j = {mj if d.get('mj', 0.5) > 0 else '-' + mj}: eigenvalues of H0 + F z, "
-             f"coloured by overlap with the state.",
+    notes = [f"{species} {d['state']}, m_j = {mj if d.get('mj', 0.5) > 0 else '-' + mj}{_fields_text(d)}: "
+             f"eigenvalues of H0 + F z{' + H_B' if d.get('magnetic') else ''}, coloured by overlap with the state.",
              f"Basis n {b['n_lo']}-{b['n_hi']}, l <= {b['l_max']} ({b['size']} states); "
              f"alpha0 = {pol.get('alpha0', float('nan')):.5g} MHz/(V/cm)^2."]
     if ac:
@@ -2183,8 +2303,17 @@ def stark(params: dict, species: str, data_dir: str, style: dict) -> Result:
                     f"coloured by overlap with the state.")
         dyn = ac.get("alpha_dynamic") or {}
         notes.append(f"alpha0(omega) = {dyn.get('alpha0', float('nan')):.5g} MHz/(V/cm)^2; AC shift -alpha(omega) F_ac^2/4.")
+    if ion:
+        notes.append(f"Ionisation widths by complex scaling (theta = {ion['theta']}, {ion['mesh_points']}-point mesh); "
+                     f"classical ionisation field {ion['classical_field_V_cm']:.4g} V/cm"
+                     + (f", the state's rate reaches {ion['rate_MHz']:g} MHz at {ion['onset_V_cm']:.4g} V/cm."
+                        if ion.get("onset_V_cm") else "."))
     if cross:
         notes.append(f"First avoided crossing: {cross[0]:.4g} V/cm.")
+    if ion:
+        rows = [[float(x), float(y), float(c), float(g)] for x, y, c, g in zip(xs_a, ys_a, cs_a, gs_a)]
+        return Result([p], notes, aspect=0.75, table=(["field_V_cm", f"energy_{params.get('unit') or 'GHz'}",
+                                                       "character", "width_GHz"], rows))
     rows = [[float(x), float(y), float(c)] for x, y, c in zip(xs_a, ys_a, cs_a)]
     return Result([p], notes, aspect=0.75, table=(["ac_amplitude_V_cm" if ac else "field_V_cm", f"energy_{params.get('unit') or 'GHz'}", "character"], rows))
 
@@ -2192,9 +2321,135 @@ def stark(params: dict, species: str, data_dir: str, style: dict) -> Result:
 PAIR_UNITS = {"GHz": ("GHz", 1.0), "MHz": ("MHz", 1e3)}
 
 
+def _pair_law(d: dict):
+    """The perturbative law(s) of the pair, as the page draws them: a list of (label, f(R) in GHz)."""
+    c3d = d.get("c3") or {}
+    res = bool(c3d.get("resonant"))
+    c3 = float(c3d.get("chosen") or 0.0)
+    c6 = float((d.get("c6") or {}).get("chosen") or 0.0)
+    dressed = bool(d.get("field_V_cm") or d.get("b_gauss"))
+    if res and dressed:                         # permanent dipoles or a Förster resonance, with van der Waals
+        both = any(v * c3 < 0 and abs(v) >= 0.5 * abs(c3) for v in c3d.get("eigen") or [])
+        if both:
+            return [(r"$\pm C_3/R^3 + C_6/R^6$", lambda R: c3 / R ** 3 + c6 / R ** 6),
+                    (None, lambda R: -c3 / R ** 3 + c6 / R ** 6)]
+        return [(r"$C_3/R^3 + C_6/R^6$", lambda R: c3 / R ** 3 + c6 / R ** 6)]
+    if res:
+        return [(r"$\pm C_3/R^3$", lambda R: abs(c3) / R ** 3), (None, lambda R: -abs(c3) / R ** 3)]
+    return [(r"$C_6/R^6$", lambda R: c6 / R ** 6)]
+
+
+def _pair_tex(st: str) -> str:
+    m = re.match(r"^(\d+)([a-z])(\d+/2)$", st)
+    return f"{m.group(1)}{m.group(2).upper()}_{{{m.group(3)}}}" if m else st
+
+
+def _pair_where(d: dict) -> str:
+    fv, bg = float(d.get("field_V_cm") or 0), float(d.get("b_gauss") or 0)
+    at = ", ".join(x for x in (f"{fv:g} V/cm" if fv else "", f"{bg:g} G" if bg else "") if x)
+    return f" at {at}" if at else ""
+
+
+def _pair_followed(d: dict) -> np.ndarray:
+    y = np.asarray(d["followed_ghz"], float).copy()
+    cmax = np.array([max(c) if c else 0.0 for c in d["character"]])
+    y[cmax < FOLLOW_MIN] = np.nan
+    return y
+
+
+def _pair_loglog(d: dict, params: dict, species: str) -> Result:
+    unit, k = PAIR_UNITS.get(params.get("unit") or "MHz", PAIR_UNITS["MHz"])
+    R = np.asarray(d["R_um"], float)
+    y = np.abs(_pair_followed(d))
+    p = Panel(xlabel=r"$R$ ($\mu$m)", ylabel=f"$|\\Delta E|$ ({unit})", xscale="log", yscale="log")
+    p.add("plot", R, np.where(y > 0, y * k, np.nan), color="C1", linewidth=1.1, marker="o", markersize=2,
+          label="followed pair")
+    lab, f = _pair_law(d)[0]
+    p.add("plot", R, np.abs(f(R)) * k, color="C2", linestyle="--", linewidth=0.9, label=lab.replace("\\pm ", "") if lab else None)
+    om = float((d.get("blockade") or {}).get("rabi_MHz") or 1.0) * 1e-3
+    p.add("axhline", om * k, color="C3", linewidth=0.8, linestyle=":", label=r"$h\Omega/2\pi$")
+    p.legend = {"loc": "best", "frame": False}
+    notes = [f"{species} {d['state1']} + {d['state2']}{_pair_where(d)}: the shift of the level holding most of the pair "
+             f"against the perturbative law; they part where the pair mixes with its neighbours."]
+    rows = [[float(r), float(v)] for r, v in zip(R, y)]
+    return Result([p], notes, aspect=0.75, table=(["R_um", "abs_shift_GHz"], rows))
+
+
+def _pair_blockade(d: dict, params: dict, species: str) -> Result:
+    R = np.asarray(d["R_um"], float)
+    fol = np.abs(np.asarray(d["followed_ghz"], float))
+    laws = _pair_law(d)
+    om_mhz = 10 ** np.linspace(-2, 2, 81)
+    Rg = np.geomspace(0.05, 1e4, 20000)
+    absf = np.abs(laws[0][1](Rg))
+    pert, diag = [], []
+    for o in om_mhz:
+        hit = np.flatnonzero(absf >= o * 1e-3)
+        pert.append(float(Rg[hit.max()]) if hit.size else np.nan)
+        rb = np.nan
+        for i in range(len(R) - 1, 0, -1):
+            a, b = fol[i], fol[i - 1]
+            if b >= o * 1e-3 > a:
+                rb = R[i - 1] + (R[i] - R[i - 1]) * (b - o * 1e-3) / (b - a)
+                break
+        diag.append(rb)
+    p = Panel(xlabel=r"$\Omega/2\pi$ (MHz)", ylabel=r"blockade radius ($\mu$m)", xscale="log")
+    p.add("plot", om_mhz, pert, color="C2", linestyle="--", linewidth=1.0, label="perturbative")
+    p.add("plot", om_mhz, diag, color="C1", linewidth=1.2, label="diagonalised")
+    if d.get("leroy_um"):
+        p.add("axhline", d["leroy_um"], color="0.45", linewidth=0.8, linestyle=":", label="LeRoy radius")
+    p.legend = {"loc": "best", "frame": False}
+    notes = [f"{species} {d['state1']} + {d['state2']}{_pair_where(d)}: where the pair's shift equals hΩ/2π; "
+             f"diagonalised only within {R[0]:.3g}-{R[-1]:.3g} um."]
+    rows = [[float(o), float(a), float(b)] for o, a, b in zip(om_mhz, pert, diag)]
+    return Result([p], notes, aspect=0.75, table=(["rabi_MHz", "R_b_perturbative_um", "R_b_diagonalised_um"], rows))
+
+
+def _pair_forster(d: dict, params: dict, species: str) -> Result:
+    fo = d.get("forster")
+    if not fo:
+        raise TemplateError("This pair run has no Förster map: run the pair stage with Förster map to (V/cm).")
+    unit, k = PAIR_UNITS.get(params.get("unit") or "MHz", PAIR_UNITS["MHz"])
+    F = np.asarray(fo["fields_V_cm"], float)
+    cmax = max((abs(c) for row in fo["c3_ghz_um3"] for c in row), default=0.0) or 1.0
+    xs, ys, cs = [], [], []
+    for f, E, C in zip(F, fo["energies_ghz"], fo["c3_ghz_um3"]):
+        for e, c in zip(E, C):
+            xs.append(f)
+            ys.append(e * k)
+            cs.append(abs(c) / cmax)
+    p = Panel(xlabel="$F$ (V/cm)", ylabel=f"$E - E(F = 0)$ ({unit})")
+    if xs:
+        o = np.argsort(cs)
+        size = float(params.get("size") or 1.5)
+        p.add("scatter", np.asarray(xs)[o], np.asarray(ys)[o], c=np.asarray(cs)[o],
+              cmap=params.get("cmap") or "qali_blue", vmin=0.0, vmax=1.0, s=size * 2.0, linewidths=0, rasterized=True)
+        p.colorbar = (params.get("cbar_label") or "").strip() or r"$|C_3|$ / max"
+    p.add("plot", F, np.asarray(fo["target_ghz"], float) * k, color="C1", linewidth=1.2,
+          label=f"${_pair_tex(d['state1'])}\\,{_pair_tex(d['state2'])}$")
+    for r in (fo.get("resonances") or [])[:8]:
+        p.add("axvline", r["field_V_cm"], color="C3", linewidth=0.6, linestyle=":")
+    p.legend = {"loc": "best", "frame": False}
+    notes = [f"{species} {d['state1']} + {d['state2']}" + (f", B = {float(d['b_gauss']):g} G" if d.get("b_gauss") else "")
+             + ": pair energies against field, coloured by dipole coupling to the pair; dotted: Förster resonances."]
+    for r in (fo.get("resonances") or [])[:5]:
+        notes.append(f"{r['field_V_cm']:.4g} V/cm: {r['pair']}, C3 = {r['c3_ghz_um3']:.4g} GHz um^3")
+    rows = [[float(x), float(y), float(c)] for x, y, c in zip(xs, ys, cs)]
+    return Result([p], notes, aspect=0.75, table=(["field_V_cm", f"energy_{params.get('unit') or 'MHz'}",
+                                                   "coupling_rel"], rows))
+
+
 def pair(params: dict, species: str, data_dir: str, style: dict) -> Result:
-    """The pair stage's potentials: eigenvalues against R, coloured by the chosen pair's character."""
+    """The pair stage's potentials: eigenvalues against R, coloured by the chosen pair's character.
+    view: potentials (default), loglog, blockade or forster."""
     d = _need(catalog.load_json(species, "pair", data_dir), species, "pair")
+    view = params.get("view") or "potentials"
+    if view == "loglog":
+        return _pair_loglog(d, params, species)
+    if view == "blockade":
+        return _pair_blockade(d, params, species)
+    if view == "forster":
+        return _pair_forster(d, params, species)
     unit, k = PAIR_UNITS.get(params.get("unit") or "MHz", PAIR_UNITS["MHz"])
     mc = float(params.get("min_char") or 0.0)
     R = np.asarray(d["R_um"], float)
@@ -2228,14 +2483,9 @@ def pair(params: dict, species: str, data_dir: str, style: dict) -> Result:
         cmax = np.array([max(c) if c else 0.0 for c in d["character"]])
         y[cmax < FOLLOW_MIN] = np.nan
         p.add("plot", R, y * k, color="C1", linewidth=0.9, label="followed pair")
-    if params.get("asymptote", True):
-        if res:
-            c3 = abs(float(d["c3"]["chosen"]))
-            p.add("plot", R, c3 / R ** 3 * k, color="C2", linestyle="--", linewidth=0.9, label=r"$\pm C_3/R^3$")
-            p.add("plot", R, -c3 / R ** 3 * k, color="C2", linestyle="--", linewidth=0.9)
-        else:
-            p.add("plot", R, np.asarray(d["vdw_ghz"], float) * k, color="C2", linestyle="--", linewidth=0.9,
-                  label=r"$C_6/R^6$")
+    if params.get("asymptote", True):             # the law the page draws (in a field: C3 and C6 together)
+        for lab, law in _pair_law(d):
+            p.add("plot", R, law(R) * k, color="C2", linestyle="--", linewidth=0.9, label=lab)
     bl = d.get("blockade") or {}
     rb = bl.get("R_perturbative_um")
     if params.get("blockade", True) and rb and R[0] <= rb <= R[-1]:
@@ -2247,11 +2497,13 @@ def pair(params: dict, species: str, data_dir: str, style: dict) -> Result:
     p.ylabel = f"$E - E({a}\\,{b})$ ({unit})"
     p.legend = {"loc": "best", "frame": False}
     c6 = (d.get("c6") or {}).get("chosen", float("nan"))
-    notes = [f"{species} {d['state1']} + {d['state2']}, theta = {d.get('theta_deg', 0):g} deg: eigenvalues of "
+    notes = [f"{species} {d['state1']} + {d['state2']}{_pair_where(d)}, theta = {d.get('theta_deg', 0):g} deg: eigenvalues of "
              f"E1 + E2 + V_dd(R), coloured by overlap with the pair.",
              f"C6 = {c6:.5g} GHz um^6 (dE = C6/R^6); blockade radius {rb:.4g} um at "
              f"{bl.get('rabi_MHz', 1):g} MHz." if rb else f"C6 = {c6:.5g} GHz um^6 (dE = C6/R^6)."]
-    if res:
+    if res and (d.get("field_V_cm") or d.get("b_gauss")):
+        notes.append(f"First order in the field: C3 = {float(d['c3']['chosen']):.5g} GHz um^3, with C6.")
+    elif res:
         notes.append(f"Resonant: C3 = {abs(float(d['c3']['chosen'])):.5g} GHz um^3.")
     rows = [[float(x), float(y), float(c)] for x, y, c in zip(xs_a, ys_a, cs_a)]
     return Result([p], notes, aspect=0.75, table=(["R_um", f"energy_{params.get('unit') or 'MHz'}", "character"], rows))

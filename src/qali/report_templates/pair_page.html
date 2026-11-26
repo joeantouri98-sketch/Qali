@@ -38,6 +38,12 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .main{min-width:0;display:flex;flex-direction:column;gap:10px}
 .plot{border:1px solid var(--edge);border-radius:8px;overflow:hidden}
 #plot{width:100%;height:640px}
+.p{width:100%;height:440px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--edge);margin-bottom:2px;flex-wrap:wrap}
+.tabs button{background:transparent;color:var(--ink2);border:0;border-bottom:2px solid transparent;padding:8px 14px;font:inherit;font-size:13.5px;cursor:pointer;margin-bottom:-1px}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
+.tabs button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px;border-radius:4px}
+.pane{display:flex;flex-direction:column;gap:10px}.pane[hidden]{display:none}
 .note{color:var(--ink2);font-size:12.5px;line-height:1.5;margin:0;padding-left:18px}
 .card{border:1px solid var(--edge);border-radius:8px;padding:10px 12px}
 .card b{font-size:13px}
@@ -81,14 +87,42 @@ tbody tr{cursor:pointer}tbody tr:hover{background:var(--panel)}tr.sel td{backgro
     </section>
   </aside>
   <main class="main">
-    <div class="plot"><div id="plot"></div></div>
-    <ul class="note" id="notes"></ul>
-    <div class="card"><b>Channels of C<sub>6</sub></b>
-      <div class="tw"><table><thead><tr><th>pair</th><th>Förster defect</th><th>C₆ part (GHz µm⁶)</th><th>share</th></tr></thead><tbody id="ct"></tbody></table></div>
+    <div class="tabs" role="tablist" aria-label="Views">
+      <button role="tab" id="tab-pot" aria-selected="true" aria-controls="pane-pot" data-t="pot">Potentials</button>
+      <button role="tab" id="tab-fp" aria-selected="false" aria-controls="pane-fp" data-t="fp">Pair</button>
+      <button role="tab" id="tab-ds" aria-selected="false" aria-controls="pane-ds" data-t="ds">Dispersion</button>
+      <button role="tab" id="tab-bl" aria-selected="false" aria-controls="pane-bl" data-t="bl">Blockade</button>
+      <button role="tab" id="tab-fo" aria-selected="false" aria-controls="pane-fo" data-t="fo" hidden>Förster</button>
     </div>
-    <div class="card"><b>C<sub>6</sub> in the degenerate manifold</b>
-      <div class="tw"><table><thead><tr><th>#</th><th>C₆ (GHz µm⁶)</th><th>blockade radius</th></tr></thead><tbody id="mt"></tbody></table></div>
-    </div>
+    <section class="pane" id="pane-pot" role="tabpanel" aria-labelledby="tab-pot">
+      <div class="plot"><div id="plot"></div></div>
+      <ul class="note" id="notes"></ul>
+    </section>
+    <section class="pane" id="pane-fp" role="tabpanel" aria-labelledby="tab-fp" hidden>
+      <div class="plot"><div class="p" id="pfp"></div></div>
+      <ul class="note" id="nfp"></ul>
+    </section>
+    <section class="pane" id="pane-ds" role="tabpanel" aria-labelledby="tab-ds" hidden>
+      <div class="plot"><div class="p" id="pds"></div></div>
+      <div class="card"><b>Channels of C<sub>6</sub></b>
+        <div class="tw"><table><thead><tr><th>pair</th><th>Förster defect</th><th>C₆ part (GHz µm⁶)</th><th>share</th></tr></thead><tbody id="ct"></tbody></table></div>
+      </div>
+      <div class="card"><b>C<sub>6</sub> in the degenerate manifold</b>
+        <div class="tw"><table><thead><tr><th>#</th><th>C₆ (GHz µm⁶)</th><th>blockade radius</th></tr></thead><tbody id="mt"></tbody></table></div>
+      </div>
+      <ul class="note" id="nds"></ul>
+    </section>
+    <section class="pane" id="pane-bl" role="tabpanel" aria-labelledby="tab-bl" hidden>
+      <div class="plot"><div class="p" id="pbl"></div></div>
+      <ul class="note" id="nbl"></ul>
+    </section>
+    <section class="pane" id="pane-fo" role="tabpanel" aria-labelledby="tab-fo" hidden>
+      <div class="plot"><div class="p" id="pfo"></div></div>
+      <div class="card"><b>Förster resonances</b>
+        <div class="tw"><table><thead><tr><th>F (V/cm)</th><th>pair</th><th>C₃ (GHz µm³)</th><th>R where C₃/R³ = hΩ/2π</th></tr></thead><tbody id="fot"></tbody></table></div>
+      </div>
+      <ul class="note" id="nfo"></ul>
+    </section>
   </main>
 </div>
 <script>
@@ -96,8 +130,11 @@ const D=$!DATA_JS;
 const $=id=>document.getElementById(id);
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-const S={unit:'MHz',theme:'auto',k:0,cmap:'blue'};
-const CMAPS={blue:()=>[[0,css('--dot')],[0.15,css('--dot')],[1,css('--acc')]],red:()=>[[0,css('--dot')],[0.08,css('--dot')],[0.4,'#f26b6b'],[0.75,'#d40000'],[1,'#3a0000']],
+const S={unit:'MHz',theme:'auto',k:0,cmap:'blue',tab:'pot'};
+const DARK=()=>getComputedStyle(document.documentElement).colorScheme==='dark';
+// the figures' colour maps (qali_blue, qali_red): from the grey of the dots, linear in the share;
+// on a dark background the strongest share ends light instead of black
+const CMAPS={blue:()=>[[0,css('--dot')],[1/3,'#7fb0e8'],[2/3,'#1f5fbf'],[1,DARK()?'#d6e6ff':'#08204a']],red:()=>[[0,css('--dot')],[1/3,'#f26b6b'],[2/3,'#d40000'],[1,DARK()?'#ffd2d2':'#000000']],
   viridis:()=>'Viridis'};
 const GL=(()=>{try{const c=document.createElement('canvas');return !!(c.getContext('webgl')||c.getContext('experimental-webgl'))}catch(e){return false}})();   // SVG without WebGL
 const UF={GHz:[1,'GHz'],MHz:[1e3,'MHz']};
@@ -105,7 +142,12 @@ const ef=v=>v*UF[S.unit][0];
 const g=x=>{if(x==null||!isFinite(x))return '–';const a=Math.abs(x);return a!==0&&(a<1e-3||a>=1e6)?x.toExponential(4):(+x.toPrecision(6)).toString()};
 const lab=s=>esc(s).replace(/(\d+\/2)$/,'<sub>$1</sub>');
 const fr=x=>{const a=Math.round(2*x);return (a<0?'−':'')+Math.abs(a)+'/2'};
-const R=D.R_um, N=R.length, C6=D.c6.chosen, RES=D.c3.resonant;
+const R=D.R_um, N=R.length, C6=D.c6.chosen, RES=D.c3.resonant, FLD=D.field_V_cm||0, FO=D.forster||null;
+const C3S=D.c3.chosen;                                          // signed: permanent dipoles in a field
+const BG=D.b_gauss||0, DRS=!!(FLD||BG);                         // dressed by E and/or B
+const COMB=!!(DRS&&RES);                                       // C₃/R³ + C₆/R⁶ together
+// a Förster resonance (or exchange) splits the pair into ±C₃ branches; permanent dipoles give one sign
+const PM=COMB&&(D.c3.eigen||[]).some(v=>v*C3S<0&&Math.abs(v)>=0.5*Math.abs(C3S));
 const up=s=>{const m=/^(\d+)([a-z])(\d+\/2)$/.exec(s);return m?`${m[1]}${m[2].toUpperCase()}<sub>${m[3]}</sub>`:esc(s)};
 const PAIR=D.state1===D.state2?`${up(D.state1)}${up(D.state2)}`:`${up(D.state1)} ${up(D.state2)}`;
 const CBT=`|⟨${PAIR}|μ⟩|²`;
@@ -115,19 +157,19 @@ const FOL=(()=>{const y=D.followed_ghz.map((v,k)=>Math.max(0,...D.character[k])>
   return y})();
 function header(){
   $('h1').innerHTML=`${esc(D.label||D.element)} ${lab(D.state1)} + ${lab(D.state2)}, m<sub>j</sub> = ${fr(D.mj1)}, ${fr(D.mj2)}`;
-  $('sub').textContent=`Pair potential: ${D.basis.size} pair states, n ${D.basis.n_lo}–${D.basis.n_hi}, l ≤ ${D.basis.l_max}, θ = ${g(D.theta_deg)}°`;
+  $('sub').textContent=`Pair potential${DRS?' at '+[FLD?g(FLD)+' V/cm':'',BG?g(BG)+' G':''].filter(Boolean).join(', '):''}: ${D.basis.size} pair states, n ${D.basis.n_lo}–${D.basis.n_hi}, l ≤ ${D.basis.l_max}, θ = ${g(D.theta_deg)}°`;
   $('pair').innerHTML=[['n* (1)',D.n_star1.toFixed(5)],['n* (2)',D.n_star2.toFixed(5)],['energies from',D.energy_source1===D.energy_source2?D.energy_source1:D.energy_source1+', '+D.energy_source2],
-    ['θ',g(D.theta_deg)+'°'],['LeRoy radius',g(D.leroy_um)+' µm']].map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('');
+    ['θ',g(D.theta_deg)+'°'],...(FLD?[['field',g(FLD)+' V/cm']]:[]),...(BG?[['B',g(BG)+' G']]:[]),['LeRoy radius',g(D.leroy_um)+' µm']].map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('');
   const B=D.blockade,rows=[['C₆',g(C6)+' GHz µm⁶'],['C₆',g(D.c6.chosen_au)+' a.u.']];
-  if(RES)rows.push(['C₃',g(Math.abs(D.c3.chosen))+' GHz µm³']);
-  rows.push(['Ω/2π',g(B.rabi_MHz)+' MHz'],['R_b ('+(B.from_c3?'C₃':'C₆')+')',g(B.R_perturbative_um)+' µm'],['R_b (diagonalised)',B.R_diagonalised_um?g(B.R_diagonalised_um)+' µm':'out of range']);
+  if(RES)rows.push(['C₃',g(COMB?C3S:Math.abs(C3S))+' GHz µm³']);
+  rows.push(['Ω/2π',g(B.rabi_MHz)+' MHz'],['R_b ('+(COMB?'C₃ + C₆':B.from_c3?'C₃':'C₆')+')',g(B.R_perturbative_um)+' µm'],['R_b (diagonalised)',B.R_diagonalised_um?g(B.R_diagonalised_um)+' µm':'out of range']);
   $('int').innerHTML=rows.map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('');
 }
 function curPoints(){const mc=+$('minc').value,xs=[],ys=[],cs=[];
   for(let k=0;k<N;k++){const E=D.energies_ghz[k],C=D.character[k];for(let i=0;i<E.length;i++){if(C[i]<mc)continue;xs.push(R[k]);ys.push(ef(E[i]));cs.push(C[i])}}
   const o=cs.map((_,i)=>i).sort((a,b)=>cs[a]-cs[b]);
   return [o.map(i=>xs[i]),o.map(i=>ys[i]),o.map(i=>cs[i])]}
-function draw(){
+function drawPot(){
   const ink=css('--ink'),ink2=css('--ink2'),grid=css('--grid'),bg=css('--bg');
   const [xs,ys,cs]=curPoints(),grey=$('c-grey').checked;
   const tr=[{type:GL?'scattergl':'scatter',mode:'markers',x:xs,y:ys,name:'pair states',hovertemplate:'R %{x:.4g} µm<br>E %{y:.6g} '+UF[S.unit][1]+'<br>'+CBT+' %{marker.color:.3f}<extra></extra>',
@@ -135,7 +177,8 @@ function draw(){
       showscale:!grey,colorbar:{title:{text:CBT,font:{size:11,color:ink2}},thickness:10,len:0.6,tickfont:{size:10,color:ink2}}}}];
   if($('c-fol').checked)tr.push({type:'scatter',mode:'lines',x:R,y:FOL.map(v=>v==null?null:ef(v)),connectgaps:false,name:'followed',line:{color:css('--fol'),width:1.4},hoverinfo:'skip'});
   if($('c-vdw').checked){
-    if(RES){const c3=Math.abs(D.c3.chosen),cs3=[c3,-c3];
+    if(COMB)(PM?[1,-1]:[1]).forEach((s,i)=>tr.push({type:'scatter',mode:'lines',x:R,y:R.map(r=>ef(s*C3S/r**3+C6/r**6)),name:PM?'±C₃/R³ + C₆/R⁶':'C₃/R³ + C₆/R⁶',showlegend:i===0,line:{color:css('--quad'),width:1.2,dash:'dash'},hoverinfo:'skip'}));
+    else if(RES){const c3=Math.abs(D.c3.chosen),cs3=[c3,-c3];
       cs3.forEach((c,i)=>tr.push({type:'scatter',mode:'lines',x:R,y:R.map(r=>ef(c/r**3)),name:'C₃/R³',showlegend:i===0,line:{color:css('--quad'),width:1,dash:'dash'},hoverinfo:'skip'}))}
     else tr.push({type:'scatter',mode:'lines',x:R,y:D.vdw_ghz.map(ef),name:'C₆/R⁶',line:{color:css('--quad'),width:1.2,dash:'dash'},hoverinfo:'skip'})}
   const r0=R[S.k],shapes=[{type:'line',x0:r0,x1:r0,yref:'paper',y0:0,y1:1,line:{color:ink2,width:1,dash:'dot'}}];
@@ -149,11 +192,81 @@ function draw(){
     legend:{orientation:'h',x:0,y:1.05,font:{size:12,color:ink2}},shapes};
   return Plotly.react('plot',tr,L,{displaylogo:false,responsive:true,modeBarButtonsToRemove:['lasso2d','select2d']});
 }
+const PANES=['pot','fp','ds','bl','fo'];
+function draw(){const t=S.tab;PANES.forEach(k=>{$('pane-'+k).hidden=k!==t});
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===t)));
+  return ({pot:drawPot,fp:drawPair,ds:drawDisp,bl:drawBlock,fo:drawForster}[t]||drawPot)()}
+const PCFG={displaylogo:false,responsive:true,modeBarButtonsToRemove:['lasso2d','select2d']};
+function lay(xt,yt,xlog,ylog,cursor){const ink=css('--ink'),ink2=css('--ink2'),grid=css('--grid'),bg=css('--bg');
+  const ax=(t,lg)=>({title:{text:t,font:{color:ink2,size:12}},type:lg?'log':'linear',gridcolor:grid,zerolinecolor:grid,tickfont:{color:ink2,size:11},ticks:'outside',tickcolor:ink2,linecolor:ink2,exponentformat:'power'});
+  const L={paper_bgcolor:bg,plot_bgcolor:bg,font:{family:css('--sans'),color:ink},margin:{l:72,r:20,t:14,b:48},hovermode:'x unified',
+    xaxis:ax(xt,xlog),yaxis:ax(yt,ylog),legend:{orientation:'h',x:0,y:1.08,font:{size:12,color:ink2}},shapes:[]};
+  if(cursor)L.shapes.push({type:'line',x0:R[S.k],x1:R[S.k],yref:'paper',y0:0,y1:1,line:{color:ink2,width:1,dash:'dot'}});
+  return L}
+const ABSC=RES?Math.abs(D.c3.chosen):Math.abs(C6);
+const PERT=r=>COMB?Math.abs(C3S/r**3+C6/r**6):RES?ABSC/r**3:ABSC/r**6;   // |ΔE| at first and second order, GHz
+const LAWN=COMB?(PM?'|±C₃/R³ + C₆/R⁶|':'|C₃/R³ + C₆/R⁶|'):RES?'|C₃|/R³':'|C₆|/R⁶';
+function rbPert(om){                                           // largest R where PERT = om (GHz)
+  if(!COMB)return RES?Math.pow(ABSC/om,1/3):Math.pow(ABSC/om,1/6);
+  for(let e=4;e>=-1.3;e-=0.002){const r=10**e;if(PERT(r)>=om)return r}return null}
+function drawPair(){const u=UF[S.unit][1];
+  const fol=D.followed_ghz.map((v,k)=>FOL[k]==null?null:Math.abs(v));
+  const tr=[{type:'scatter',mode:'lines+markers',x:R,y:fol.map(v=>v==null||v<=0?null:ef(v)),connectgaps:false,name:'|ΔE| of the followed pair',line:{color:css('--fol'),width:1.6},marker:{size:3}},
+    {type:'scatter',mode:'lines',x:R,y:R.map(r=>ef(PERT(r))),name:LAWN,line:{color:css('--quad'),width:1.2,dash:'dash'}},
+    {type:'scatter',mode:'lines',x:[R[0],R[N-1]],y:[ef(D.blockade.rabi_MHz*1e-3),ef(D.blockade.rabi_MHz*1e-3)],name:'hΩ/2π',line:{color:css('--cross'),width:1,dash:'dot'}}];
+  Plotly.react('pfp',tr,lay('R (µm)','|ΔE| ('+u+')',true,true,true),PCFG);
+  $('nfp').innerHTML=[`The shift of the level holding most of the pair, on log axes, against the ${COMB?'C₃/R³ + C₆/R⁶ (permanent dipoles and van der Waals)':RES?'first-order C₃/R³':'second-order C₆/R⁶'} law; drawn while that level holds at least half of the pair.`,
+    `Where they part, the perturbative law fails: the pair mixes with its neighbours (here below the LeRoy radius ${g(D.leroy_um)} µm the multipole expansion itself fails).`].map(t=>`<li>${esc(t)}</li>`).join('')}
+function drawDisp(){const ch=D.channels||[];
+  const tr=[{type:'bar',orientation:'h',y:ch.map(c=>c.pair).reverse(),x:ch.map(c=>100*c.share).reverse(),
+    marker:{color:ch.map(c=>c.share>=0?css('--acc'):css('--cross')).reverse()},customdata:ch.map(c=>[c.forster_ghz*1e3,c.c6_ghz_um6]).reverse(),
+    hovertemplate:'%{y}<br>share %{x:.2f} %<br>Förster %{customdata[0]:.4g} MHz<br>C₆ part %{customdata[1]:.4g} GHz µm⁶<extra></extra>'}];
+  const L=lay('share of C₆ (%)','',false,false,false);L.margin.l=170;L.hovermode='closest';L.showlegend=false;L.yaxis.type='category';L.yaxis.automargin=true;
+  Plotly.react('pds',tr,L,PCFG);
+  $('nds').innerHTML=[`C₆ = Σ |⟨p|V R³|pair⟩|² / (E_pair − E_p) over the pairs p the dipole couples to; bars: each channel's share (negative: it pulls the other way).`,
+    `Förster defect: E_p − E_pair. Small defects dominate; a channel near zero would make the interaction resonant (C₃).`,
+    `Manifold table: the eigenvalues of the C₆ matrix over every m_j of the pair, with the blockade radius each gives at Ω/2π = ${g(D.blockade.rabi_MHz)} MHz.`].map(t=>`<li>${esc(t)}</li>`).join('')}
+function rbDiag(om){                                           // largest R where the followed pair has moved by om (GHz)
+  for(let k=N-1;k>0;k--){const a=Math.abs(D.followed_ghz[k]),b=Math.abs(D.followed_ghz[k-1]);if(b>=om&&a<om)return R[k-1]+(R[k]-R[k-1])*(b-om)/(b-a)}return null}
+function drawBlock(){const oms=[];for(let e=-2;e<=2.0001;e+=0.05)oms.push(10**e);
+  const per=oms.map(o=>rbPert(o*1e-3));
+  const dia=oms.map(o=>rbDiag(o*1e-3));
+  const tr=[{type:'scatter',mode:'lines',x:oms,y:per,name:COMB?LAWN+' = hΩ':RES?'(|C₃|/hΩ)^(1/3)':'(|C₆|/hΩ)^(1/6)',line:{color:css('--quad'),width:1.4,dash:'dash'}},
+    {type:'scatter',mode:'lines',x:oms,y:dia,name:'diagonalised',line:{color:css('--fol'),width:1.8}},
+    {type:'scatter',mode:'markers',x:[D.blockade.rabi_MHz],y:[D.blockade.R_perturbative_um],name:'chosen Ω',marker:{size:9,color:css('--cross'),symbol:'circle-open',line:{width:2}}}];
+  const L=lay('Ω/2π (MHz)','blockade radius (µm)',true,false,false);
+  L.shapes.push({type:'line',xref:'paper',x0:0,x1:1,y0:D.leroy_um,y1:D.leroy_um,line:{color:css('--ink2'),width:1,dash:'dot'}});
+  L.annotations=[{xref:'paper',x:1,y:D.leroy_um,text:'LeRoy radius',showarrow:false,xanchor:'right',yanchor:'bottom',font:{size:11,color:css('--ink2')}}];
+  Plotly.react('pbl',tr,L,PCFG);
+  $('nbl').innerHTML=[`Blockade radius against the Rabi frequency: where the pair's shift equals hΩ/2π, from ${COMB?'C₃ and C₆':RES?'C₃':'C₆'} and from the diagonalised potential (within the computed R range).`,
+    `Below the LeRoy radius the result is not physical; outside ${g(R[0])}–${g(R[N-1])} µm there is no diagonalised value.`].map(t=>`<li>${esc(t)}</li>`).join('')}
+function drawForster(){if(!FO)return;
+  const F=FO.fields_V_cm,u=UF[S.unit][1],xs=[],ys=[],cs=[],tx=[];let cm=0;
+  FO.c3_ghz_um3.forEach(r=>r.forEach(c=>{cm=Math.max(cm,Math.abs(c))}));
+  for(let k=0;k<F.length;k++)FO.energies_ghz[k].forEach((e,i)=>{xs.push(F[k]);ys.push(ef(e));const c=FO.c3_ghz_um3[k][i];cs.push(cm?Math.abs(c)/cm:0);tx.push(esc(FO.labels[k][i])+'<br>C₃ '+g(c)+' GHz µm³')});
+  const o=cs.map((_,i)=>i).sort((a,b)=>cs[a]-cs[b]);
+  const tr=[{type:GL?'scattergl':'scatter',mode:'markers',x:o.map(i=>xs[i]),y:o.map(i=>ys[i]),text:o.map(i=>tx[i]),name:'coupled pairs',
+      hovertemplate:'F %{x:.4g} V/cm<br>E %{y:.6g} '+u+'<br>%{text}<extra></extra>',
+      marker:{size:3.4,color:o.map(i=>cs[i]),cmin:0,cmax:1,colorscale:CMAPS[S.cmap](),reversescale:S.cmap==='viridis',showscale:true,
+        colorbar:{title:{text:'|C₃| / max',font:{size:11,color:css('--ink2')}},thickness:10,len:0.6,tickfont:{size:10,color:css('--ink2')}}}},
+    {type:'scatter',mode:'lines',x:F,y:FO.target_ghz.map(ef),name:D.state1+' + '+D.state2,line:{color:css('--fol'),width:1.8}}];
+  const L=lay('F (V/cm)','E − E(F = 0) ('+u+')',false,false,false);L.hovermode='closest';
+  FO.resonances.slice(0,8).forEach(r=>L.shapes.push({type:'line',x0:r.field_V_cm,x1:r.field_V_cm,yref:'paper',y0:0,y1:1,line:{color:css('--cross'),width:1,dash:'dot'}}));
+  if(FLD)L.shapes.push({type:'line',x0:FLD,x1:FLD,yref:'paper',y0:0,y1:1,line:{color:css('--ink2'),width:1.2}});
+  Plotly.react('pfo',tr,L,PCFG);
+  const rab=D.blockade.rabi_MHz;
+  $('fot').innerHTML=FO.resonances.length?FO.resonances.map(r=>`<tr><td>${g(r.field_V_cm)}</td><td>${esc(r.pair).replace(/([a-z])(\d+\/2)/g,'$1<sub>$2</sub>').replace(/ ([+-]\d+\/2)/g,' m<sub>j</sub> $1')}</td><td>${g(r.c3_ghz_um3)}</td><td>${g(Math.pow(Math.abs(r.c3_ghz_um3)*1e3/rab,1/3))} µm</td></tr>`).join('')
+    :'<tr><td colspan="4">none in this range</td></tr>';
+  $('nfo').innerHTML=[`Each atom's Stark states (field along the quantisation axis), paired: the pairs within ±${g(FO.window_ghz)} GHz of ${D.state1} + ${D.state2}, coloured by their dipole coupling to it, ⟨pair'|V R³|pair⟩.`,
+    `A Förster resonance is where a coupled pair crosses the chosen one: there the interaction is C₃/R³ (resonant) instead of C₆/R⁶.`,
+    `Identical atoms: |i j⟩ and |j i⟩ count once, as the exchange-symmetric pair (coupling √2 ⟨i j|V R³|a a⟩).`,
+    `Pairs coupled by less than a thousandth of the strongest are left out.`]
+    .concat(FLD?[`Solid line: the field of the pair potentials (${g(FLD)} V/cm).`]:[]).map(t=>`<li>${esc(t)}</li>`).join('')}
 function atR(){const k=S.k,E=D.energies_ghz[k],C=D.character[k];$('rv').textContent=g(R[k])+' µm';
   let im=0;C.forEach((c,i)=>{if(c>C[im])im=i});
   let gap=Infinity;E.forEach((e,i)=>{if(i!==im)gap=Math.min(gap,Math.abs(e-E[im]))});
-  const pert=RES?null:D.vdw_ghz[k];
-  $('atr').innerHTML=[['shift',g(ef(E[im]))+' '+UF[S.unit][1]],['C₆/R⁶',pert==null?'–':g(ef(pert))+' '+UF[S.unit][1]],[CBT,C[im].toFixed(4)],
+  const pert=COMB?C3S/R[k]**3+C6/R[k]**6:RES?null:D.vdw_ghz[k];
+  $('atr').innerHTML=[['shift',g(ef(E[im]))+' '+UF[S.unit][1]],[COMB?'C₃/R³ + C₆/R⁶':'C₆/R⁶',pert==null?'–':g(ef(pert))+' '+UF[S.unit][1]],[CBT,C[im].toFixed(4)],
     ['nearest other',g(ef(gap))+' '+UF[S.unit][1]],['R / R_b',(R[k]/D.blockade.R_perturbative_um).toFixed(3)]].map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('')}
 function tables(){
   $('ct').innerHTML=D.channels.length?D.channels.map(c=>`<tr><td>${esc(c.pair).replace(/(\d+\/2)/g,'<sub>$1</sub>')}</td><td>${g(ef(c.forster_ghz))} ${UF[S.unit][1]}</td><td>${g(c.c6_ghz_um6)}</td><td>${(100*c.share).toFixed(1)} %</td></tr>`).join('')
@@ -162,11 +275,16 @@ function tables(){
   $('mt').innerHTML=D.c6.eigen.map((c,i)=>`<tr><td>${i+1}</td><td>${g(c)}</td><td>${g(Math.pow(Math.abs(c)*1e3/rab,1/6))} µm</td></tr>`).join('')}
 function notes(){const B=D.blockade,n=[
   `Each dot is an eigenstate of E₁ + E₂ + V_dd(R) (dipole-dipole); colour: ${'|⟨pair|μ⟩|²'}, the share of the chosen pair (and its swap) in each eigenstate μ.`,
-  `Basis: single-atom n ${D.basis.n_lo}–${D.basis.n_hi}, l ≤ ${D.basis.l_max}; pair states within ±${g(D.basis.ecut_ghz)} GHz of the same parity`+(D.theta_deg?'':' and M')+`: ${D.basis.size} (${D.basis.symmetric} symmetric, ${D.basis.antisymmetric} antisymmetric).`,
+  `Basis: single-atom n ${D.basis.n_lo}–${D.basis.n_hi}, l ≤ ${D.basis.l_max}; pair states within ±${g(D.basis.ecut_ghz)} GHz`+(FLD?' of either parity':' of the same parity')+(D.theta_deg?'':' and M')+`: ${D.basis.size} (${D.basis.symmetric} symmetric, ${D.basis.antisymmetric} antisymmetric).`,
+  ...(DRS?[`${[FLD?'Field '+g(FLD)+' V/cm':'',BG?'B = '+g(BG)+' G':''].filter(Boolean).join(' and ')} along the quantisation axis: each atom's states are its ${FLD?'Stark':'Zeeman'} states (every l ≤ ${D.dressing.l_max}${BG?'; Zeeman with j mixing and the diamagnetic term':''}), labelled by the level they continue; the chosen states keep ${D.dressing.character.map(v=>v.toFixed(3)).join(' and ')} of their levels.`,
+    ...(PM?[`First order: C₃ = ${g(C3S)} GHz µm³ couples the pair to a pair within hΩ of it (a Förster resonance), splitting it into ±C₃/R³ branches; C₆ from the rest.`]
+      :FLD?[`In the field the states have permanent dipoles: a first-order C₃ = ${g(C3S)} GHz µm³ beside C₆.`]:[]),
+    ...(FLD?[`The electric field mixes parity, so pairs of either parity couple.`]:[]),
+    ...(BG?[`B splits the m_j: only the chosen m_j pair is degenerate, and other m_j pairs enter C₆ with their Zeeman defects.`]:[])]:[]),
   `Energies: precision quantum defects (j-resolved), NIST levels at low n; radial integrals in the Marinescu model potential.`,
   `C₆ from second order in the pair's degenerate manifold, ΔE = C₆/R⁶ (repulsive: C₆ > 0; ARC quotes −C₆)`+(D.c6.cut_ghz?`, pairs within ${g(D.c6.cut_ghz)} GHz.`:', every pair the single-atom basis gives.'),
-  RES?`The two levels are dipole coupled: the interaction is resonant, ±C₃/R³ at long range (C₃ of the chosen pair's eigenstates).`:`Shown: eigenvalues within ±${g(D.window_ghz)} GHz of the pair.`,
-  `Blockade radius: where |C${B.from_c3?'₃':'₆'}|/R${B.from_c3?'³':'⁶'} = hΩ/2π; diagonalised: where the followed pair has moved by Ω/2π.`,
+  RES&&!DRS?`The two levels are dipole coupled: the interaction is resonant, ±C₃/R³ at long range (C₃ of the chosen pair's eigenstates).`:`Shown: eigenvalues within ±${g(D.window_ghz)} GHz of the pair.`,
+  `Blockade radius: where ${COMB?'|C₃/R³ + C₆/R⁶|':B.from_c3?'|C₃|/R³':'|C₆|/R⁶'} = hΩ/2π; diagonalised: where the followed pair has moved by Ω/2π.`,
   `Below the LeRoy radius (${g(D.leroy_um)} µm) the electron clouds overlap and the multipole expansion fails.`];
   if(D.mixed_below_um!=null)n.push(`Below ${g(D.mixed_below_um)} µm no eigenstate holds half of the pair.`);
   $('notes').innerHTML=n.map(t=>`<li>${esc(t)}</li>`).join('')}
@@ -177,12 +295,14 @@ $('minc').oninput=()=>{$('minv').textContent=(+$('minc').value).toFixed(3);draw(
 ['c-fol','c-vdw','c-bl','c-grey'].forEach(i=>$(i).onchange=draw);
 document.querySelectorAll('#cmap button').forEach(b=>b.onclick=()=>{S.cmap=b.dataset.c;document.querySelectorAll('#cmap button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw()});
 document.querySelectorAll('#unit button').forEach(b=>b.onclick=()=>{S.unit=b.dataset.u;document.querySelectorAll('#unit button').forEach(x=>x.setAttribute('aria-pressed',x===b));tables();atR();draw()});
-$('railbtn').onclick=()=>{const c=$('app').classList.toggle('closed');$('railbtn').textContent=c?'Show controls':'Hide controls';$('railbtn').setAttribute('aria-expanded',!c);setTimeout(()=>Plotly.Plots.resize('plot'),50)};
+$('railbtn').onclick=()=>{const c=$('app').classList.toggle('closed');$('railbtn').textContent=c?'Show controls':'Hide controls';$('railbtn').setAttribute('aria-expanded',!c);setTimeout(()=>document.querySelectorAll('.pane:not([hidden]) .js-plotly-plot').forEach(p=>Plotly.Plots.resize(p)),50)};
 $('theme').onclick=()=>{const o=['auto','light','dark'];S.theme=o[(o.indexOf(S.theme)+1)%3];const h=document.documentElement;S.theme==='auto'?h.removeAttribute('data-theme'):h.setAttribute('data-theme',S.theme);$('theme').textContent='Theme: '+S.theme;draw()};
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(S.theme==='auto')draw()});
 $('csv').onclick=csv;
 $('minv').textContent='0.000';if(RES)$('vlab').textContent='C₃/R³';
 S.k=N-1;$('rcur').value=N-1;
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;draw()});
+if(FO)$('tab-fo').hidden=false;
 header();notes();tables();atR();draw();
 </script>
 </body></html>

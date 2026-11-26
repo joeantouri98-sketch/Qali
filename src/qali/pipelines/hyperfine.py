@@ -81,6 +81,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help='Rebuild nuclear_data.json from IAEA CSV files')
     parser.add_argument('--magn-csv',  default=str(reference_path('Moments', 'magn_mom_recomm.csv')))
     parser.add_argument('--elec-csv',  default=str(reference_path('Moments', 'elec_mom_recomm.csv')))
+    from qali.pipelines.page_store import add_arguments
+    add_arguments(parser)
     return parser
 
 # ============================================================================
@@ -473,7 +475,7 @@ def _special_json(result: HyperfineResult) -> dict:
     return special
 
 
-def save_json(element: str, result: HyperfineResult, data_dir) -> None:
+def save_json(element: str, result: HyperfineResult, data_dir, page: dict | None = None) -> None:
     nucleus = result.nucleus
     out = {
         'element':    element,
@@ -497,6 +499,8 @@ def save_json(element: str, result: HyperfineResult, data_dir) -> None:
             for st in result.states
         ],
     }
+    if page:                                   # what the page was made from, for Generate plot from...
+        out['page'] = page
     path = os.path.join(data_dir, f"{element}_hyperfine.json")
     write_json(path, out)
     print(f"  ✓ {path}")
@@ -524,6 +528,13 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.from_json:
+        if args.name and len(args.from_json) > 1:
+            parser.error("--name needs a single --from-json file")
+        from qali.pipelines.page_store import pages_only
+        return pages_only("hyperfine", args.from_json, args.output_dir or str(Workspace.current().plots_dir),
+                          args.name, flat=bool(args.output_dir))
 
     data_dir = args.data_dir
     os.makedirs(data_dir, exist_ok=True)
@@ -570,10 +581,13 @@ def main(argv: list[str] | None = None) -> int:
             failed.append(el)
             continue
 
-        save_json(el, result, data_dir)
-        if not args.no_plot:
-            from qali.pipelines.hyperfine_report import write_page
-            write_page(el, result, out_dir, gI_source=result_gI_source(el, data_dir, result.nucleus.A))
+        rec: dict = {}
+        try:
+            if not args.no_plot:
+                from qali.pipelines.hyperfine_report import write_page
+                write_page(el, result, out_dir, gI_source=result_gI_source(el, data_dir, result.nucleus.A), store=rec)
+        finally:
+            save_json(el, result, data_dir, page=rec or None)
 
     if failed:
         print(f"\n  Failed: {', '.join(failed)}")

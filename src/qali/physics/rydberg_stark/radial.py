@@ -97,6 +97,12 @@ def solve(symbol: str | None, l: int, j: float, n_stars: Sequence[float], x: np.
     return chi * sgn[:, None]
 
 
+def moment(chi_a: np.ndarray, chi_b: np.ndarray, x: np.ndarray, k: int) -> np.ndarray:
+    """<a|r^k|b> for stacks of χ on the same grid (u = χ √x, dr = 2x dx), a.u."""
+    w = 2.0 * H_X * x ** (2 * k + 2)
+    return (chi_a * w[None, :]) @ chi_b.T
+
+
 def dipole(chi_a: np.ndarray, chi_b: np.ndarray, x: np.ndarray) -> np.ndarray:
     """<a|r|b> for stacks of χ on the same grid: [len(a), len(b)], a.u."""
     w = 2.0 * H_X * x ** 4

@@ -162,3 +162,58 @@ def test_ac_stark_stage_and_figure(tmp_path):
     assert d["ac"]["alpha_dynamic"]["alpha0"] != d["polarizability"]["alpha0"]
     res = templates.stark({}, "Na", str(data), {})
     assert "F_\\mathrm{ac}" in res.panels[0].xlabel and any("alpha0(omega)" in n for n in res.notes)
+
+
+# ---------------------------------------------------------------- field ramps
+
+def test_ramp_reproduces_landau_zener():
+    from qali.physics.rydberg_stark import ramp as rp
+    from qali.physics.rydberg_stark.defects import Level
+    from qali.physics.rydberg_stark.stark import AU_FIELD_V_CM, HARTREE_GHZ, StarkBasis
+    g, s1, s2 = 0.05, 0.1, -0.1                     # half-gap GHz, diabatic slopes GHz per V/cm
+    U = np.array([[1, 1], [1, -1]]) / np.sqrt(2)
+    Zp = U.T @ np.diag([s1, s2]) @ U                # H = [[s1 F, g], [g, s2 F]] in H0's eigenbasis
+    lv = [Level(1, 0, 1, 0, 1.0, "x"), Level(1, 1, 1, 0, 1.0, "x")]
+    b = StarkBasis(lv, 1, 0, np.array([g, -g]), Zp / (HARTREE_GHZ / AU_FIELD_V_CM))
+    F = np.linspace(-20, 20, 41)
+    c0 = np.linalg.eigh(np.diag([g, -g]) + F[0] * Zp)[1][:, 0]          # the lower adiabat
+    for T in (5.0, 40.0):
+        r = rp.ramp(b, F, T, start=c0, max_field_step=0.01)
+        assert 1 - r.population[-1, 0] == pytest.approx(rp.landau_zener(2 * g, s1 - s2, 40 / T), abs=3e-4)
+    # the instantaneous-eigenbasis integrator (the stage's): the same, at any ramp time
+    for T in (5.0, 80.0, 1000.0):
+        r = rp.ramp_adiabatic(b, F, T, 10.0, 0.05, start=c0)
+        assert 1 - r.population[-1, 0] == pytest.approx(rp.landau_zener(2 * g, s1 - s2, 40 / T), abs=3e-4)
+        assert r.steps == 800
+    assert rp.adiabatic_step(b, 40 / 5.0, 1.0) <= 0.25
+
+
+def test_adiabatic_ramp_matches_exact_propagation():
+    from qali.physics.rydberg_stark import ramp as rp
+    from qali.physics.rydberg_stark.defects import Level
+    from qali.physics.rydberg_stark.stark import AU_FIELD_V_CM, HARTREE_GHZ, StarkBasis
+    rng = np.random.default_rng(3)                 # a small dense model with many crossings
+    m = 12
+    Z = rng.normal(size=(m, m)); Z = (Z + Z.T) / 2
+    E0 = np.sort(rng.normal(size=m))
+    lv = [Level(1, 0, 1, 0, 1.0, "x") for _ in range(m)]
+    b = StarkBasis(lv, 1, m // 2, E0, 0.05 * Z / (HARTREE_GHZ / AU_FIELD_V_CM))
+    F = np.linspace(0, 20, 41)
+    for T in (2.0, 20.0):
+        r1 = rp.ramp(b, F, T, 50.0, 0.005)
+        r2 = rp.ramp_adiabatic(b, F, T, 50.0, 0.005, band=1.0, sub_band=1.0)
+        assert np.allclose(np.nan_to_num(r1.energies_ghz), np.nan_to_num(r2.energies_ghz), atol=1e-9)
+        assert np.max(np.abs(r1.population - r2.population)) < 2e-3
+
+
+def test_ramp_stage(tmp_path):
+    import json
+
+    from helpers import make_workspace, run_pipeline
+    root = make_workspace(tmp_path / "ws")
+    r = run_pipeline(["stark", "Na", "--state", "12s1/2", "--n-range", "1", "--points", "11", "--field-max", "200",
+                      "--ramp-time", "1"], root)
+    assert r.returncode == 0, r.stdout + r.stderr
+    d = json.loads((root / ".qali" / "data" / "Na_stark__12s1-2_mj1-2_ramp1ns.json").read_text(encoding="utf-8"))
+    assert d["ramp"]["ramp_ns"] == 1 and len(d["population"]) == 11 and d["ramp"]["steps"] > 0
+    assert abs(sum(d["population"][0]) - 1) < 1e-6 and all(0.99 < w <= 1 + 1e-9 for w in d["ramp"]["in_window"][:3])

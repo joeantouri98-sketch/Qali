@@ -38,6 +38,12 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .main{min-width:0;display:flex;flex-direction:column;gap:10px}
 .plot{border:1px solid var(--edge);border-radius:8px;overflow:hidden}
 #plot{width:100%;height:640px}
+.p{width:100%;height:420px}.p.short{height:300px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--edge);margin-bottom:2px;flex-wrap:wrap}
+.tabs button{background:transparent;color:var(--ink2);border:0;border-bottom:2px solid transparent;padding:8px 14px;font:inherit;font-size:13.5px;cursor:pointer;margin-bottom:-1px}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
+.tabs button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px;border-radius:4px}
+.pane{display:flex;flex-direction:column;gap:10px}.pane[hidden]{display:none}
 .note{color:var(--ink2);font-size:12.5px;line-height:1.5;margin:0;padding-left:18px}
 .card{border:1px solid var(--edge);border-radius:8px;padding:10px 12px}
 .card b{font-size:13px}
@@ -66,12 +72,14 @@ tbody tr{cursor:pointer}tbody tr:hover{background:var(--panel)}tr.sel td{backgro
         <label><input type="checkbox" id="c-quad" checked><span id="qlab">−½αF²</span></label>
         <label><input type="checkbox" id="c-x" checked>Avoided crossings</label>
         <label><input type="checkbox" id="c-grey">Grey dots</label>
+        <label id="l-sad" hidden><input type="checkbox" id="c-sad" checked>Classical limit</label>
       </div>
       <div class="sl" style="margin-top:8px"><div class="top"><span>Hide character below</span><span class="v" id="minv"></span></div>
         <input type="range" id="minc" min="0" max="0.5" step="0.005" value="0"></div>
     </section>
     <section><h2>Energy</h2>
       <div class="seg" id="unit"><button data-u="GHz" aria-pressed="true">GHz</button><button data-u="MHz">MHz</button><button data-u="cm">cm⁻¹</button></div>
+      <div class="seg" id="cby" style="margin-top:6px" hidden><button data-b="char" aria-pressed="true">Colour: state</button><button data-b="width" id="cby-w">Colour: width Γ</button><button data-b="pop" id="cby-p">Colour: population</button></div>
       <div class="seg" id="cmap" style="margin-top:6px"><button data-c="blue" aria-pressed="true">Blue</button><button data-c="red">Red</button><button data-c="viridis">Viridis</button></div>
       <div class="seg" id="zero" style="margin-top:6px"><button data-z="state" aria-pressed="true">Zero at the state</button><button data-z="limit">At the limit</button></div>
     </section>
@@ -82,14 +90,54 @@ tbody tr{cursor:pointer}tbody tr:hover{background:var(--panel)}tr.sel td{backgro
     </section>
   </aside>
   <main class="main">
-    <div class="plot"><div id="plot"></div></div>
-    <ul class="note" id="notes"></ul>
-    <div class="card"><b>Avoided crossings of the followed state</b>
-      <div class="tw"><table><thead><tr><th>F (V/cm)</th><th>gap</th><th>F / F_IT</th></tr></thead><tbody id="xt"></tbody></table></div>
+    <div class="tabs" role="tablist" aria-label="Views">
+      <button role="tab" id="tab-map" aria-selected="true" aria-controls="pane-map" data-t="map">Map</button>
+      <button role="tab" id="tab-st" aria-selected="false" aria-controls="pane-st" data-t="st">State</button>
+      <button role="tab" id="tab-po" aria-selected="false" aria-controls="pane-po" data-t="po">Polarisability</button>
+      <button role="tab" id="tab-cr" aria-selected="false" aria-controls="pane-cr" data-t="cr">Crossings</button>
+      <button role="tab" id="tab-io" aria-selected="false" aria-controls="pane-io" data-t="io" hidden>Ionisation</button>
+      <button role="tab" id="tab-rp" aria-selected="false" aria-controls="pane-rp" data-t="rp" hidden>Ramp</button>
+      <button role="tab" id="tab-lv" aria-selected="false" aria-controls="pane-lv" data-t="lv">Levels</button>
     </div>
-    <div class="card"><b>Field-free levels in the window</b>
-      <div class="tw"><table><thead><tr><th>level</th><th>E − E_state</th><th>energy from</th></tr></thead><tbody id="lt"></tbody></table></div>
-    </div>
+    <section class="pane" id="pane-map" role="tabpanel" aria-labelledby="tab-map">
+      <div class="plot"><div id="plot"></div></div>
+      <ul class="note" id="notes"></ul>
+    </section>
+    <section class="pane" id="pane-st" role="tabpanel" aria-labelledby="tab-st" hidden>
+      <div class="plot"><div class="p" id="pst"></div></div>
+      <div class="plot"><div class="p short" id="pch"></div></div>
+      <ul class="note" id="nst"></ul>
+    </section>
+    <section class="pane" id="pane-po" role="tabpanel" aria-labelledby="tab-po" hidden>
+      <div class="plot"><div class="p" id="ppo"></div></div>
+      <div class="card"><b>Polarisability of each |m<sub>j</sub>|</b>
+        <div class="tw"><table><thead id="poh"></thead><tbody id="pot"></tbody></table></div></div>
+      <ul class="note" id="npo"></ul>
+    </section>
+    <section class="pane" id="pane-cr" role="tabpanel" aria-labelledby="tab-cr" hidden>
+      <div class="plot"><div class="p" id="pcr"></div></div>
+      <div class="card"><b>Avoided crossings of the followed state</b>
+        <div class="tw"><table><thead><tr><th>F (V/cm)</th><th>gap</th><th>F / F_IT</th></tr></thead><tbody id="xt"></tbody></table></div>
+      </div>
+      <ul class="note" id="ncr"></ul>
+    </section>
+    <section class="pane" id="pane-io" role="tabpanel" aria-labelledby="tab-io" hidden>
+      <div class="plot"><div class="p" id="pio"></div></div>
+      <ul class="note" id="nio"></ul>
+    </section>
+    <section class="pane" id="pane-rp" role="tabpanel" aria-labelledby="tab-rp" hidden>
+      <div class="plot"><div class="p" id="prp"></div></div>
+      <div class="card"><b>Avoided crossings: Landau–Zener and the propagation</b>
+        <div class="tw"><table><thead><tr><th>F (V/cm)</th><th>gap</th><th>slope difference</th><th>P diabatic, Landau–Zener</th><th>kept on the state, propagation</th></tr></thead><tbody id="rpt"></tbody></table></div></div>
+      <ul class="note" id="nrp"></ul>
+    </section>
+    <section class="pane" id="pane-lv" role="tabpanel" aria-labelledby="tab-lv" hidden>
+      <div class="card"><b id="lctitle">Levels at the cursor</b>
+        <div class="tw"><table><thead id="lch"></thead><tbody id="lct"></tbody></table></div></div>
+      <div class="card"><b>Field-free levels in the window</b>
+        <div class="tw"><table><thead><tr><th>level</th><th>E − E_state</th><th>energy from</th></tr></thead><tbody id="lt"></tbody></table></div>
+      </div>
+    </section>
   </main>
 </div>
 <script>
@@ -97,8 +145,11 @@ const D=$!DATA_JS;
 const $=id=>document.getElementById(id);
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-const S={unit:'GHz',theme:'auto',k:0,zero:'state',cmap:'blue'};
-const CMAPS={blue:()=>[[0,css('--dot')],[0.15,css('--dot')],[1,css('--acc')]],red:()=>[[0,css('--dot')],[0.08,css('--dot')],[0.4,'#f26b6b'],[0.75,'#d40000'],[1,'#3a0000']],
+const S={unit:'GHz',theme:'auto',k:0,zero:'state',cmap:'blue',by:'char',tab:'map'};
+const DARK=()=>getComputedStyle(document.documentElement).colorScheme==='dark';
+// the figures' colour maps (qali_blue, qali_red): from the grey of the dots, linear in the share;
+// on a dark background the strongest share ends light instead of black
+const CMAPS={blue:()=>[[0,css('--dot')],[1/3,'#7fb0e8'],[2/3,'#1f5fbf'],[1,DARK()?'#d6e6ff':'#08204a']],red:()=>[[0,css('--dot')],[1/3,'#f26b6b'],[2/3,'#d40000'],[1,DARK()?'#ffd2d2':'#000000']],
   viridis:()=>'Viridis'};
 const GL=(()=>{try{const c=document.createElement('canvas');return !!(c.getContext('webgl')||c.getContext('experimental-webgl'))}catch(e){return false}})();   // SVG without WebGL
 const UF={GHz:[1,'GHz'],MHz:[1e3,'MHz'],cm:[1/29.9792458,'cm⁻¹']};
@@ -108,6 +159,7 @@ const g=x=>{if(!isFinite(x))return '–';const a=Math.abs(x);return a!==0&&(a<1e
 const lab=s=>esc(s).replace(/(\d+\/2)$/,'<sub>$1</sub>');
 const F=D.fields_V_cm, N=F.length;
 const AC=D.mode==='ac'&&D.ac?D.ac:null;               // AC (Floquet) map: F is the peak amplitude
+const MAG=D.magnetic||null;                                    // magnetic field too (Stark-Zeeman)
 const QL=AC?(AC.dc_V_cm?'second order':'−¼α(ω)F²'):'−½αF²';
 const QY=D.quadratic_ghz||F.map(f=>-0.5*(D.polarizability.by_mj[fr(Math.abs(D.mj)).replace('−','')]??D.polarizability.alpha0)*f*f/1e3);
 const CBT=(()=>{const m=/^(\d+)([a-z])(\d+\/2)$/.exec(D.state);return m?`|⟨${m[1]}${m[2].toUpperCase()}<sub>${m[3]}</sub>|μ⟩|²`:`|⟨${esc(D.state)}|μ⟩|²`})();   // the state's share of each level
@@ -119,10 +171,14 @@ const FOL=(()=>{const y=D.followed_ghz.map((v,k)=>Math.max(0,...D.character[k])>
 function header(){
   $('h1').innerHTML=`${esc(D.label||D.element)} ${lab(D.state)}, m<sub>j</sub> = ${fr(D.mj)}`;
   $('sub').textContent=(AC?`AC Stark map at ${g(AC.frequency_ghz)} GHz: ${D.basis.size} states × ${2*AC.sidebands+1} photon blocks`
-    :`Stark map: ${D.basis.size} states`)+`, n ${D.basis.n_lo}–${D.basis.n_hi}, l ≤ ${D.basis.l_max}`;
+    :`${(D.ionisation?"Stark map with ionisation":RAMP?`Stark map with a ${g(RAMP.ramp_ns)} ns ramp`:"Stark map").replace('Stark map',MAG?'Stark–Zeeman map':'Stark map')}: ${D.basis.size} states`)+`, n ${D.basis.n_lo}–${D.basis.n_hi}, l ≤ ${D.basis.l_max}`
+    +(MAG?`, B = ${g(MAG.B_gauss)} G`+(MAG.angle_deg?` at ${g(MAG.angle_deg)}° to E`:` along E`):'');
   const st=[['n*',D.n_star.toFixed(5)],['binding',D.binding_cm.toFixed(4)+' cm⁻¹'],['energy from',D.energy_source],
     ['E_I',D.ionization_cm.toFixed(4)+' cm⁻¹'],['Inglis–Teller F',g(D.inglis_teller_V_cm)+' V/cm']];
   if(AC)st.push(['AC frequency',g(AC.frequency_ghz)+' GHz'],['sidebands','±'+AC.sidebands],['static field',g(AC.dc_V_cm)+' V/cm']);
+  if(MAG)st.push(['B',g(MAG.B_gauss)+' G'],['B to E',g(MAG.angle_deg)+'°'],['Zeeman shift at F = 0',g(MAG.zeeman_shift_ghz*1e3)+' MHz'],
+    ...(MAG.crossed?[['|m_j| up to',fr(MAG.m_max)]]:[]));
+  if(ION)st.push(['classical ionisation F',g(ION.classical_field_V_cm)+' V/cm'],['rate ≥ '+g(ION.rate_MHz)+' MHz at',ION.onset_V_cm!=null?g(ION.onset_V_cm)+' V/cm':'not reached']);
   $('state').innerHTML=st.map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('');
   const P=D.polarizability,rows=[['α0',g(P.alpha0)+' MHz/(V/cm)²'],['α0',g(P.alpha0_au)+' a.u.']];
   if(D.j>0.5){rows.push(['α2',g(P.alpha2)+' MHz/(V/cm)²'],['α2',g(P.alpha2_au)+' a.u.'])}
@@ -132,16 +188,24 @@ function header(){
   $('pol').innerHTML=rows.map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('');
 }
 function fr(x){const a=Math.round(2*x);return (a<0?'−':'')+Math.abs(a)+'/2'}
-function curPoints(){const mc=+$('minc').value,xs=[],ys=[],cs=[];
-  for(let k=0;k<N;k++){const E=D.energies_ghz[k],C=D.character[k];for(let i=0;i<E.length;i++){if(C[i]<mc)continue;xs.push(F[k]);ys.push(ez(E[i]));cs.push(C[i])}}
-  const o=cs.map((_,i)=>i).sort((a,b)=>cs[a]-cs[b]);
-  return [o.map(i=>xs[i]),o.map(i=>ys[i]),o.map(i=>cs[i])]}
-function draw(){
+const ION=D.ionisation&&D.widths_ghz?D.ionisation:null;      // ionisation widths (complex scaling)
+const RAMP=D.ramp&&D.population?D.ramp:null;                   // populations left by a field ramp
+const lgw=w=>Math.log10(Math.max(w*1e3,1e-3));                  // log10 Γ/h in MHz, floored at 1 kHz
+function curPoints(){const mc=+$('minc').value,xs=[],ys=[],cs=[],ws=[],ps=[];
+  for(let k=0;k<N;k++){const E=D.energies_ghz[k],C=D.character[k],G=ION?D.widths_ghz[k]:null,P=RAMP?D.population[k]:null;
+    for(let i=0;i<E.length;i++){if(C[i]<mc&&!(S.by==='pop'&&P&&P[i]>=mc))continue;xs.push(F[k]);ys.push(ez(E[i]));cs.push(C[i]);ws.push(G?G[i]:0);ps.push(P?P[i]:0)}}
+  const key=S.by==='width'?ws:S.by==='pop'?ps:cs,o=key.map((_,i)=>i).sort((a,b)=>key[a]-key[b]);
+  return [o.map(i=>xs[i]),o.map(i=>ys[i]),o.map(i=>cs[i]),o.map(i=>ws[i]),o.map(i=>ps[i])]}
+function drawMap(){
   const ink=css('--ink'),ink2=css('--ink2'),grid=css('--grid'),bg=css('--bg');
-  const [xs,ys,cs]=curPoints(),grey=$('c-grey').checked;
-  const tr=[{type:GL?'scattergl':'scatter',mode:'markers',x:xs,y:ys,name:'eigenstates',hovertemplate:(AC?'F_ac':'F')+' %{x:.4g} V/cm<br>E %{y:.6g} '+UF[S.unit][1]+'<br>'+CBT+' %{marker.color:.3f}<extra></extra>',
-    marker:{size:3.2,color:grey?cs.map(()=>0):cs,cmin:0,cmax:1,colorscale:CMAPS[S.cmap](),reversescale:S.cmap==='viridis',
-      showscale:!grey,colorbar:{title:{text:CBT,font:{size:11,color:ink2}},thickness:10,len:0.6,tickfont:{size:10,color:ink2}}}}];
+  const [xs,ys,cs,ws,ps]=curPoints(),grey=$('c-grey').checked,byW=ION&&S.by==='width',byP=RAMP&&S.by==='pop';
+  const cb=byW?{title:{text:'Γ/h (MHz)',font:{size:11,color:ink2}},tickvals:[-3,-2,-1,0,1,2,3,4],ticktext:['0.001','0.01','0.1','1','10','100','10³','10⁴'],thickness:10,len:0.6,tickfont:{size:10,color:ink2}}
+    :{title:{text:byP?'population':CBT,font:{size:11,color:ink2}},thickness:10,len:0.6,tickfont:{size:10,color:ink2}};
+  const tr=[{type:GL?'scattergl':'scatter',mode:'markers',x:xs,y:ys,name:'eigenstates',customdata:ION?ws.map((w,i)=>[cs[i],w*1e3]):cs.map(c=>[c,0]),
+    hovertemplate:(AC?'F_ac':'F')+' %{x:.4g} V/cm<br>E %{y:.6g} '+UF[S.unit][1]+'<br>'+CBT+' %{customdata[0]:.3f}'+(ION?'<br>Γ/h %{customdata[1]:.4g} MHz':'')+'<extra></extra>',
+    marker:{size:3.2,color:grey?cs.map(()=>0):(byW?ws.map(lgw):byP?ps:cs),cmin:byW?-3:0,cmax:byW?4:1,colorscale:byW?'Viridis':CMAPS[S.cmap](),reversescale:!byW&&S.cmap==='viridis',
+      showscale:!grey,colorbar:cb}}];
+  if(ION&&$('c-sad').checked)tr.push({type:'scatter',mode:'lines',x:F,y:ION.saddle_ghz.map(v=>ez(v)),name:'classical limit −2√F',line:{color:css('--cross'),width:1.2,dash:'dot'},hoverinfo:'skip'});
   if($('c-fol').checked)tr.push({type:'scatter',mode:'lines',x:F,y:FOL.map(v=>v==null?null:ez(v)),connectgaps:false,name:'followed',line:{color:css('--fol'),width:1.4},hoverinfo:'skip'});
   if($('c-quad').checked){
     tr.push({type:'scatter',mode:'lines',x:F,y:QY.map(v=>ez(v)),name:QL,line:{color:css('--quad'),width:1.2,dash:'dash'},hoverinfo:'skip'})}
@@ -151,17 +215,98 @@ function draw(){
   const f0=F[S.k];
   const L={paper_bgcolor:bg,plot_bgcolor:bg,font:{family:css('--sans'),color:ink},margin:{l:72,r:20,t:14,b:48},hovermode:'closest',
     xaxis:{title:{text:AC?'F<sub>ac</sub> (V/cm, peak)':'F (V/cm)',font:{color:ink2,size:12}},gridcolor:grid,zerolinecolor:grid,tickfont:{color:ink2,size:11},ticks:'outside',tickcolor:ink2,linecolor:ink2},
-    yaxis:{title:{text:(S.zero==='limit'?'E below the limit (':'E − E('+D.state+') (')+UF[S.unit][1]+')',font:{color:ink2,size:12}},gridcolor:grid,zerolinecolor:grid,tickfont:{color:ink2,size:11},ticks:'outside',tickcolor:ink2,linecolor:ink2,tickformat:'~g'},
+    yaxis:{range:ION?[ez(-D.window_ghz),ez(D.window_ghz)]:undefined,title:{text:(S.zero==='limit'?'E below the limit (':'E − E('+D.state+') (')+UF[S.unit][1]+')',font:{color:ink2,size:12}},gridcolor:grid,zerolinecolor:grid,tickfont:{color:ink2,size:11},ticks:'outside',tickcolor:ink2,linecolor:ink2,tickformat:'~g'},
     legend:{orientation:'h',x:0,y:1.05,font:{size:12,color:ink2}},
     shapes:[{type:'line',x0:f0,x1:f0,yref:'paper',y0:0,y1:1,line:{color:ink2,width:1,dash:'dot'}}]};
   return Plotly.react('plot',tr,L,{displaylogo:false,responsive:true,modeBarButtonsToRemove:['lasso2d','select2d']});
 }
+const PANES=['map','st','po','cr','io','rp','lv'];
+function draw(){const t=S.tab;PANES.forEach(k=>{$('pane-'+k).hidden=k!==t});
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===t)));
+  return ({map:drawMap,st:drawState,po:drawPol,cr:drawCross,io:drawIon,rp:drawRamp,lv:levelsAt}[t]||drawMap)()}
+function drawRamp(){if(!RAMP)return;
+  const tr=[{type:'scatter',mode:'lines',x:F,y:RAMP.on_state,name:'on the level with most of '+D.state,line:{color:css('--fol'),width:1.8}},
+    {type:'scatter',mode:'lines',x:F,y:RAMP.in_window,name:'in the window',line:{color:css('--ink2'),width:1.2,dash:'dot'}},
+    {type:'scatter',mode:'lines',x:F,y:TRK.ch,name:CBT+' of that level',line:{color:css('--acc'),width:1.2,dash:'dash'}}];
+  const L=lay(XT(),'population',{yaxis:{range:[0,1.02],title:{text:'population',font:{size:12,color:css('--ink2')}},tickfont:{color:css('--ink2'),size:11},gridcolor:css('--grid')}});
+  if(D.crossings.length){L.shapes=L.shapes.concat(D.crossings.map(c=>({type:'line',x0:c.field_V_cm,x1:c.field_V_cm,yref:'paper',y0:0,y1:1,line:{color:css('--cross'),width:0.8,dash:'dot'}})))}
+  Plotly.react('prp',tr,L,PCFG);
+  const p=x=>x==null?'–':x.toFixed(4);
+  $('rpt').innerHTML=RAMP.crossings.length?RAMP.crossings.map(c=>`<tr><td>${g(c.field_V_cm)}</td><td>${g(c.gap_MHz)} MHz</td><td>${c.slope_diff_MHz_per_V_cm==null?'–':g(c.slope_diff_MHz_per_V_cm)+' MHz/(V/cm)'}</td><td>${p(c.p_lz)}</td><td>${p(c.p_tdse)}</td></tr>`).join('')
+    :'<tr><td colspan="5">no avoided crossings in this field range</td></tr>';
+  $('nrp').innerHTML=[`The field rises linearly from ${g(F[0])} to ${g(F[N-1])} V/cm in ${g(RAMP.ramp_ns)} ns (${g(RAMP.slew_V_cm_ns)} V/cm per ns); the state is propagated by the time-dependent Schrödinger equation ${RAMP.method==='eigenbasis'?'in the eigenstates at each field':'in the map\'s basis'} (${RAMP.steps} steps of ${g(RAMP.field_step_V_cm)} V/cm).`,
+    `Orange: the population on the level holding most of ${D.state}, i.e. kept on the state's own character (diabatic); a slow ramp moves it to the other level at each avoided crossing (adiabatic).`,
+    `Landau–Zener: P = exp(−π² Δ² / |dν/dt|) with the gap Δ and dν/dt = slope difference × ramp rate; propagation: the share kept on the state across the crossing (4 fields either side, so neighbouring crossings add in).`,
+    `Map: Colour: population shows where the ramp leaves the population at each field.`].map(t=>`<li>${esc(t)}</li>`).join('')}
+function lay(xt,yt,extra){const ink=css('--ink'),ink2=css('--ink2'),grid=css('--grid'),bg=css('--bg');
+  const ax=t=>({title:{text:t,font:{color:ink2,size:12}},gridcolor:grid,zerolinecolor:grid,tickfont:{color:ink2,size:11},ticks:'outside',tickcolor:ink2,linecolor:ink2});
+  const f0=F[S.k];
+  return Object.assign({paper_bgcolor:bg,plot_bgcolor:bg,font:{family:css('--sans'),color:ink},margin:{l:72,r:60,t:14,b:48},hovermode:'x unified',
+    xaxis:ax(xt),yaxis:Object.assign(ax(yt),{tickformat:'~g'}),legend:{orientation:'h',x:0,y:1.08,font:{size:12,color:ink2}},
+    shapes:[{type:'line',x0:f0,x1:f0,yref:'paper',y0:0,y1:1,line:{color:ink2,width:1,dash:'dot'}}]},extra||{})}
+const PCFG={displaylogo:false,responsive:true,modeBarButtonsToRemove:['lasso2d','select2d']};
+const XT=()=>AC?'F<sub>ac</sub> (V/cm, peak)':'F (V/cm)';
+// the followed state at each field: its level, character and the gap to the nearest other level
+const TRK=(()=>{const im=[],ch=[],gap=[];for(let k=0;k<N;k++){const E=D.energies_ghz[k],C=D.character[k];let i=0;C.forEach((c,j)=>{if(c>C[i])i=j});
+  let gp=Infinity;E.forEach((e,j)=>{if(j!==i)gp=Math.min(gp,Math.abs(e-E[i]))});im.push(i);ch.push(C[i]??0);gap.push(isFinite(gp)?gp:null)}return{im,ch,gap}})();
+function drawState(){const u=UF[S.unit][1];
+  const weak=D.followed_ghz.map((v,k)=>FOL[k]==null?ef(v):null);
+  const tr=[{type:'scatter',mode:'lines',x:F,y:FOL.map(v=>v==null?null:ef(v)),connectgaps:false,name:'level with most of '+D.state,line:{color:css('--fol'),width:1.8}},
+    {type:'scatter',mode:'markers',x:F,y:weak,name:'… holding less than half',marker:{size:4,color:css('--fol'),opacity:0.45}},
+    {type:'scatter',mode:'lines',x:F,y:QY.map(ef),name:QL,line:{color:css('--quad'),width:1.2,dash:'dash'}}];
+  const r=FOL.map((v,k)=>v==null?null:ef(v-QY[k]));
+  tr.push({type:'scatter',mode:'lines',x:F,y:r,name:'beyond '+QL,yaxis:'y2',line:{color:css('--ink2'),width:1}});
+  Plotly.react('pst',tr,lay(XT(),'shift ('+u+')',{yaxis2:{overlaying:'y',side:'right',showgrid:false,tickfont:{color:css('--ink2'),size:10},title:{text:'shift − '+QL+' ('+u+')',font:{size:11,color:css('--ink2')}}}}),PCFG);
+  const t2=[{type:'scatter',mode:'lines',x:F,y:TRK.ch,name:CBT+' of that level',line:{color:css('--acc'),width:1.5}},
+    {type:'scatter',mode:'lines',x:F,y:TRK.gap.map(v=>v==null?null:ef(v)),name:'gap to the nearest level',yaxis:'y2',line:{color:css('--cross'),width:1.2}}];
+  Plotly.react('pch',t2,lay(XT(),'share',{yaxis:{range:[0,1.02],title:{text:'share',font:{size:12,color:css('--ink2')}},tickfont:{color:css('--ink2'),size:11},gridcolor:css('--grid')},
+    yaxis2:{overlaying:'y',side:'right',type:'log',showgrid:false,tickfont:{color:css('--ink2'),size:10},title:{text:'gap ('+u+')',font:{size:11,color:css('--ink2')}}}}),PCFG);
+  $('nst').innerHTML=[`Orange: the level holding the largest share of ${D.state} at each field, solid while it holds at least half; it jumps where the state passes through an avoided crossing.`,
+    `Grey (right axis): its shift beyond ${QL} while it holds at least half: the hyperpolarisability and the crossings.`,
+    `Lower panel: that level's share of the state and its distance to the nearest other level.`].map(t=>`<li>${esc(t)}</li>`).join('')}
+function drawPol(){const P=D.polarizability,ms=Object.keys(P.by_mj),u=UF[S.unit][1],cols=['--fol','--acc','--quad','--cross','--ink2'];
+  const dyn=AC?AC.alpha_dynamic.by_mj:null,fac=AC?0.25:0.5;
+  const tr=ms.map((m,i)=>({type:'scatter',mode:'lines',x:F,y:F.map(f=>ef(-fac*(dyn?dyn[m]:P.by_mj[m])*f*f/1e3)),name:`|m_j| = ${m}`+(m===fr(Math.abs(D.mj)).replace('−','')?' (this map)':''),
+    line:{color:css(cols[i%cols.length]),width:1.5}}));
+  tr.push({type:'scatter',mode:'markers',x:F,y:FOL.map(v=>v==null?null:ef(v)),name:'map, followed',marker:{size:3,color:css('--ink2')}});
+  Plotly.react('ppo',tr,lay(XT(),(AC?'−¼α(ω)F²':'−½αF²')+' ('+u+')'),PCFG);
+  $('poh').innerHTML='<tr><th>|m_j|</th><th>α (MHz/(V/cm)²)</th><th>α (a.u.)</th>'+(AC?'<th>α(ω) (MHz/(V/cm)²)</th>':'')+'</tr>';
+  $('pot').innerHTML=ms.map(m=>`<tr><td>${m}</td><td>${g(P.by_mj[m])}</td><td>${g(P.by_mj[m]*1e3/2.48832e-4)}</td>`+(AC?`<td>${g(dyn[m])}</td>`:'')+'</tr>').join('')
+    +`<tr><td>scalar α0</td><td>${g(P.alpha0)}</td><td>${g(P.alpha0_au)}</td>`+(AC?`<td>${g(AC.alpha_dynamic.alpha0)}</td>`:'')+'</tr>'
+    +(D.j>0.5?`<tr><td>tensor α2</td><td>${g(P.alpha2)}</td><td>${g(P.alpha2_au)}</td>`+(AC?`<td>${g(AC.alpha_dynamic.alpha2)}</td>`:'')+'</tr>':'');
+  $('npo').innerHTML=[`Second-order shifts of ${D.state} for every |m_j|, from the same basis as the map; dots: the map's followed level (m_j = ${fr(D.mj)}).`,
+    `α(m_j) = α0 + α2 (3m_j² − j(j+1)) / (j(2j−1)); 1 a.u. = 2.48832×10⁻⁴ MHz/(kV/cm)².`].map(t=>`<li>${esc(t)}</li>`).join('')}
+function drawCross(){const u=UF[S.unit][1];
+  const tr=[{type:'scatter',mode:'lines',x:F,y:TRK.gap.map(v=>v==null?null:ef(v)),name:'gap to the nearest level',line:{color:css('--acc'),width:1.4}}];
+  if(D.crossings.length)tr.push({type:'scatter',mode:'markers',x:D.crossings.map(c=>c.field_V_cm),y:D.crossings.map(c=>ef(c.gap_MHz/1e3)),name:'avoided crossing',
+    marker:{symbol:'x-thin-open',size:10,color:css('--cross'),line:{width:1.8,color:css('--cross')}}});
+  Plotly.react('pcr',tr,lay(XT(),'gap ('+u+')',{yaxis:{type:'log',title:{text:'gap ('+u+')',font:{size:12,color:css('--ink2')}},tickfont:{color:css('--ink2'),size:11},gridcolor:css('--grid')}}),PCFG);
+  $('ncr').innerHTML=[`The distance from the level holding most of ${D.state} to its nearest neighbour; avoided crossings are its sharp minima, the gap there is the coupling (twice the matrix element).`,
+    `A slow ramp (Landau–Zener) follows a crossing adiabatically when the gap² ≫ ħ × the rate the levels approach.`].map(t=>`<li>${esc(t)}</li>`).join('')}
+function drawIon(){if(!ION)return;
+  const tr=[{type:'scatter',mode:'lines+markers',x:F,y:ION.state_rate_MHz.map(v=>Math.max(v,1e-4)),name:"state's rate Γ/h",line:{color:css('--cross'),width:1.6},marker:{size:3}}];
+  const sh=[{type:'line',x0:ION.classical_field_V_cm,x1:ION.classical_field_V_cm,yref:'paper',y0:0,y1:1,line:{color:css('--quad'),width:1.2,dash:'dash'}},
+    {type:'line',xref:'paper',x0:0,x1:1,y0:ION.rate_MHz,y1:ION.rate_MHz,line:{color:css('--ink2'),width:1,dash:'dot'}}];
+  const L=lay(XT(),'Γ/h (MHz)',{yaxis:{type:'log',title:{text:'Γ/h (MHz)',font:{size:12,color:css('--ink2')}},tickfont:{color:css('--ink2'),size:11},gridcolor:css('--grid')}});
+  L.shapes=L.shapes.concat(sh);
+  L.annotations=[{x:ION.classical_field_V_cm,yref:'paper',y:1,text:'classical',showarrow:false,yanchor:'bottom',font:{size:11,color:css('--quad')}}];
+  Plotly.react('pio',tr,L,PCFG);
+  $('nio').innerHTML=[`The state's ionisation rate: the widths Γ of the levels within the window, weighted by the share of ${D.state} in each.`,
+    `Dashed: the classical ionisation field, where the saddle point −2√F reaches the state's energy (${g(ION.classical_field_V_cm)} V/cm); dotted: the onset rate ${g(ION.rate_MHz)} MHz`+(ION.onset_V_cm!=null?`, reached at ${g(ION.onset_V_cm)} V/cm.`:' (not reached).'),
+    `Widths below ~0.2 MHz are at the numerical floor; lifetime ħ/Γ = 0.159 µs / (Γ/h in MHz).`].map(t=>`<li>${esc(t)}</li>`).join('')}
+function levelsAt(){const k=S.k,E=D.energies_ghz[k],C=D.character[k],G=ION?D.widths_ghz[k]:null,u=UF[S.unit][1];
+  $('lctitle').textContent=`Levels at ${g(F[k])} V/cm`+(AC?' (AC amplitude)':'');
+  $('lch').innerHTML=`<tr><th>E (${u})</th><th>share of ${esc(D.state)}</th>`+(G?'<th>Γ/h (MHz)</th>':'')+'</tr>';
+  const o=E.map((_,i)=>i).sort((a,b)=>C[b]-C[a]);
+  $('lct').innerHTML=o.map(i=>`<tr><td>${g(ef(E[i]))}</td><td>${C[i].toFixed(4)}</td>`+(G?`<td>${g(G[i]*1e3)}</td>`:'')+'</tr>').join('')}
 function interp(f){let k=0;while(k<N-1&&F[k+1]<f)k++;if(k>=N-1)return D.followed_ghz[N-1];const t=(f-F[k])/(F[k+1]-F[k]);return D.followed_ghz[k]*(1-t)+D.followed_ghz[k+1]*t}
 function atField(){const k=S.k,E=D.energies_ghz[k],C=D.character[k];$('fv').textContent=g(F[k])+' V/cm';
   let im=0;C.forEach((c,i)=>{if(c>C[im])im=i});
   let gap=Infinity;E.forEach((e,i)=>{if(i!==im)gap=Math.min(gap,Math.abs(e-E[im]))});
   $('atf').innerHTML=[['shift',g(ef(E[im]))+' '+UF[S.unit][1]],[QL,g(ef(QY[k]))+' '+UF[S.unit][1]],[CBT,C[im].toFixed(4)],
-    ['nearest other',g(ef(gap))+' '+UF[S.unit][1]],['F / F_IT',(F[k]/D.inglis_teller_V_cm).toFixed(3)]].map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('')}
+    ['nearest other',g(ef(gap))+' '+UF[S.unit][1]],['F / F_IT',(F[k]/D.inglis_teller_V_cm).toFixed(3)]]
+    .concat(ION?[['Γ/h of this level',g(D.widths_ghz[k][im]*1e3)+' MHz'],['state\'s rate Γ/h',g(ION.state_rate_MHz[k])+' MHz'],['F / F_class',(F[k]/ION.classical_field_V_cm).toFixed(3)]]:[])
+    .map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('')}
 function tables(){
   $('xt').innerHTML=D.crossings.length?D.crossings.map((c,i)=>`<tr data-f="${c.field_V_cm}"><td>${g(c.field_V_cm)}</td><td>${g(c.gap_MHz)} MHz</td><td>${(c.field_V_cm/D.inglis_teller_V_cm).toFixed(3)}</td></tr>`).join('')
     :'<tr><td colspan="3">none in this field range</td></tr>';
@@ -172,7 +317,8 @@ function notes(){const n=AC?[`Each dot is a quasienergy of Shirley's Floquet Ham
   `Colour: |⟨state|μ⟩|², the share of ${D.state} with no photons added in each dressed state μ.`,
   `Quasienergies repeat every ${g(AC.frequency_ghz)} GHz: copies of each level sit at multiples of f.`,
   `Photon blocks q = −${AC.sidebands}…${AC.sidebands}; processes of up to ${AC.sidebands+1} photons are converged.`]
-  :[`Each dot is an eigenstate of H0 + F z at one m_j; colour: |⟨state|μ⟩|², the share of ${D.state} in each eigenstate μ.`];
+  :[MAG?`Each dot is an eigenstate of H0 + F z + H_B${MAG.crossed?'':' at one m_j'}; colour: |⟨state|μ⟩|², the share of ${D.state} in each eigenstate μ.`
+    :`Each dot is an eigenstate of H0 + F z at one m_j; colour: |⟨state|μ⟩|², the share of ${D.state} in each eigenstate μ.`];
   if(AC&&AC.sideband_check)n.push(`One more sideband moves ${D.state} by ${g(AC.sideband_check.change_MHz)} MHz at ${g(AC.sideband_check.amplitude_V_cm)} V/cm.`);
   n.push(
   `Basis: n ${D.basis.n_lo}–${D.basis.n_hi}, every l up to ${D.basis.l_max}, both j: ${D.basis.size} states.`,
@@ -182,17 +328,32 @@ function notes(){const n=AC?[`Each dot is a quasienergy of Shirley's Floquet Ham
     :`Polarisability from second-order perturbation in the same basis, ΔE = −½αF².`,
   `Avoided crossings: local minima of the gap between the followed state and its nearest neighbour.`,
   `Followed state: the level holding most of the state, drawn while it holds at least half.`);
+  if(ION){n.splice(0,1,`Each dot is a Stark resonance E − iΓ/2 of the atom in the field, from complex scaling (r → r e^{iθ}, θ = ${ION.theta}) on a ${ION.mesh_points}-point radial mesh to ${g(ION.box_a0)} a0, ${ION.channels} channels.`,
+      `Colour: |⟨state|μ⟩|², the share of ${D.state} in each level μ, or its ionisation width Γ (rate Γ/ħ).`);
+    n.push(`Core: a soft model potential per (l, j) tuned to the precision quantum defects; field-free levels moved onto them exactly.`,
+      `Classical limit: the saddle point −2√F (a.u.); levels above it ionise unless held back by their parabolic character.`);
+    n.push(`The state's ionisation rate: the widths of the levels it is spread over, weighted by its share of each; onset where it reaches ${g(ION.rate_MHz)} MHz. Widths below ~0.2 MHz are at the numerical floor.`);
+    const c=ION.check;if(c&&c.state_rate_MHz!=null)n.push(`Check at ${g(c.field_V_cm)} V/cm with θ = 0.15 and a 25 % finer mesh: levels move by ${g(c.median_shift_change_MHz)} MHz (median), the state's rate ${g(c.state_rate_MHz)} → ${g(c.state_rate_alt_MHz)} MHz.`)}
+  if(MAG){n.push(`Magnetic field ${g(MAG.B_gauss)} G at ${g(MAG.angle_deg)}° to E: H0 + F z + μ_B B·(g_L L + g_S S) + (B²/8) r² sin²θ_B. The j = l ± ½ mixing within each (n, l) is kept (ARC keeps only its diagonal), and so is the diamagnetic term (~${g(MAG.diamagnetic_state_ghz*1e3)} MHz for ${D.state}).`);
+    n.push(MAG.crossed?`Crossed fields mix m_j: the basis holds every |m_j| ≤ ${fr(MAG.m_max)} of each level (${MAG.states} states). m_j = ${fr(D.mj)} is taken along B (good at F = 0); colour is the share of that state.`
+      :`Parallel fields keep m_j.`);
+    n.push(`Polarisability: of the field-free atom; −½αF² is drawn from the Zeeman-shifted level.`)}
   if(D.dissolved_V_cm!=null)n.push(`Above ${g(D.dissolved_V_cm)} V/cm no level holds half of ${D.state}: no crossings are listed past it.`);
   $('notes').innerHTML=n.map(t=>`<li>${esc(t)}</li>`).join('')}
 function csv(){const rows=[(AC?'ac_amplitude_V_cm':'field_V_cm')+',energy_GHz,character'];for(let k=0;k<N;k++)D.energies_ghz[k].forEach((e,i)=>rows.push(`${F[k]},${e},${D.character[k][i]}`));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));a.download=`${D.element}_${D.state.replace('/','-')}_stark.csv`;a.click()}
 $('fcur').max=N-1;$('fcur').oninput=e=>{S.k=+e.target.value;atField();draw()};
 $('minc').oninput=()=>{$('minv').textContent=(+$('minc').value).toFixed(3);draw()};
-['c-fol','c-quad','c-x','c-grey'].forEach(i=>$(i).onchange=draw);
+['c-fol','c-quad','c-x','c-grey','c-sad'].forEach(i=>$(i).onchange=draw);
+document.querySelectorAll('#cby button').forEach(b=>b.onclick=()=>{S.by=b.dataset.b;document.querySelectorAll('#cby button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw()});
+if(ION||RAMP){$('cby').hidden=false;$('cby-w').hidden=!ION;$('cby-p').hidden=!RAMP}
+if(ION){$('l-sad').hidden=false;$('tab-io').hidden=false}
+if(RAMP)$('tab-rp').hidden=false;
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;draw()});
 document.querySelectorAll('#cmap button').forEach(b=>b.onclick=()=>{S.cmap=b.dataset.c;document.querySelectorAll('#cmap button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw()});
 document.querySelectorAll('#zero button').forEach(b=>b.onclick=()=>{S.zero=b.dataset.z;document.querySelectorAll('#zero button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw()});
 document.querySelectorAll('#unit button').forEach(b=>b.onclick=()=>{S.unit=b.dataset.u;document.querySelectorAll('#unit button').forEach(x=>x.setAttribute('aria-pressed',x===b));tables();atField();draw()});
-$('railbtn').onclick=()=>{const c=$('app').classList.toggle('closed');$('railbtn').textContent=c?'Show controls':'Hide controls';$('railbtn').setAttribute('aria-expanded',!c);setTimeout(()=>Plotly.Plots.resize('plot'),50)};
+$('railbtn').onclick=()=>{const c=$('app').classList.toggle('closed');$('railbtn').textContent=c?'Show controls':'Hide controls';$('railbtn').setAttribute('aria-expanded',!c);setTimeout(()=>document.querySelectorAll('.pane:not([hidden]) .js-plotly-plot').forEach(p=>Plotly.Plots.resize(p)),50)};
 $('theme').onclick=()=>{const o=['auto','light','dark'];S.theme=o[(o.indexOf(S.theme)+1)%3];const h=document.documentElement;S.theme==='auto'?h.removeAttribute('data-theme'):h.setAttribute('data-theme',S.theme);$('theme').textContent='Theme: '+S.theme;draw()};
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(S.theme==='auto')draw()});
 $('csv').onclick=csv;

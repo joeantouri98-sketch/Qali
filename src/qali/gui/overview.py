@@ -128,6 +128,7 @@ class SpeciesOverviewWidget(QWidget):
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self._scroll.setWidget(self._root_widget)
         self._scroll.viewport().installEventFilter(self)
+        self._scroll.setMinimumHeight(24)        # a panel holding it can be dragged down to a few lines
         outer.addWidget(self._scroll)
 
         btn_row = QHBoxLayout()

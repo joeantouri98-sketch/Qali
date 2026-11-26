@@ -186,7 +186,7 @@ def options_from_args(args) -> dict:
 
 
 def write_report(label: str, element: str, bb: dict, trans_gs, trans_ex, life: dict | None, opts: dict,
-                 out_dir: str, shifts=None) -> str | None:
+                 out_dir: str, shifts=None, store: dict | None = None) -> str | None:
     """Write ``<out_dir>/<element>_blackbody.html`` and return its path (None when no tab is wanted)."""
     if not opts['tabs']:
         print('  Plot: every tab is switched off, nothing drawn.')
@@ -196,7 +196,11 @@ def write_report(label: str, element: str, bb: dict, trans_gs, trans_ex, life: d
         print(f'  Plot: {tab} tab left out or reduced: {why}', file=sys.stderr)
     if not payload['tabs']:
         raise MissingDataError('nothing to draw: ' + '; '.join(missing.values()))
-    html = render(TEMPLATE, TITLE=f'{label} blackbody radiation', DATA_JS=payload_js(payload))
+    data_js = payload_js(payload)
+    html = render(TEMPLATE, TITLE=f'{label} blackbody radiation', DATA_JS=data_js)
+    if store is not None:                      # kept in the run's JSON, to write the page again
+        from qali.pipelines.page_store import page_record
+        store.update(page_record(TEMPLATE, f'{label} blackbody radiation', data_js))
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f'{element}_blackbody.html')
     write_offline_report(path, html)

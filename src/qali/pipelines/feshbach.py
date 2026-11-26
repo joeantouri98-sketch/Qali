@@ -111,6 +111,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--isotope', type=int, default=None,
                         help='Mass number A (default: from feshbach JSON; an isotope listed under "isotopes" '
                              'there uses its own resonances, e.g. Rb 85)')
+    from qali.pipelines.page_store import add_arguments
+    add_arguments(parser)
     return parser
 
 # ============================================================================
@@ -401,9 +403,14 @@ def payload_js(payload: dict) -> str:
     return text.replace('</', '<\\/').replace('\u2028', '\\u2028').replace('\u2029', '\\u2029')
 
 
-def write_page(element, payload, out_dir):
+def write_page(element, payload, out_dir, store: dict | None = None):
+    data_js = payload_js(payload)
     html = render(TEMPLATE, TITLE=f"{payload['plain']} Feshbach", PHYS_JS=load_template('feshbach_physics.js'),
-                  DATA_JS=payload_js(payload))
+                  DATA_JS=data_js)
+    if store is not None:                      # kept in the run's JSON, to write the page again
+        from qali.pipelines.page_store import page_record
+        store.update(page_record(TEMPLATE, f"{payload['plain']} Feshbach", data_js,
+                                 {"PHYS_JS": "feshbach_physics.js"}, file=f'{element}_feshbach'))
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f'{element}_feshbach.html')
     write_offline_report(path, html)
@@ -414,7 +421,7 @@ def write_page(element, payload, out_dir):
 # JSON OUTPUT
 # ============================================================================
 
-def write_output_json(inputs: FeshbachInputs, result: FeshbachResult, data_dir):
+def write_output_json(inputs: FeshbachInputs, result: FeshbachResult, data_dir, page: dict | None = None):
     el = inputs.element
     path = os.path.join(data_dir, f'{el}_feshbach_out.json')
 
@@ -476,6 +483,8 @@ def write_output_json(inputs: FeshbachInputs, result: FeshbachResult, data_dir):
         ],
         'note': inputs.note,
     }
+    if page:                                   # what the page was made from, for Generate plot from...
+        payload['page'] = page
     write_json(path, payload)
     print(f'  JSON -> {path}')
     return path
@@ -514,9 +523,12 @@ def run_one(element, args):
         print(f"  a(B) {c.channel}: {how}; zero crossings at {zs} G")
 
     out_dir = args.output_dir or os.path.join(Workspace.current().plots_dir, element)
-    if not args.no_plot:
-        write_page(element, build_payload(inputs, result, args, args.data_dir), out_dir)
-    write_output_json(inputs, result, args.data_dir)
+    rec: dict = {}
+    try:
+        if not args.no_plot:
+            write_page(element, build_payload(inputs, result, args, args.data_dir), out_dir, store=rec)
+    finally:
+        write_output_json(inputs, result, args.data_dir, page=rec or None)
     return result
 
 
@@ -527,6 +539,12 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     if args.data_dir is None:
         args.data_dir = str(Workspace.current().data_json_dir)
+    if args.from_json:
+        if args.name and len(args.from_json) > 1:
+            parser.error("--name needs a single --from-json file")
+        from qali.pipelines.page_store import pages_only
+        return pages_only("feshbach", args.from_json, args.output_dir or str(Workspace.current().plots_dir),
+                          args.name, flat=bool(args.output_dir))
     if args.all:
         els = get_available_elements(args.data_dir)
         if not els:

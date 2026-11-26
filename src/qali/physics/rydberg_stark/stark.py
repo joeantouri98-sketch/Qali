@@ -59,12 +59,34 @@ class StarkBasis:
     Z_au: np.ndarray                 # <i|z|j>, a.u.
     meta: dict = field(default_factory=dict)
     R_au: np.ndarray | None = None   # radial <i|r|j> (l -> l±1 blocks), a.u.
+    H0_extra: np.ndarray | None = None   # field-independent term added to diag(E0) (a magnetic field), GHz
+    R2_au: np.ndarray | None = None      # radial <i|r²|j> (Δl = 0, ±2), a.u., when asked for (diamagnetism)
+    m2s: np.ndarray | None = None        # 2 m_j of each state when m_j is mixed (crossed fields); None: all m2
+    target_vec: np.ndarray | None = None  # the chosen state as a vector, when it is not one basis state
+
+    def tvec(self) -> np.ndarray:
+        """The chosen state in the basis."""
+        if self.target_vec is not None:
+            return self.target_vec
+        e = np.zeros(len(self.levels))
+        e[self.target] = 1.0
+        return e
+
+    def h0(self) -> np.ndarray:
+        """The field-free Hamiltonian, GHz (diagonal unless there is a magnetic field)."""
+        H = np.diag(self.E0_ghz)
+        return H if self.H0_extra is None else H + self.H0_extra
+
+    def labels(self) -> tuple[str, ...]:
+        if self.m2s is None:
+            return tuple(lv.label for lv in self.levels)
+        return tuple(f"{lv.label} {int(m):+d}/2" for lv, m in zip(self.levels, self.m2s))
 
 
 def build_basis(energies: RydbergEnergies, symbol: str | None, n: int, l: int, j2: int, m2: int,
-                n_lo: int, n_hi: int, l_max: int) -> StarkBasis:
+                n_lo: int, n_hi: int, l_max: int, r2: bool = False) -> StarkBasis:
     """Basis around n, l, j at m_j = m2/2.  symbol: Marinescu species for the radial functions
-    (None: hydrogen)."""
+    (None: hydrogen).  r2: also the <r²> integrals (Δl = 0, ±2), for the diamagnetic term."""
     if abs(m2) > j2:
         raise ValueError("|m_j| > j")
     levels: list[Level] = []
@@ -98,7 +120,17 @@ def build_basis(energies: RydbergEnergies, symbol: str | None, n: int, l: int, j
                 Rab = radial.dipole(chis[ia], chis[ib], x)
                 R[np.ix_(ia, ib)] = Rab
                 R[np.ix_(ib, ia)] = Rab.T
-    return StarkBasis(levels, m2, t, E0, _z_matrix(levels, R, m2), dict(n_lo=n_lo, n_hi=n_hi, l_max=l_max), R)
+    R2 = None
+    if r2:
+        R2 = np.zeros((len(levels), len(levels)))
+        for (la, ja), ia in groups.items():
+            for (lb, jb), ib in groups.items():
+                if lb - la in (0, 2):
+                    M2 = radial.moment(chis[ia], chis[ib], x, 2)
+                    R2[np.ix_(ia, ib)] = M2
+                    R2[np.ix_(ib, ia)] = M2.T
+    return StarkBasis(levels, m2, t, E0, _z_matrix(levels, R, m2), dict(n_lo=n_lo, n_hi=n_hi, l_max=l_max), R,
+                      R2_au=R2)
 
 
 def _z_matrix(levels: list[Level], R: np.ndarray, m2: int) -> np.ndarray:
@@ -123,8 +155,9 @@ def with_m(basis: StarkBasis, m2: int) -> StarkBasis:
         raise ValueError("|m_j| > j of the chosen state")
     levels = [basis.levels[i] for i in keep]
     R = basis.R_au[np.ix_(keep, keep)]
+    R2 = None if basis.R2_au is None else basis.R2_au[np.ix_(keep, keep)]
     return StarkBasis(levels, m2, keep.index(basis.target), basis.E0_ghz[keep], _z_matrix(levels, R, m2),
-                      dict(basis.meta), R)
+                      dict(basis.meta), R, R2_au=R2)
 
 
 @dataclass(frozen=True)
@@ -142,7 +175,7 @@ def stark_map(basis: StarkBasis, fields_V_cm, window_ghz: float | None = None) -
     window_ghz: keep only the eigenvalues within ± this of the chosen state's field-free level
     (faster for large bases); None keeps all.  Rows are padded with NaN to a common width."""
     F = np.asarray(fields_V_cm, float)
-    H0 = np.diag(basis.E0_ghz)
+    H0 = basis.h0()
     Zg = basis.Z_au * HARTREE_GHZ / AU_FIELD_V_CM            # GHz per V/cm
     rows_e, rows_c = [], []
     for f in F:
@@ -151,14 +184,14 @@ def stark_map(basis: StarkBasis, fields_V_cm, window_ghz: float | None = None) -
         else:
             w, v = eigh(H0 + f * Zg, subset_by_value=(-window_ghz, window_ghz), driver="evr")
         rows_e.append(w)
-        rows_c.append(v[basis.target] ** 2)
+        rows_c.append((basis.tvec() @ v) ** 2)
     width = max((len(r) for r in rows_e), default=0)
     En = np.full((len(F), width), np.nan)
     ch = np.zeros((len(F), width))
     for k, (e, c) in enumerate(zip(rows_e, rows_c)):
         En[k, :len(e)] = e
         ch[k, :len(c)] = c
-    return StarkMap(F, En, ch, tuple(lv.label for lv in basis.levels), basis.levels[basis.target].label)
+    return StarkMap(F, En, ch, basis.labels(), basis.labels()[basis.target])
 
 
 def inglis_teller_V_cm(n_star: float) -> float:
@@ -244,10 +277,11 @@ def floquet_map(basis: StarkBasis, frequency_ghz: float, amplitudes_V_cm, sideba
     Zg = basis.Z_au * HARTREE_GHZ / AU_FIELD_V_CM            # GHz per V/cm
     nb = 2 * sidebands + 1
     qs = np.arange(-sidebands, sidebands + 1)
-    H0 = np.kron(np.eye(nb), np.diag(basis.E0_ghz) + dc_V_cm * Zg)
+    H0 = np.kron(np.eye(nb), basis.h0() + dc_V_cm * Zg)
     H0 += np.diag(np.repeat(qs * frequency_ghz, N))
     B = np.kron(np.eye(nb, k=1) + np.eye(nb, k=-1), 0.5 * Zg)
-    t0 = sidebands * N + basis.target                      # |chosen state, q = 0>
+    tq = np.zeros(nb * N)
+    tq[sidebands * N:(sidebands + 1) * N] = basis.tvec()      # |chosen state, q = 0>
     # without a static field, (-1)^(l + q) is conserved: z changes l by one and the drive q by one,
     # so the matrix splits into two halves (same quasienergies, a quarter of the work)
     if dc_V_cm == 0.0:
@@ -265,9 +299,8 @@ def floquet_map(basis: StarkBasis, frequency_ghz: float, amplitudes_V_cm, sideba
                 w, v = eigh(Hb)
             else:
                 w, v = eigh(Hb, subset_by_value=(-window_ghz, window_ghz), driver="evr")
-            pos = np.flatnonzero(ids == t0)
             ws.append(w)
-            cs.append(v[pos[0]] ** 2 if len(pos) else np.zeros(len(w)))
+            cs.append((tq[ids] @ v) ** 2)
         w = np.concatenate(ws)
         o = np.argsort(w)
         rows_e.append(w[o])
@@ -278,8 +311,8 @@ def floquet_map(basis: StarkBasis, frequency_ghz: float, amplitudes_V_cm, sideba
     for k, (e, c) in enumerate(zip(rows_e, rows_c)):
         En[k, :len(e)] = e
         ch[k, :len(c)] = c
-    return FloquetMap(A, En, ch, tuple(lv.label for lv in basis.levels),
-                      basis.levels[basis.target].label, float(frequency_ghz), int(sidebands), float(dc_V_cm))
+    return FloquetMap(A, En, ch, basis.labels(),
+                      basis.labels()[basis.target], float(frequency_ghz), int(sidebands), float(dc_V_cm))
 
 
 def dynamic_polarizability(basis: StarkBasis, frequency_ghz: float) -> float:

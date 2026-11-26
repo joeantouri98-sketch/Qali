@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QFrame,
     QScrollArea,
     QSpinBox,
     QSplitter,
@@ -129,7 +130,14 @@ class FiguresTab(QWidget):
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         split = QSplitter(Qt.Horizontal)
-        outer.addWidget(split)
+        # the whole editor scrolls when the panel is shorter than it, so a panel holding it can be dragged
+        # down to a few lines before it collapses (its own minimum would otherwise be ~210 px)
+        wrap = QScrollArea()
+        wrap.setWidgetResizable(True)
+        wrap.setFrameShape(QFrame.NoFrame)
+        wrap.setMinimumHeight(40)
+        wrap.setWidget(split)
+        outer.addWidget(wrap)
 
         side = QWidget()
         sv = QVBoxLayout(side)
@@ -769,14 +777,21 @@ class FiguresTab(QWidget):
         self.sk_fol = self._check("Followed state")
         self.sk_quad = self._check("Second-order shift")
         self.sk_cross = self._check("Avoided crossings")
+        self.sk_by = self._combo([("character", "the state's share"), ("width", "ionisation width Γ"),
+                                  ("population", "population after a ramp")])
+        self.sk_sad = self._check("Classical ionisation limit")
+        self.sk_view = self._combo(list(templates.STARK_VIEWS.items()))
+        f.addRow("View", self.sk_view)
         f.addRow("Energy", self.sk_unit)
         f.addRow("Zero at", self.sk_zero)
         f.addRow("Colours", self.sk_cmap)
+        f.addRow("Colour by", self.sk_by)
         f.addRow("Colour-bar label", self.sk_cbar)
         f.addRow("Character from", self.sk_min)
         f.addRow(self.sk_fol)
         f.addRow(self.sk_quad)
         f.addRow(self.sk_cross)
+        f.addRow(self.sk_sad)
         return w
 
     def _page_pair(self) -> QWidget:
@@ -789,6 +804,8 @@ class FiguresTab(QWidget):
         self.pp_fol = self._check("Followed pair")
         self.pp_asym = self._check("C\u2086/R\u2076 (or \u00b1C\u2083/R\u00b3)")
         self.pp_bl = self._check("Blockade radius")
+        self.pp_view = self._combo(list(templates.PAIR_VIEWS.items()))
+        f.addRow("View", self.pp_view)
         f.addRow("Energy", self.pp_unit)
         f.addRow("Colours", self.pp_cmap)
         f.addRow("Colour-bar label", self.pp_cbar)
@@ -1035,6 +1052,10 @@ class FiguresTab(QWidget):
             self.sk_fol.setChecked(bool(p.get("followed", True)))
             self.sk_quad.setChecked(bool(p.get("quadratic", True)))
             self.sk_cross.setChecked(bool(p.get("crossings", False)))
+            self.sk_by.setCurrentIndex(max(0, self.sk_by.findData(p.get("color_by", "character"))))
+            self.sk_sad.setChecked(bool(p.get("classical", True)))
+            self.sk_view.setCurrentIndex(max(0, self.sk_view.findData(p.get("view", "map"))))
+            self.pp_view.setCurrentIndex(max(0, self.pp_view.findData(p.get("view", "potentials"))))
             self.pp_unit.setCurrentIndex(max(0, self.pp_unit.findData(p.get("unit", "MHz"))))
             self.pp_cmap.setCurrentIndex(max(0, self.pp_cmap.findData(p.get("cmap", "qali_blue"))))
             self.pp_cbar.setText(p.get("cbar_label") or "")
@@ -1091,9 +1112,11 @@ class FiguresTab(QWidget):
         for st in stages:
             box = QComboBox()
             box.setToolTip(f"Which {st} result the figure reads")
-            box.addItem("Usual output", "")
+            latest = catalog.run_summary(sp, st, self.data_dir) if sp and self.data_dir else ""
+            box.addItem("Usual output" + (f" (latest: {latest})" if latest else ""), "")
             for name in catalog.runs(sp, st, self.data_dir) if sp and self.data_dir else []:
-                box.addItem(f"Saved as '{name}'", name)
+                what = catalog.run_summary(sp, st, self.data_dir, name)
+                box.addItem(f"Saved as '{name}'" + (f": {what}" if what else ""), name)
             cur = chosen.get(st) or ""
             if cur and box.findData(cur) < 0:
                 box.addItem(os.path.basename(cur) if os.path.isabs(cur) else f"'{cur}' (missing)", cur)
@@ -1355,12 +1378,13 @@ class FiguresTab(QWidget):
                      cbar_label=self.sk_cbar.text().strip(),
                      min_char=_float_or_none(self.sk_min.text()),
                      followed=self.sk_fol.isChecked(), quadratic=self.sk_quad.isChecked(),
-                     crossings=self.sk_cross.isChecked())
+                     crossings=self.sk_cross.isChecked(), color_by=self.sk_by.currentData(),
+                     classical=self.sk_sad.isChecked(), view=self.sk_view.currentData())
         elif t == "pair":
             p.update(unit=self.pp_unit.currentData(), cmap=self.pp_cmap.currentData(),
                      cbar_label=self.pp_cbar.text().strip(), min_char=_float_or_none(self.pp_min.text()),
                      followed=self.pp_fol.isChecked(), asymptote=self.pp_asym.isChecked(),
-                     blockade=self.pp_bl.isChecked())
+                     blockade=self.pp_bl.isChecked(), view=self.pp_view.currentData())
         elif t == "feshbach":
             if self.fe_channels.count():
                 p["channels"] = self._checked(self.fe_channels)

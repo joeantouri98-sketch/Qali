@@ -7,6 +7,7 @@ All paths stay under tests/ or the package's bundled resources
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -150,3 +151,27 @@ def feshbach_run(workspace) -> object:
     result = run_pipeline(["feshbach", "Na"], workspace)
     assert result.returncode == 0, f"feshbach Na failed:\n{result.stderr}"
     return result
+
+
+# ---------------------------------------------------------------- the exit status on Windows
+#
+# On Windows the test process could end with exit code 1 after pytest had reported every test passed
+# (CI on 2026-11-24: "1493 passed", then exit code 1 with nothing printed): something in the Qt /
+# Qt WebEngine teardown at interpreter exit ends the process.  Once pytest has written its report,
+# end the process with pytest's own status and skip that teardown.  A real failure still gives 1.
+# QALI_TEST_NO_HARD_EXIT=1 turns this off.
+
+def pytest_sessionfinish(session, exitstatus) -> None:
+    session.config._qali_exitstatus = int(exitstatus)
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_unconfigure(config) -> None:
+    if sys.platform != "win32" or hasattr(config, "workerinput") or os.environ.get("QALI_TEST_NO_HARD_EXIT"):
+        return
+    status = getattr(config, "_qali_exitstatus", None)
+    if status is None:
+        return
+    print(f"pytest exit status {status} (the process ends here; Qt teardown skipped on Windows)", flush=True)
+    sys.stderr.flush()
+    os._exit(status)

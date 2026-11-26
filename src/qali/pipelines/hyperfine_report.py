@@ -89,13 +89,18 @@ def payload_js(payload: dict) -> str:
 
 
 def write_page(element: str, result: HyperfineResult, out_dir: str, *, gI_source: str = 'bare',
-               B_unit: str = 'G', f_unit: str = 'MHz', B_cursor: float | None = None) -> str:
+               B_unit: str = 'G', f_unit: str = 'MHz', B_cursor: float | None = None,
+               store: dict | None = None) -> str:
     """Write ``<out_dir>/<element>_hyperfine.html`` and return its path."""
     B_max = float(result.B_G[-1]) if len(result.B_G) else 0.0
     opts = dict(tabs=list(TABS), Bu=B_unit, fu=f_unit,
                 Bc=B_cursor if B_cursor is not None else round(min(B_max, max(B_max / 5, 1e-3)), 6))
     payload = build_payload(element, result, gI_source, opts)
-    html = render(TEMPLATE, TITLE=f'{payload["nuclide"]} hyperfine structure', DATA_JS=payload_js(payload))
+    data_js = payload_js(payload)
+    html = render(TEMPLATE, TITLE=f'{payload["nuclide"]} hyperfine structure', DATA_JS=data_js)
+    if store is not None:                      # kept in the run's JSON, to write the page again
+        from qali.pipelines.page_store import page_record
+        store.update(page_record(TEMPLATE, f'{payload["nuclide"]} hyperfine structure', data_js))
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f'{element}_hyperfine.html')
     write_offline_report(path, html)

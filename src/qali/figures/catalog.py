@@ -170,6 +170,17 @@ def runs(species: str, stage: str, data_dir: str) -> list[str]:
                   and len(n) > len(prefix) + 5)
 
 
+def run_summary(species: str, stage: str, data_dir: str, run: str = "") -> str:
+    """One line on what a run of *stage* is (the Stark and pair stages), "" when there is nothing to say."""
+    if stage not in ("stark", "pair"):
+        return ""
+    doc = load_json(species, stage, data_dir, run)
+    if not doc:
+        return ""
+    from qali.pipelines.rydberg_runs import summary
+    return summary(stage, doc)
+
+
 def stage_file(species: str, stage: str, data_dir: str, run: str = "") -> str:
     """The file a stage output is read from: the usual one, a named run, or (an absolute *run*) that file."""
     if run and os.path.isabs(run):

@@ -8,6 +8,7 @@ Quantum Mechanics, eq. 3.7.3).
 from __future__ import annotations
 
 import math
+from fractions import Fraction
 
 L_LETTERS = "spdfghik"
 
@@ -35,6 +36,31 @@ def _f(n2: int) -> float:
     return float(math.factorial(n2 // 2))
 
 
+def _threej2_exact(j1: int, j2: int, j3: int, m1: int, m2: int, m3: int) -> float:
+    """The Racah formula in exact rational arithmetic (large j; selection rules already checked)."""
+    fi = math.factorial
+
+    def f(n2: int) -> int:
+        return fi(n2 // 2)
+
+    pref2 = Fraction(f(j1 + j2 - j3) * f(j1 - j2 + j3) * f(-j1 + j2 + j3), f(j1 + j2 + j3 + 2)) \
+        * f(j1 + m1) * f(j1 - m1) * f(j2 + m2) * f(j2 - m2) * f(j3 + m3) * f(j3 - m3)
+    total = Fraction(0)
+    for t2 in range(0, 2 * (j1 + j2 + j3) + 2, 2):
+        args = (t2, j3 - j2 + t2 + m1, j3 - j1 + t2 - m2, j1 + j2 - j3 - t2, j1 - t2 - m1, j2 - t2 + m2)
+        if min(args) < 0:
+            continue
+        den = 1
+        for x in args:
+            den *= f(x)
+        total += Fraction((-1) ** (t2 // 2), den)
+    if total == 0:
+        return 0.0
+    val = math.sqrt(float(pref2 * total * total))
+    sign = (-1) ** ((j1 - j2 - m3) // 2) * (1 if total > 0 else -1)
+    return sign * val
+
+
 def threej2(j1: int, j2: int, j3: int, m1: int, m2: int, m3: int) -> float:
     """Wigner 3j symbol with every argument doubled."""
     if m1 + m2 + m3 != 0:
@@ -45,6 +71,8 @@ def threej2(j1: int, j2: int, j3: int, m1: int, m2: int, m3: int) -> float:
         return 0.0
     if (j1 + m1) % 2 or (j2 + m2) % 2 or (j3 + m3) % 2:
         return 0.0
+    if j1 + j2 + j3 > 60:                  # factorials past ~30! overflow the float products: exact
+        return _threej2_exact(j1, j2, j3, m1, m2, m3)
     tri = _f(j1 + j2 - j3) * _f(j1 - j2 + j3) * _f(-j1 + j2 + j3) / _f(j1 + j2 + j3 + 2)
     pref = math.sqrt(tri * _f(j1 + m1) * _f(j1 - m1) * _f(j2 + m2) * _f(j2 - m2)
                      * _f(j3 + m3) * _f(j3 - m3))
